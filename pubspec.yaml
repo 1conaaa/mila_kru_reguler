@@ -1,7 +1,7 @@
 name: kru_reguler
 description: "Aplikasi BIS Akas Aurora Kru Reguler"
 
-version: 1.0.0+7
+version: 1.0.0+8
 
 environment:
   sdk: ^3.8.1

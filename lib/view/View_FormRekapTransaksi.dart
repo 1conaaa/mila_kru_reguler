@@ -182,55 +182,30 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   @override
   Widget build(BuildContext context) {
     String selectedKategoriTiket = 'reguler';
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          SizedBox(height: 40.0),
-          Text('Pencatatan Pendapatan & Pengeluaran'),
-          SizedBox(height: 16.0),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
-            child: Form(
-              key: _formKey, // Add form key
-              child: Column(
-                children: [
-                  SizedBox(height: 16.0),
-                  Row(
+    return SafeArea( // ✅ Lindungi konten dari area status & navbar
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewPadding.bottom + 20,
+          ),
+          child: Column(
+            children: [
+              SizedBox(height: 40.0),
+              Text('Pencatatan Pendapatan & Pengeluaran'),
+              SizedBox(height: 16.0),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Form(
+                  key: _formKey, // Add form key
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: kmMasukGarasiController,
-                          decoration: InputDecoration(
-                            labelText: 'KM Pulang',
-                            border: OutlineInputBorder(),
-                            alignLabelWithHint: true,
-                            prefixText: ' ',
-                            prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
-                          ),
-                          textAlign: TextAlign.right,
-                          keyboardType: TextInputType.number,
-                          enabled: true,
-                          style: TextStyle(fontSize: 18),
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'KM Masuk Garasi harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16.0),
-                  Column(
-                    children: [
+                      SizedBox(height: 16.0),
                       Row(
                         children: [
                           Expanded(
                             child: TextFormField(
-                              controller: jumlahTiketRegulerController,
+                              controller: kmMasukGarasiController,
                               decoration: InputDecoration(
-                                labelText: 'Tiket Reguler',
+                                labelText: 'KM Pulang',
                                 border: OutlineInputBorder(),
                                 alignLabelWithHint: true,
                                 prefixText: ' ',
@@ -238,404 +213,434 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
                               ),
                               textAlign: TextAlign.right,
                               keyboardType: TextInputType.number,
-                              enabled: false,
+                              enabled: true,
                               style: TextStyle(fontSize: 18),
+                              validator: (value) {
+                                if (value!.isEmpty) {
+                                  return 'KM Masuk Garasi harus diisi';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 16.0),
+                      Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: jumlahTiketRegulerController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Tiket Reguler',
+                                    border: OutlineInputBorder(),
+                                    alignLabelWithHint: true,
+                                    prefixText: ' ',
+                                    prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  keyboardType: TextInputType.number,
+                                  enabled: false,
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                              SizedBox(width: 16.0),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: pendapatanTiketRegulerController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Pendapatan Tiket Reguler',
+                                    border: OutlineInputBorder(),
+                                    alignLabelWithHint: true,
+                                    prefixText: 'Rp ',
+                                    prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  keyboardType: TextInputType.number,
+                                  enabled: false,
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16.0),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: jumlahTiketOnLineController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Tiket On Line',
+                                    border: OutlineInputBorder(),
+                                    alignLabelWithHint: true,
+                                    prefixText: ' ',
+                                    prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  keyboardType: TextInputType.number,
+                                  enabled: false,
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                              SizedBox(width: 16.0),  // Perbaikan jarak horizontal
+                              Expanded(
+                                child: TextFormField(
+                                  controller: pendapatanTiketNonRegulerController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Pendapatan Tiket Online',
+                                    border: OutlineInputBorder(),
+                                    alignLabelWithHint: true,
+                                    prefixText: 'Rp ',
+                                    prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  keyboardType: TextInputType.number,
+                                  enabled: false,
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16.0),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: jumlahBarangBagasiController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Jml.Barang Bagasi',
+                                    border: OutlineInputBorder(),
+                                    alignLabelWithHint: true,
+                                    prefixText: ' ',
+                                    prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  keyboardType: TextInputType.number,
+                                  enabled: false,
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                              SizedBox(width: 16.0),  // Konsistensi jarak horizontal
+                              Expanded(
+                                child: TextFormField(
+                                  controller: pendapatanBagasiController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Pendapatan Bagasi',
+                                    border: OutlineInputBorder(),
+                                    alignLabelWithHint: true,
+                                    prefixText: 'Rp ',
+                                    prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  keyboardType: TextInputType.number,
+                                  enabled: false,
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 16.0),
+                        ],
+                      ),
+
+                      TextFormField(
+                        controller: tolController,
+                        decoration: InputDecoration(
+                          labelText: 'Pengeluaran TOL',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            pengeluaranTol = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Pengeluaran Tol harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: tprController,
+                        decoration: InputDecoration(
+                          labelText: 'Pengeluaran Operasional Harian',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            pengeluaranTpr = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Pengeluaran Operasional harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: perpalController,
+                        decoration: InputDecoration(
+                          labelText: 'Pengeluaran Perpal',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            pengeluaranPerpal = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Pengeluaran Perpal harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: TextFormField(
+                              controller: litersolarController,
+                              decoration: InputDecoration(
+                                labelText: 'Jumlah Liter Solar',
+                                border: OutlineInputBorder(),
+                                alignLabelWithHint: true,
+                                prefixText: ' ',
+                                prefixStyle: TextStyle(
+                                    textBaseline: TextBaseline.alphabetic),
+                              ),
+                              textAlign: TextAlign.right,
+                              style: TextStyle(fontSize: 18),
+                              keyboardType: TextInputType.numberWithOptions(decimal: true),
+                              inputFormatters: <TextInputFormatter>[
+                                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                              ],
+                              onChanged: (value) {},
+                              validator: (value) {
+                                if (value!.isEmpty) {
+                                  return 'Jumlah Liter Solar harus diisi';
+                                }
+                                return null;
+                              },
                             ),
                           ),
                           SizedBox(width: 16.0),
                           Expanded(
+                            flex: 1,
                             child: TextFormField(
-                              controller: pendapatanTiketRegulerController,
+                              controller: nominalsolarController,
                               decoration: InputDecoration(
-                                labelText: 'Pendapatan Tiket Reguler',
+                                labelText: 'Nominal Solar',
                                 border: OutlineInputBorder(),
                                 alignLabelWithHint: true,
                                 prefixText: 'Rp ',
-                                prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                                prefixStyle: TextStyle(
+                                    textBaseline: TextBaseline.alphabetic),
                               ),
                               textAlign: TextAlign.right,
-                              keyboardType: TextInputType.number,
-                              enabled: false,
                               style: TextStyle(fontSize: 18),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                setState(() {
+                                  jumlahTagihan = int.tryParse(value) ?? 0;
+                                });
+                              },
+                              inputFormatters: <TextInputFormatter>[
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              validator: (value) {
+                                if (value!.isEmpty) {
+                                  return 'Jumlah Nominal Solar harus diisi';
+                                }
+                                return null;
+                              },
                             ),
                           ),
                         ],
+                      ),
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: perbaikanController,
+                        decoration: InputDecoration(
+                          labelText: 'Pengeluaran Perbaikan',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        // Align the input text to the right
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          _calculatePremiBersih(
+                              pendapatanTiketRegulerController,pendapatanTiketNonRegulerController,pendapatanBagasiController,tolController,tprController,perpalController,litersolarController,nominalsolarController,perbaikanController,premiExtraController,persenPremikruController);
+                        },
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Pengeluaran Perbaikan harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      TextField(
+                        controller: keteranganPerbaikanController,
+                        decoration: InputDecoration(
+                          labelText: 'Keterangan Perbaikan',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.multiline,
+                        style: TextStyle(fontSize: 18),
+                        maxLines: 3, // Atau atur jumlah baris yang diinginkan
+                        onChanged: (value) {
+                          setState(() {
+                          });
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: nominalPremiExtraController,
+                        decoration: InputDecoration(
+                          labelText: 'Premi Extra $premiExtra',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        keyboardType: TextInputType.text,
+                        enabled: false,
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: nominalPremiKruController,
+                        decoration: InputDecoration(
+                          labelText: 'Premi Disetor $persenPremikru',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        keyboardType: TextInputType.text,
+                        enabled: false,
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: nominalPendapatanBersihController,
+                        decoration: InputDecoration(
+                          labelText: 'Pendapatan Bersih',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        // Align the input text to the right
+                        keyboardType: TextInputType.text,
+                        enabled: false,
+                        // Set enabled to false
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: nominalPendapatanDisetorController,
+                        decoration: InputDecoration(
+                          labelText: 'Pendapatan Disetor',
+                          border: OutlineInputBorder(),
+                          alignLabelWithHint: true,
+                          prefixText: 'Rp ',
+                          prefixStyle: TextStyle(
+                              textBaseline: TextBaseline.alphabetic),
+                        ),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(fontSize: 18),
+                        keyboardType: TextInputType.text,
+                        enabled: false,
+                        onChanged: (value) {
+                          setState(() {});
+                        },
                       ),
                       SizedBox(height: 16.0),
                       Row(
                         children: [
                           Expanded(
-                            child: TextFormField(
-                              controller: jumlahTiketOnLineController,
-                              decoration: InputDecoration(
-                                labelText: 'Tiket On Line',
-                                border: OutlineInputBorder(),
-                                alignLabelWithHint: true,
-                                prefixText: ' ',
-                                prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (_formKey.currentState!.validate()) _simpanValueRekap();
+                              },
+                              child: Text('Simpan'),
+                              style: ButtonStyle(
+                                minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
                               ),
-                              textAlign: TextAlign.right,
-                              keyboardType: TextInputType.number,
-                              enabled: false,
-                              style: TextStyle(fontSize: 18),
                             ),
                           ),
-                          SizedBox(width: 16.0),  // Perbaikan jarak horizontal
-                          Expanded(
-                            child: TextFormField(
-                              controller: pendapatanTiketNonRegulerController,
-                              decoration: InputDecoration(
-                                labelText: 'Pendapatan Tiket Online',
-                                border: OutlineInputBorder(),
-                                alignLabelWithHint: true,
-                                prefixText: 'Rp ',
-                                prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
-                              ),
-                              textAlign: TextAlign.right,
-                              keyboardType: TextInputType.number,
-                              enabled: false,
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          ),
+                          SizedBox(width: 16.0),
                         ],
                       ),
-                      SizedBox(height: 16.0),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: jumlahBarangBagasiController,
-                              decoration: InputDecoration(
-                                labelText: 'Jml.Barang Bagasi',
-                                border: OutlineInputBorder(),
-                                alignLabelWithHint: true,
-                                prefixText: ' ',
-                                prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
-                              ),
-                              textAlign: TextAlign.right,
-                              keyboardType: TextInputType.number,
-                              enabled: false,
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          ),
-                          SizedBox(width: 16.0),  // Konsistensi jarak horizontal
-                          Expanded(
-                            child: TextFormField(
-                              controller: pendapatanBagasiController,
-                              decoration: InputDecoration(
-                                labelText: 'Pendapatan Bagasi',
-                                border: OutlineInputBorder(),
-                                alignLabelWithHint: true,
-                                prefixText: 'Rp ',
-                                prefixStyle: TextStyle(textBaseline: TextBaseline.alphabetic),
-                              ),
-                              textAlign: TextAlign.right,
-                              keyboardType: TextInputType.number,
-                              enabled: false,
-                              style: TextStyle(fontSize: 18),
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16.0),
                     ],
                   ),
-
-                  TextFormField(
-                    controller: tolController,
-                    decoration: InputDecoration(
-                      labelText: 'Pengeluaran TOL',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        pengeluaranTol = value;
-                      });
-                    },
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Pengeluaran Tol harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: tprController,
-                    decoration: InputDecoration(
-                      labelText: 'Pengeluaran Operasional Harian',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        pengeluaranTpr = value;
-                      });
-                    },
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Pengeluaran Operasional harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: perpalController,
-                    decoration: InputDecoration(
-                      labelText: 'Pengeluaran Perpal',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        pengeluaranPerpal = value;
-                      });
-                    },
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Pengeluaran Perpal harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 1,
-                        child: TextFormField(
-                          controller: litersolarController,
-                          decoration: InputDecoration(
-                            labelText: 'Jumlah Liter Solar',
-                            border: OutlineInputBorder(),
-                            alignLabelWithHint: true,
-                            prefixText: ' ',
-                            prefixStyle: TextStyle(
-                                textBaseline: TextBaseline.alphabetic),
-                          ),
-                          textAlign: TextAlign.right,
-                          style: TextStyle(fontSize: 18),
-                          keyboardType: TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                          ],
-                          onChanged: (value) {},
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Jumlah Liter Solar harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(width: 16.0),
-                      Expanded(
-                        flex: 1,
-                        child: TextFormField(
-                          controller: nominalsolarController,
-                          decoration: InputDecoration(
-                            labelText: 'Nominal Solar',
-                            border: OutlineInputBorder(),
-                            alignLabelWithHint: true,
-                            prefixText: 'Rp ',
-                            prefixStyle: TextStyle(
-                                textBaseline: TextBaseline.alphabetic),
-                          ),
-                          textAlign: TextAlign.right,
-                          style: TextStyle(fontSize: 18),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            setState(() {
-                              jumlahTagihan = int.tryParse(value) ?? 0;
-                            });
-                          },
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          validator: (value) {
-                            if (value!.isEmpty) {
-                              return 'Jumlah Nominal Solar harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: perbaikanController,
-                    decoration: InputDecoration(
-                      labelText: 'Pengeluaran Perbaikan',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    // Align the input text to the right
-                    keyboardType: TextInputType.number,
-                    onChanged: (value) {
-                      _calculatePremiBersih(
-                          pendapatanTiketRegulerController,pendapatanTiketNonRegulerController,pendapatanBagasiController,tolController,tprController,perpalController,litersolarController,nominalsolarController,perbaikanController,premiExtraController,persenPremikruController);
-                    },
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly
-                    ],
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Pengeluaran Perbaikan harus diisi';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  TextField(
-                    controller: keteranganPerbaikanController,
-                    decoration: InputDecoration(
-                      labelText: 'Keterangan Perbaikan',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.multiline,
-                    style: TextStyle(fontSize: 18),
-                    maxLines: 3, // Atau atur jumlah baris yang diinginkan
-                    onChanged: (value) {
-                      setState(() {
-                      });
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: nominalPremiExtraController,
-                    decoration: InputDecoration(
-                      labelText: 'Premi Extra $premiExtra',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    keyboardType: TextInputType.text,
-                    enabled: false,
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: nominalPremiKruController,
-                    decoration: InputDecoration(
-                      labelText: 'Premi Disetor $persenPremikru',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    keyboardType: TextInputType.text,
-                    enabled: false,
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: nominalPendapatanBersihController,
-                    decoration: InputDecoration(
-                      labelText: 'Pendapatan Bersih',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    // Align the input text to the right
-                    keyboardType: TextInputType.text,
-                    enabled: false,
-                    // Set enabled to false
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  TextFormField(
-                    controller: nominalPendapatanDisetorController,
-                    decoration: InputDecoration(
-                      labelText: 'Pendapatan Disetor',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      prefixText: 'Rp ',
-                      prefixStyle: TextStyle(
-                          textBaseline: TextBaseline.alphabetic),
-                    ),
-                    textAlign: TextAlign.right,
-                    style: TextStyle(fontSize: 18),
-                    keyboardType: TextInputType.text,
-                    enabled: false,
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                  ),
-                  SizedBox(height: 16.0),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState!.validate()) _simpanValueRekap();
-                          },
-                          child: Text('Simpan'),
-                          style: ButtonStyle(
-                            minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 16.0),
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
     );
   }
 
