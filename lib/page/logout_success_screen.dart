@@ -9,7 +9,7 @@ class LogoutSuccessScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             SizedBox(height: 16.0),
-            Image.asset('assets/images/logoaaaakas.png',),
+            Image.asset('assets/images/logo_mila.png',),
             SizedBox(height: 16.0),
             Text('Anda telah berhasil keluar.'),
             ElevatedButton(

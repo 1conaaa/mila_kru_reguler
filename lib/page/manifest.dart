@@ -96,7 +96,7 @@ class _ManifestPageState extends State<ManifestPage> {
         'https://apimila.sysconix.id/api/updatenotifikasireguler',
       ).replace(queryParameters: {
         'id_jadwal_trip': widget.idJadwalTrip.toString(),
-        'id_bus': idBus?.toString() ?? '',
+        'id_bus': idBus.toString() ?? '',
         'no_pol': noPol ?? '',
       });
 

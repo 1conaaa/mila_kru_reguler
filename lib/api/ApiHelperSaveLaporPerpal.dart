@@ -20,10 +20,6 @@ class SaveKondisiBus {
       int? idBus = prefs.getInt('idBus');
       String? kodeTrayek = prefs.getString('kode_trayek');
 
-      if (token == null || noPol == null || idBus == null || kodeTrayek == null) {
-        throw Exception('Required data not found in SharedPreferences');
-      }
-
       // Create multipart request
       var request = http.MultipartRequest(
         'POST',
@@ -35,8 +31,8 @@ class SaveKondisiBus {
 
       // Add fields
       request.fields['id_bus'] = idBus.toString();
-      request.fields['no_pol'] = noPol;
-      request.fields['kode_trayek'] = kodeTrayek;
+      request.fields['no_pol'] = noPol!;
+      request.fields['kode_trayek'] = kodeTrayek!;
       request.fields['lokasi'] = lokasi;
       request.fields['kategori'] = kategori;
       request.fields['keterangan'] = keterangan;

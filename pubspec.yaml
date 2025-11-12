@@ -1,5 +1,5 @@
 name: mila_kru_reguler
-description: "Aplikasi BIS Akas Aurora Kru Reguler"
+description: "Aplikasi BIS MILA AKAS BERKAH Kru Reguler"
 
 version: 1.0.0+8
 
@@ -63,10 +63,12 @@ dev_dependencies:
     sdk: flutter
   flutter_launcher_icons: "^0.11.0"
 
-flutter_launcher_icons:
-  android: "launcher_icon"
+flutter_icons:
+  android: true
   ios: true
   image_path: "assets/images/logo_mila.png"
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/logo_foreground.png"
 
   flutter_lints: ^5.0.0
 
@@ -74,7 +76,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/logoaaaakas.png
-    - assets/images/LOGO-AKAS-A3-BG.png
+    - assets/images/logo_mila.png
+    - assets/images/logo_mila.png
     - assets/images/logo_print.png
     - assets/images/logo_mila.png
