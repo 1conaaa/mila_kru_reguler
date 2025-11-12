@@ -1,4 +1,4 @@
-# kru_reguler
+# mila_kru_reguler
 
 Aplikasi BIS Akas Aurora Kru Reguler
 

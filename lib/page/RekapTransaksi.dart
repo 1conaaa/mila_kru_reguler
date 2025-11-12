@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kru_reguler/view/View_FormRekapTransaksi.dart';
-import 'package:kru_reguler/view/View_PremiKru.dart';
+import 'package:mila_kru_reguler/view/View_FormRekapTransaksi.dart';
+import 'package:mila_kru_reguler/view/View_PremiKru.dart';
 import '../main.dart';
 
 class RekapTransaksi extends StatefulWidget {

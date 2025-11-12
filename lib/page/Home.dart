@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'package:kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/database/database_helper.dart';
 import '../main.dart';
-import 'package:kru_reguler/page/manifest.dart'; // 🔹 Halaman manifest
+import 'package:mila_kru_reguler/page/manifest.dart'; // 🔹 Halaman manifest
 
 class Home extends StatefulWidget {
   @override

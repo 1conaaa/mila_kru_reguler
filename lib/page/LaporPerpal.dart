@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kru_reguler/main.dart';
-import 'package:kru_reguler/api/ApiHelperSaveLaporPerpal.dart';
+import 'package:mila_kru_reguler/main.dart';
+import 'package:mila_kru_reguler/api/ApiHelperSaveLaporPerpal.dart';
 import 'package:image_picker/image_picker.dart';
 
 class LaporKondisiBus extends StatefulWidget {

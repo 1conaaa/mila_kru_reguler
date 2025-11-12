@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kru_reguler/database/database_helper.dart';
-import 'package:kru_reguler/page/logout_success_screen.dart';
+import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/page/logout_success_screen.dart';
 
 class Logout extends StatelessWidget {
   Future<void> _clearData(BuildContext context) async {

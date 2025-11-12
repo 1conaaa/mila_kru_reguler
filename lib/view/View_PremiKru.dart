@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/database/database_helper.dart';
 
 class PremiKru extends StatefulWidget {
   @override

@@ -1,6 +1,6 @@
 {
-    "name": "kru_reguler",
-    "short_name": "kru_reguler",
+    "name": "mila_kru_reguler",
+    "short_name": "mila_kru_reguler",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

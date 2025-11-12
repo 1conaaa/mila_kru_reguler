@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:sqflite/sqflite.dart';
@@ -13,7 +13,7 @@ import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:kru_reguler/page/bluetooth_service.dart';
+import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 
 class ManifestPage extends StatefulWidget {
   final String idJadwalTrip;

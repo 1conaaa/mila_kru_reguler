@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.kru_reguler"
+    namespace = "com.example.mila_kru_reguler"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -15,7 +15,7 @@ import 'dart:convert';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
-import 'package:kru_reguler/page/bluetooth_service.dart';
+import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 
 final printerService = BluetoothPrinterService();
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kru_reguler/view/View_FormBagasiBus.dart';
-import 'package:kru_reguler/view/View_HistoryBagasiBus.dart';
+import 'package:mila_kru_reguler/view/View_FormBagasiBus.dart';
+import 'package:mila_kru_reguler/view/View_HistoryBagasiBus.dart';
 
 import '../main.dart';
 

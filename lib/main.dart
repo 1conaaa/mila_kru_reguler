@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:kru_reguler/page/Home.dart';
-import 'package:kru_reguler/page/Login.dart';
-import 'package:kru_reguler/page/Logout.dart';
-import 'package:kru_reguler/page/PenjualanTiket.dart';
-import 'package:kru_reguler/page/RekapTransaksi.dart';
-import 'package:kru_reguler/page/BagasiBus.dart';
-import 'package:kru_reguler/page/LaporPerpal.dart';
-import 'package:kru_reguler/page/PengecekanBus.dart';
-import 'package:kru_reguler/page/manifest.dart';
-import 'package:kru_reguler/page/bluetooth_service.dart';
+import 'package:mila_kru_reguler/page/Home.dart';
+import 'package:mila_kru_reguler/page/Login.dart';
+import 'package:mila_kru_reguler/page/Logout.dart';
+import 'package:mila_kru_reguler/page/PenjualanTiket.dart';
+import 'package:mila_kru_reguler/page/RekapTransaksi.dart';
+import 'package:mila_kru_reguler/page/BagasiBus.dart';
+import 'package:mila_kru_reguler/page/LaporPerpal.dart';
+import 'package:mila_kru_reguler/page/PengecekanBus.dart';
+import 'package:mila_kru_reguler/page/manifest.dart';
+import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
