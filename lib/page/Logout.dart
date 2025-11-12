@@ -33,6 +33,7 @@ class Logout extends StatelessWidget {
       await databaseHelper.clearOrderBagasi();
       await databaseHelper.clearOrderBagasiStatus();
       await databaseHelper.clearMetodePembayaran();
+      await databaseHelper.clearTagTransaksi();
       await databaseHelper.closeDatabase();
 
       Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => LogoutSuccessScreen()));

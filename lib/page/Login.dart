@@ -11,6 +11,7 @@ import 'package:mila_kru_reguler/api/ApiHelperOperasiHarianBus.dart';
 import 'package:mila_kru_reguler/api/ApiHelperInspectionItems.dart';
 import 'package:mila_kru_reguler/api/ApiHelperJenisPaket.dart';
 import 'package:mila_kru_reguler/api/ApiHelperUser.dart';
+import 'package:mila_kru_reguler/api/ApiHelperTagTransaksi.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -25,6 +26,7 @@ class _LoginState extends State<Login> {
   List<Map<String, dynamic>> listPenjualan = [];
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -102,6 +104,14 @@ class _LoginState extends State<Login> {
         await prefs.setString('keydataPremikru', user.keydataPremikru);
         await prefs.setString('persenPremikru', user.persenPremikru);
         await prefs.setString('idJadwalTrip', user.idJadwalTrip);
+        await prefs.setString('tagTransaksiPendapatan', user.tagTransaksiPendapatan);
+        await prefs.setString('tagTransaksiPengeluaran', user.tagTransaksiPengeluaran);
+
+        // 🧩 Tambahkan print untuk memeriksa nilainya
+        print("=== DATA TAG TRANSAKSI ===");
+        print("Pendapatan: ${user.tagTransaksiPendapatan}");
+        print("Pengeluaran: ${user.tagTransaksiPengeluaran}");
+        print("===========================");
 
         DatabaseHelper databaseHelper = DatabaseHelper();
         try {
@@ -171,6 +181,7 @@ class _LoginState extends State<Login> {
           await ApiHelperOperasiHarianBus.addListOperasiHarianBusAPI(token, idBus, noPol, kodeTrayek);
           await ApiHelperInspectionItems.addListInspectionItemsAPI(token);
           await ApiHelperJenisPaket.addListJenisPaketAPI(token);
+          await ApiHelperTagTransaksi.fetchAndStoreTagTransaksi(token);
 
         } else {
           print('Data ditemukan dalam tabel Penjualan Tiket.');
@@ -192,77 +203,90 @@ class _LoginState extends State<Login> {
         title: Text('Aplikasi BIS MILA BERKAH'),
         automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: <Widget>[
-            SizedBox(height: 20.0),
-            SizedBox(
-              width: 200.0, // Atur lebar logo
-              height: 200.0, // Atur tinggi logo
-              child: Image.asset(
-                'assets/images/logo_mila.png',
-                fit: BoxFit.contain, // Menyesuaikan gambar dalam ukuran yang ditentukan
+      resizeToAvoidBottomInset: true, // ⬅️ agar layar naik saat keyboard muncul
+      body: SingleChildScrollView( // ⬅️ Tambahkan ini agar tidak overflow
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              SizedBox(height: 20.0),
+              SizedBox(
+                width: 200.0,
+                height: 200.0,
+                child: Image.asset(
+                  'assets/images/logo_mila.png',
+                  fit: BoxFit.contain,
+                ),
               ),
-            ),
-            SizedBox(height: 16.0),
-            Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  TextFormField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      border: OutlineInputBorder(), // Menambahkan border pada TextFormField
+              SizedBox(height: 16.0),
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Please enter your username';
+                        }
+                        return null;
+                      },
                     ),
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Please enter your username';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 16.0), // Menambahkan jarak antar form field
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      border: OutlineInputBorder(), // Menambahkan border pada TextFormField
-                    ),
-                    validator: (value) {
-                      if (value!.isEmpty) {
-                        return 'Please enter your password';
-                      }
-                      return null;
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 20.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.orange,
+                    SizedBox(height: 16.0),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword, // <-- gunakan state di sini
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
                           ),
-                          child: _isLoading
-                              ? CircularProgressIndicator()
-                              : Text(
-                            'Masuk',
-                            style: TextStyle(color: Colors.white), // Menambahkan properti style untuk warna teks
-                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
                         ),
-                      ],
+                      ),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
-                ],
+                    SizedBox(height: 20.0),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 14),
+                        ),
+                        child: _isLoading
+                            ? CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+                            : Text(
+                          'Masuk',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -42,6 +42,8 @@ class User {
   final String keydataPremikru;
   final String persenPremikru;
   final String idJadwalTrip;
+  final String tagTransaksiPendapatan;
+  final String tagTransaksiPengeluaran;
 
   User({
     required this.idUser,
@@ -65,6 +67,8 @@ class User {
     required this.keydataPremikru,
     required this.persenPremikru,
     required this.idJadwalTrip,
+    required this.tagTransaksiPendapatan,
+    required this.tagTransaksiPengeluaran,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -90,6 +94,8 @@ class User {
       keydataPremikru: json['keydata_premikru'] ?? '',
       persenPremikru: json['persen_premikru'] ?? '',
       idJadwalTrip: json['id_jadwal_trip'] ?? '',
+      tagTransaksiPendapatan: json['tag_transaksi_pendapatan'] ?? '',
+      tagTransaksiPengeluaran: json['tag_transaksi_pengeluaran'] ?? '',
     );
   }
 
@@ -116,6 +122,8 @@ class User {
       'keydataPremikru': keydataPremikru,
       'persenPremikru': persenPremikru,
       'idJadwalTrip': idJadwalTrip,
+      'tagTransaksiPendapatan': tagTransaksiPendapatan,
+      'tagTransaksiPengeluaran': tagTransaksiPengeluaran,
       'tanggal_simpan': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
   }
