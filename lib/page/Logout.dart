@@ -45,27 +45,60 @@ class Logout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.blue[700], // 🎨 Warna background biru muda
       body: Center(
         child: FutureBuilder(
           future: _clearData(context),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CircularProgressIndicator();
+              return const CircularProgressIndicator(
+                color: Colors.blue, // warna indikator biru
+              );
             } else if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error}');
+              return Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              );
             } else {
               return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(height: 16.0),
-                  Image.asset('assets/images/logo_mila.png',),
-                  SizedBox(height: 16.0),
-                  Text('Anda telah berhasil keluar.'),
+                  const SizedBox(height: 16.0),
+                  Image.asset(
+                    'assets/images/logo_mila.png',
+                    width: 150,
+                    height: 150,
+                  ),
+                  const SizedBox(height: 24.0),
+                  const Text(
+                    'Anda telah berhasil keluar.',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 24.0),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pushReplacementNamed(context, '/login');
                     },
-                    child: Text('Masuk kembali'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[700], // tombol biru tua
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      'Masuk kembali',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               );
@@ -75,4 +108,5 @@ class Logout extends StatelessWidget {
       ),
     );
   }
+
 }
