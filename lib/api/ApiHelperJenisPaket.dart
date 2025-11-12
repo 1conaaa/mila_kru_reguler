@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiHelperJenisPaket {
   static Future<void> addListJenisPaketAPI(String token) async {
     final response = await http.get(
-      Uri.parse('https://apibis.iconaaa.net/api/jenispaket'),
+      Uri.parse('https://apimila.sysconix.id/api/jenispaket'),
       headers: {
         'Authorization': 'Bearer $token',
       },

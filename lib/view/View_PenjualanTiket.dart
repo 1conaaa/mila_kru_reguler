@@ -769,7 +769,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
         // Make API request
         final response = await http.post(
-          Uri.parse('https://apibis.iconaaa.net/api/storeregulerfaspay'),
+          Uri.parse('https://apimila.sysconix.id/api/storeregulerfaspay'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -964,7 +964,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
         // Make API request
         final response = await http.post(
-          Uri.parse('https://apibis.iconaaa.net/api/storeregulerfaspay'),
+          Uri.parse('https://apimila.sysconix.id/api/storeregulerfaspay'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',

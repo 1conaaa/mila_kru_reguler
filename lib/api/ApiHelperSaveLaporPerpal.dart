@@ -27,7 +27,7 @@ class SaveKondisiBus {
       // Create multipart request
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('https://apibis.iconaaa.net/api/laporkondisibus'),
+        Uri.parse('https://apimila.sysconix.id/api/laporkondisibus'),
       );
 
       // Add headers

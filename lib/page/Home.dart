@@ -54,7 +54,7 @@ class _HomeState extends State<Home> {
     if ((token ?? '').isEmpty || idJadwalTrip == null) return;
 
     final uri = Uri.parse(
-      'https://apibis.iconaaa.net/api/listnotifikasireguler',
+      'https://apimila.sysconix.id/api/listnotifikasireguler',
     ).replace(queryParameters: {
       'id_jadwal_trip': idJadwalTrip ?? '',
       'id_bus': idBus.toString(),

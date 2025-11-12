@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiHelperListKota {
   static Future<void> requestListKotaAPI(String token, String namaTrayek) async {
     final listKotaApiResponse = await http.get(
-      Uri.parse('https://apibis.iconaaa.net/api/rutetrayek/?nama_trayek=$namaTrayek'),
+      Uri.parse('https://apimila.sysconix.id/api/rutetrayek/?nama_trayek=$namaTrayek'),
       headers: {
         'Authorization': 'Bearer $token',
       },

@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiHelperInspectionItems {
   static Future<void> addListInspectionItemsAPI(String token) async {
     final response = await http.get(
-      Uri.parse('https://apibis.iconaaa.net/api/inspectionitems'),
+      Uri.parse('https://apimila.sysconix.id/api/inspectionitems'),
       headers: {
         'Authorization': 'Bearer $token',
       },

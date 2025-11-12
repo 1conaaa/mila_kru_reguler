@@ -62,7 +62,7 @@ class _LoginState extends State<Login> {
     String password = _passwordController.text;
 
     final response = await http.post(
-      Uri.parse('https://apibis.iconaaa.net/api/login?username=$username&password=$password'),
+      Uri.parse('https://apimila.sysconix.id/api/login?username=$username&password=$password'),
       body: {
         'username': username,
         'password': password,
@@ -189,7 +189,7 @@ class _LoginState extends State<Login> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Aplikasi BIS AKAS AURORA'),
+        title: Text('Aplikasi BIS MILA BERKAH'),
         automaticallyImplyLeading: false,
       ),
       body: Padding(
@@ -198,10 +198,10 @@ class _LoginState extends State<Login> {
           children: <Widget>[
             SizedBox(height: 20.0),
             SizedBox(
-              width: 110.0, // Atur lebar logo
-              height: 110.0, // Atur tinggi logo
+              width: 200.0, // Atur lebar logo
+              height: 200.0, // Atur tinggi logo
               child: Image.asset(
-                'assets/images/logoaaaakas.png',
+                'assets/images/logo_mila.png',
                 fit: BoxFit.contain, // Menyesuaikan gambar dalam ukuran yang ditentukan
               ),
             ),

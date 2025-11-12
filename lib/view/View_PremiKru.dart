@@ -188,7 +188,7 @@ class _PremiKruState extends State<PremiKru> {
       print('object : $pendapatan_reguler ,  $_selectedDate');
       try {
         // Mendapatkan id_transaksi terakhir dari table t_transaksi_detail
-        String apiUrlLastId = 'https://apibis.iconaaa.net/api/lastidtransaksi';
+        String apiUrlLastId = 'https://apimila.sysconix.id/api/lastidtransaksi';
         String queryParamsLastId = '?kode_transaksi=KEUBIS';
 
         String apiUrlWithParamsqueryParamsLastId = apiUrlLastId + queryParamsLastId;
@@ -271,7 +271,7 @@ class _PremiKruState extends State<PremiKru> {
       print('premi kru :$premiKruData');
       // Kirim data penjualan ke server
       int idBus = await prefs.getInt('idBus') ?? 0;
-      String apiUrl = 'https://apibis.iconaaa.net/api/premihariankru';
+      String apiUrl = 'https://apimila.sysconix.id/api/premihariankru';
 
       int totalDataPremiKru = premiKruData.length;
       int dataSent = 0;
@@ -357,7 +357,7 @@ class _PremiKruState extends State<PremiKru> {
     double pendapatan_bersih = await prefs.getDouble('pendapatan_bersih') ?? 0;
     double pendapatan_disetor = await prefs.getDouble('pendapatan_disetor') ?? 0;
 
-    String apiUrlResumeTransaksi = 'https://apibis.iconaaa.net/api/resumesetoranbisharian';
+    String apiUrlResumeTransaksi = 'https://apimila.sysconix.id/api/resumesetoranbisharian';
     String queryParamsResumeTransaksi = '?tgl_transaksi=${Uri.encodeFull(tanggal_transaksi)}'
         '&id_transaksi=${Uri.encodeFull(idTransaksiGenerated)}'
         '&no_pol=${Uri.encodeFull(noPol)}'

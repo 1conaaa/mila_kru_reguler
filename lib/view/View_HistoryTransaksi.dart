@@ -82,7 +82,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
         String noTelepon = penjualan['no_telepon'];
         String keterangan = penjualan['keterangan'];
 
-        String apiUrl = 'https://apibis.iconaaa.net/api/penjualantiket';
+        String apiUrl = 'https://apimila.sysconix.id/api/penjualantiket';
         String queryParams = '?tgl_transaksi=${Uri.encodeFull(tanggalTransaksi)}'
             '&kategori=${Uri.encodeFull(kategoriTiket)}'
             '&rit=$rit'

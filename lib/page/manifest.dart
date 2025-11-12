@@ -93,7 +93,7 @@ class _ManifestPageState extends State<ManifestPage> {
 
     try {
       final uri = Uri.parse(
-        'https://apibis.iconaaa.net/api/updatenotifikasireguler',
+        'https://apimila.sysconix.id/api/updatenotifikasireguler',
       ).replace(queryParameters: {
         'id_jadwal_trip': widget.idJadwalTrip.toString(),
         'id_bus': idBus?.toString() ?? '',
@@ -137,7 +137,7 @@ class _ManifestPageState extends State<ManifestPage> {
 
     try {
       final url =
-          'https://apibis.iconaaa.net/api/listmanifestreguler/${widget.idJadwalTrip}';
+          'https://apimila.sysconix.id/api/listmanifestreguler/${widget.idJadwalTrip}';
       print('🌐 [FETCH MANIFEST] Endpoint URL: $url');
 
       final response = await http.get(
@@ -685,7 +685,7 @@ class _ManifestPageState extends State<ManifestPage> {
       final noTelepon = penjualan['no_telepon'];
       final keterangan = penjualan['keterangan'];
 
-      final apiUrl = 'https://apibis.iconaaa.net/api/penjualantiketonline';
+      final apiUrl = 'https://apimila.sysconix.id/api/penjualantiketonline';
       final queryParams =
           '?tgl_transaksi=${Uri.encodeFull(tanggalTransaksi.toString())}'
           '&kategori=${Uri.encodeFull(kategoriTiket.toString())}'

@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiHelperPremiPosisiKru {
   static Future<void> requestListPremiPosisiKruAPI(String token, String jenisTrayek, String kelasBus) async {
     final PremiPosisiKruApiResponse = await http.get(
-      Uri.parse('https://apibis.iconaaa.net/api/premiposisikru?jenis_trayek=$jenisTrayek&kelas_bus=$kelasBus'),
+      Uri.parse('https://apimila.sysconix.id/api/premiposisikru?jenis_trayek=$jenisTrayek&kelas_bus=$kelasBus'),
       headers: {
         'Authorization': 'Bearer $token',
       },

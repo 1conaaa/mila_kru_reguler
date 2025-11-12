@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'AKAS AURORA',
+      title: 'MILA BERKAH',
       debugShowCheckedModeBanner: false, // Menyembunyikan label debuga
       theme: ThemeData(
         primarySwatch: Colors.deepOrange,

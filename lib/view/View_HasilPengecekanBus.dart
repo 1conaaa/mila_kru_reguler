@@ -54,7 +54,7 @@ class _HasilPengecekanBusState extends State<HasilPengecekanBus> {
 
   // Fungsi untuk mengirim hasil inspeksi ke API
   Future<void> sendInspectionResult(Map<String, dynamic> inspectionResult) async {
-    String apiUrl = 'https://apibis.iconaaa.net/api/inspectionresults';
+    String apiUrl = 'https://apimila.sysconix.id/api/inspectionresults';
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
