@@ -11,6 +11,7 @@ import 'package:mila_kru_reguler/api/ApiHelperOperasiHarianBus.dart';
 import 'package:mila_kru_reguler/api/ApiHelperInspectionItems.dart';
 import 'package:mila_kru_reguler/api/ApiHelperJenisPaket.dart';
 import 'package:mila_kru_reguler/api/ApiHelperUser.dart';
+import 'package:mila_kru_reguler/api/ApiHelperTagTransaksi.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -25,6 +26,7 @@ class _LoginState extends State<Login> {
   List<Map<String, dynamic>> listPenjualan = [];
 
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -102,6 +104,14 @@ class _LoginState extends State<Login> {
         await prefs.setString('keydataPremikru', user.keydataPremikru);
         await prefs.setString('persenPremikru', user.persenPremikru);
         await prefs.setString('idJadwalTrip', user.idJadwalTrip);
+        await prefs.setString('tagTransaksiPendapatan', user.tagTransaksiPendapatan);
+        await prefs.setString('tagTransaksiPengeluaran', user.tagTransaksiPengeluaran);
+
+        // 🧩 Tambahkan print untuk memeriksa nilainya
+        print("=== DATA TAG TRANSAKSI ===");
+        print("Pendapatan: ${user.tagTransaksiPendapatan}");
+        print("Pengeluaran: ${user.tagTransaksiPengeluaran}");
+        print("===========================");
 
         DatabaseHelper databaseHelper = DatabaseHelper();
         try {
@@ -171,6 +181,7 @@ class _LoginState extends State<Login> {
           await ApiHelperOperasiHarianBus.addListOperasiHarianBusAPI(token, idBus, noPol, kodeTrayek);
           await ApiHelperInspectionItems.addListInspectionItemsAPI(token);
           await ApiHelperJenisPaket.addListJenisPaketAPI(token);
+          await ApiHelperTagTransaksi.fetchAndStoreTagTransaksi(token);
 
         } else {
           print('Data ditemukan dalam tabel Penjualan Tiket.');
@@ -188,123 +199,97 @@ class _LoginState extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true, // ✅ agar menyesuaikan saat keyboard muncul
-      backgroundColor: Colors.blue[700], // 🎨 Warna background biru muda
       appBar: AppBar(
-        backgroundColor: Colors.amber[400], // Warna AppBar biru lebih tua
-        title: const Text('Aplikasi BIS MILA BERKAH'),
+        title: Text('Aplikasi BIS MILA BERKAH'),
         automaticallyImplyLeading: false,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
-                const SizedBox(height: 30.0),
-                SizedBox(
-                  width: 180.0,
-                  height: 180.0,
-                  child: Image.asset(
-                    'assets/images/logo_mila.png',
-                    fit: BoxFit.contain,
-                  ),
+      resizeToAvoidBottomInset: true, // ⬅️ agar layar naik saat keyboard muncul
+      body: SingleChildScrollView( // ⬅️ Tambahkan ini agar tidak overflow
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              SizedBox(height: 20.0),
+              SizedBox(
+                width: 200.0,
+                height: 200.0,
+                child: Image.asset(
+                  'assets/images/logo_mila.png',
+                  fit: BoxFit.contain,
                 ),
-                const SizedBox(height: 24.0),
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white, // Latar belakang form putih
-                    borderRadius: BorderRadius.circular(16.0),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 6,
-                        offset: Offset(0, 3),
+              ),
+              SizedBox(height: 16.0),
+              Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    TextFormField(
+                      controller: _usernameController,
+                      decoration: InputDecoration(
+                        labelText: 'Username',
+                        border: OutlineInputBorder(),
                       ),
-                    ],
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        TextFormField(
-                          controller: _usernameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Username',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your username';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16.0),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Password',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.lock),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your password';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 24.0),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            ElevatedButton(
-                              onPressed: _isLoading ? null : _login,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue[700],
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 40, vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                              child: _isLoading
-                                  ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5,
-                                  color: Colors.white,
-                                ),
-                              )
-                                  : const Text(
-                                'Masuk',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Please enter your username';
+                        }
+                        return null;
+                      },
                     ),
-                  ),
+                    SizedBox(height: 16.0),
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword, // <-- gunakan state di sini
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        border: OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value!.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 20.0),
+                    Center(
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 14),
+                        ),
+                        child: _isLoading
+                            ? CircularProgressIndicator(
+                          color: Colors.white,
+                        )
+                            : Text(
+                          'Masuk',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
-
 
 }
