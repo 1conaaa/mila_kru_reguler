@@ -200,9 +200,11 @@ class _LoginState extends State<Login> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.amber[400], // 🎨 Warna background biru
         title: Text('Aplikasi BIS MILA BERKAH'),
         automaticallyImplyLeading: false,
       ),
+      backgroundColor: Colors.blue[700], // 🎨 Warna background biru
       resizeToAvoidBottomInset: true, // ⬅️ agar layar naik saat keyboard muncul
       body: SingleChildScrollView( // ⬅️ Tambahkan ini agar tidak overflow
         child: Padding(
@@ -220,71 +222,79 @@ class _LoginState extends State<Login> {
                 ),
               ),
               SizedBox(height: 16.0),
-              Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    TextFormField(
-                      controller: _usernameController,
-                      decoration: InputDecoration(
-                        labelText: 'Username',
-                        border: OutlineInputBorder(),
+              Container(
+                padding: const EdgeInsets.all(16.0), // Opsional: memberi padding di dalam container
+                decoration: BoxDecoration(
+                  color: Colors.white, // 🎨 Warna background form (biru muda)
+                  borderRadius: BorderRadius.circular(8.0), // Opsional: memberi sudut melengkung
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      TextFormField(
+                        controller: _usernameController,
+                        decoration: InputDecoration(
+                          labelText: 'Username',
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Please enter your username';
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        if (value!.isEmpty) {
-                          return 'Please enter your username';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 16.0),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: _obscurePassword, // <-- gunakan state di sini
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      SizedBox(height: 16.0),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          border: OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
                           ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
+                        ),
+                        validator: (value) {
+                          if (value!.isEmpty) {
+                            return 'Please enter your password';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20.0),
+                      Center(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 14),
+                          ),
+                          child: _isLoading
+                              ? CircularProgressIndicator(
+                            color: Colors.white,
+                          )
+                              : Text(
+                            'Masuk',
+                            style: TextStyle(color: Colors.white),
+                          ),
                         ),
                       ),
-                      validator: (value) {
-                        if (value!.isEmpty) {
-                          return 'Please enter your password';
-                        }
-                        return null;
-                      },
-                    ),
-                    SizedBox(height: 20.0),
-                    Center(
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 40, vertical: 14),
-                        ),
-                        child: _isLoading
-                            ? CircularProgressIndicator(
-                          color: Colors.white,
-                        )
-                            : Text(
-                          'Masuk',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+
             ],
           ),
         ),

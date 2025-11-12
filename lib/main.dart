@@ -8,7 +8,6 @@ import 'package:mila_kru_reguler/page/RekapTransaksi.dart';
 import 'package:mila_kru_reguler/page/BagasiBus.dart';
 import 'package:mila_kru_reguler/page/LaporPerpal.dart';
 import 'package:mila_kru_reguler/page/PengecekanBus.dart';
-import 'package:mila_kru_reguler/page/manifest.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 
 void main() async {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
+import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 
 class ApiHelperTagTransaksi {
   static Future<void> fetchAndStoreTagTransaksi(String token) async {
@@ -17,20 +18,16 @@ class ApiHelperTagTransaksi {
         var jsonList = jsonDecode(response.body);
 
         if (jsonList is List) {
-          List<TagTransaksi> tagList =
-          jsonList.map((item) => TagTransaksi.fromJson(item)).toList();
+          List<TagTransaksi> tagList = (jsonList as List).map((item) => TagTransaksi.fromJson(item)).toList();
 
-          DatabaseHelper dbHelper = DatabaseHelper();
-          await dbHelper.initDatabase();
+          TagTransaksiService tagService = TagTransaksiService();
 
           for (var item in tagList) {
-            await dbHelper.insertTagTransaksi(item.toMap());
+            await tagService.insertTagTransaksi(item);
           }
 
           print('Data tag transaksi berhasil disimpan.');
           await tampilkanDataDariDatabase();
-
-          await dbHelper.closeDatabase();
         } else {
           print('Format JSON bukan list.');
         }
@@ -43,65 +40,16 @@ class ApiHelperTagTransaksi {
   }
 
   static Future<void> tampilkanDataDariDatabase() async {
-    DatabaseHelper dbHelper = DatabaseHelper();
-    await dbHelper.initDatabase();
+    TagTransaksiService tagService = TagTransaksiService();
 
     try {
-      List<Map<String, dynamic>> rows = await dbHelper.getAllTagTransaksi();
+      List<TagTransaksi> rows = await tagService.getAllTagTransaksi();
       print('Isi tabel m_tag_transaksi:');
       for (var row in rows) {
-        print(row);
+        print(row.toMap());
       }
     } catch (e) {
       print('Gagal membaca database: $e');
-    } finally {
-      await dbHelper.closeDatabase();
     }
-  }
-}
-
-class TagTransaksi {
-  final int id;
-  final String? kategoriTransaksi;
-  final String? nama;
-
-  TagTransaksi({
-    required this.id,
-    this.kategoriTransaksi,
-    this.nama,
-  });
-
-  factory TagTransaksi.fromJson(Map<String, dynamic> json) {
-    return TagTransaksi(
-      id: json['id'],
-      kategoriTransaksi: json['kategori_transaksi']?.toString(),
-      nama: json['nama'],
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'kategori_transaksi': kategoriTransaksi,
-      'nama': nama,
-    };
-  }
-}
-
-class ApiResponseTagTransaksi {
-  final int success;
-  final List<TagTransaksi> data;
-
-  ApiResponseTagTransaksi({required this.success, required this.data});
-
-  factory ApiResponseTagTransaksi.fromJson(Map<String, dynamic> json) {
-    var list = json['data'] as List;
-    List<TagTransaksi> items =
-    list.map((i) => TagTransaksi.fromJson(i)).toList();
-
-    return ApiResponseTagTransaksi(
-      success: json['success'],
-      data: items,
-    );
   }
 }

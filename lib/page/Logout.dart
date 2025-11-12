@@ -1,26 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 import 'package:mila_kru_reguler/page/logout_success_screen.dart';
 
 class Logout extends StatelessWidget {
   Future<void> _clearData(BuildContext context) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      prefs.remove('token');
-      prefs.remove('idGarasi');
-      prefs.remove('idUser');
-      prefs.remove('idBus');
-      prefs.remove('noPol');
-      prefs.remove('namaTrayek');
-      prefs.remove('namaLengkap');
-      prefs.remove('keydataPremiextra');
-      prefs.remove('premiExtra');
-      prefs.remove('keydataPremikru');
-      prefs.remove('persenPremikru');
+      prefs.clear(); // Bisa sekalian clear semua key SharedPreferences
 
       DatabaseHelper databaseHelper = DatabaseHelper();
       await databaseHelper.initDatabase();
+
       await databaseHelper.clearUsersTable();
       await databaseHelper.clearKruBis();
       await databaseHelper.clearListKota();
@@ -33,10 +25,15 @@ class Logout extends StatelessWidget {
       await databaseHelper.clearOrderBagasi();
       await databaseHelper.clearOrderBagasiStatus();
       await databaseHelper.clearMetodePembayaran();
-      await databaseHelper.clearTagTransaksi();
+
+      // Gunakan TagTransaksiService untuk clear table m_tag_transaksi
+      TagTransaksiService tagService = TagTransaksiService();
+      await tagService.clearTagTransaksi();
+
       await databaseHelper.closeDatabase();
 
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => LogoutSuccessScreen()));
+      Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => LogoutSuccessScreen()));
     } catch (e) {
       print('Error clearing data: $e');
       throw Exception('Gagal menghapus data pengguna.');
@@ -46,14 +43,14 @@ class Logout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue[700], // 🎨 Warna background biru muda
+      backgroundColor: Colors.blue[700],
       body: Center(
         child: FutureBuilder(
           future: _clearData(context),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const CircularProgressIndicator(
-                color: Colors.blue, // warna indikator biru
+                color: Colors.blue,
               );
             } else if (snapshot.hasError) {
               return Text(
@@ -85,7 +82,7 @@ class Logout extends StatelessWidget {
                       Navigator.pushReplacementNamed(context, '/login');
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue[700], // tombol biru tua
+                      backgroundColor: Colors.blue[700],
                       padding: const EdgeInsets.symmetric(
                           horizontal: 40, vertical: 14),
                       shape: RoundedRectangleBorder(
@@ -109,5 +106,4 @@ class Logout extends StatelessWidget {
       ),
     );
   }
-
 }
