@@ -101,6 +101,7 @@ class _LoginState extends State<Login> {
         await prefs.setString('keydataPremiextra', user.keydataPremiextra);
         await prefs.setString('keydataPremikru', user.keydataPremikru);
         await prefs.setString('persenPremikru', user.persenPremikru);
+        await prefs.setString('idJadwalTrip', user.idJadwalTrip);
 
         DatabaseHelper databaseHelper = DatabaseHelper();
         try {

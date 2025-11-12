@@ -8,6 +8,7 @@ import 'package:kru_reguler/page/RekapTransaksi.dart';
 import 'package:kru_reguler/page/BagasiBus.dart';
 import 'package:kru_reguler/page/LaporPerpal.dart';
 import 'package:kru_reguler/page/PengecekanBus.dart';
+import 'package:kru_reguler/page/manifest.dart';
 import 'package:kru_reguler/page/bluetooth_service.dart';
 
 void main() async {
@@ -65,6 +66,35 @@ Drawer buildDrawer(BuildContext context, int idUser) {
           leading: Icon(Icons.add_shopping_cart),
           onTap: () {
             Navigator.pushNamed(context, '/penjualantiket');
+          },
+        ),
+        const Divider(),
+        ListTile(
+          title: const Text('Penumpang'),
+          leading: const Icon(Icons.people_alt_outlined),
+          onTap: () async {
+            // 🔹 Ambil data dari SharedPreferences untuk dikirim ke ManifestPage
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            String idJadwalTrip = prefs.getString('idJadwalTrip') ?? '';
+            String token = prefs.getString('token') ?? '';
+
+            if (idJadwalTrip.isNotEmpty && token.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ManifestPage(
+                    idJadwalTrip: idJadwalTrip,
+                    token: token,
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Data jadwal atau token tidak ditemukan.'),
+                ),
+              );
+            }
           },
         ),
         Divider(),

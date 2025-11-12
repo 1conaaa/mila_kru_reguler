@@ -622,9 +622,42 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
                         children: [
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () {
-                                if (_formKey.currentState!.validate()) _simpanValueRekap();
+                              onPressed: () async {
+                                // 🔍 Cek apakah masih ada data penjualan dengan status 'N'
+                                List<Map<String, dynamic>> penjualanData =
+                                await databaseHelper.getPenjualanByStatus('N');
+
+                                if (penjualanData.isNotEmpty) {
+                                  // ⚠️ Jika masih ada data belum dikirim, tampilkan dialog peringatan
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        title: Text('Data Belum Dikirim'),
+                                        content: Text(
+                                          'Masih ada transaksi penjualan yang belum dikirim.\n\n'
+                                              'Silakan kirim data tersebut terlebih dahulu di menu:\n'
+                                              '👉 Penjualan Tiket → Transaksi.',
+                                          style: TextStyle(fontSize: 16),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context),
+                                            child: Text('Tutup'),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                  return; // 🔒 Batalkan proses simpan
+                                }
+
+                                // ✅ Jika tidak ada data 'N', lanjutkan validasi form dan simpan
+                                if (_formKey.currentState!.validate()) {
+                                  _simpanValueRekap();
+                                }
                               },
+
                               child: Text('Simpan'),
                               style: ButtonStyle(
                                 minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),

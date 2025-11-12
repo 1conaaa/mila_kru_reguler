@@ -22,7 +22,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_18072025-v2.db';
+    String path = '${documentsDirectory.path}/bisapp_04112025-v2.db';
 
     return await openDatabase(
       path,
@@ -178,6 +178,7 @@ class DatabaseHelper {
       premiExtra TEXT,
       keydataPremikru TEXT,
       persenPremikru TEXT,
+      idJadwalTrip TEXT,
       UNIQUE (id_user, id_group, id_company, id_garasi, id_bus, no_pol, tanggal_simpan)
     )
     ''');
@@ -291,7 +292,7 @@ class DatabaseHelper {
         FROM (
           SELECT SUM(harga_kantor) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
           FROM penjualan_tiket
-          WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan') AND status = 'Y' AND id_metode_bayar = '1'
+          WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan', 'online') AND status = 'Y' AND id_metode_bayar = '1'
           GROUP BY rit
           UNION ALL
           SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
@@ -304,7 +305,7 @@ class DatabaseHelper {
       result = await db.rawQuery('''
       SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, SUM(rit) AS rit
       FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia') AND status = 'Y' AND id_metode_bayar = '1'
+      WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'online') AND status = 'Y' AND id_metode_bayar = '1'
     ''');
     } else {
       // Jika kelasBus tidak sesuai, kembalikan nilai default
@@ -344,14 +345,14 @@ class DatabaseHelper {
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
-      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia') 
+      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y'
       UNION ALL
       SELECT SUM(jumlah_tagihan) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia') 
+      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y' 
         AND id_metode_bayar != '1'
     ) x
@@ -366,14 +367,14 @@ class DatabaseHelper {
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
-      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia') 
+      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y'
       UNION ALL
       SELECT SUM(jumlah_tagihan) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia') 
+      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y' 
         AND id_metode_bayar != '1'
     ) x

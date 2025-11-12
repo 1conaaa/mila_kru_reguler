@@ -41,6 +41,7 @@ class User {
   final String keydataPremiextra;
   final String keydataPremikru;
   final String persenPremikru;
+  final String idJadwalTrip;
 
   User({
     required this.idUser,
@@ -63,6 +64,7 @@ class User {
     required this.keydataPremiextra,
     required this.keydataPremikru,
     required this.persenPremikru,
+    required this.idJadwalTrip,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -87,6 +89,7 @@ class User {
       keydataPremiextra: json['keydata_premiextra'] ?? '',
       keydataPremikru: json['keydata_premikru'] ?? '',
       persenPremikru: json['persen_premikru'] ?? '',
+      idJadwalTrip: json['id_jadwal_trip'] ?? '',
     );
   }
 
@@ -112,6 +115,7 @@ class User {
       'premiExtra': premiExtra,
       'keydataPremikru': keydataPremikru,
       'persenPremikru': persenPremikru,
+      'idJadwalTrip': idJadwalTrip,
       'tanggal_simpan': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
   }
