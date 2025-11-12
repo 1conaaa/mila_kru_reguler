@@ -22,7 +22,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_04112025-v2.db';
+    String path = '${documentsDirectory.path}/bisapp_12112025-v2.db';
 
     return await openDatabase(
       path,
@@ -179,6 +179,8 @@ class DatabaseHelper {
       keydataPremikru TEXT,
       persenPremikru TEXT,
       idJadwalTrip TEXT,
+      tagTransaksiPendapatan TEXT,
+      tagTransaksiPengeluaran TEXT,
       UNIQUE (id_user, id_group, id_company, id_garasi, id_bus, no_pol, tanggal_simpan)
     )
     ''');
@@ -272,6 +274,13 @@ class DatabaseHelper {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS m_tag_transaksi (
+          id INTEGER PRIMARY KEY,
+          kategori_transaksi INTEGER,
+          nama TEXT
+      )
+    ''');
   }
 
   Future<void> closeDatabase() async {
@@ -984,6 +993,28 @@ class DatabaseHelper {
         a.pemilik_rekening,a.no_rekening,a.biaya_admin,a.deskripsi
       FROM
         m_metode_pembayaran a 
+    ''');
+  }
+
+  Future<void> insertTagTransaksi(Map<String, dynamic> data) async {
+    final db = await database;
+    await db.insert('m_tag_transaksi', data);
+  }
+
+  Future<void> clearTagTransaksi() async {
+    final db = await database;
+    await db.delete('m_tag_transaksi');
+  }
+
+  Future<List<Map<String, dynamic>>> getAllTagTransaksi() async {
+    final db = await database;
+
+    // Menggunakan rawQuery untuk menjalankan query JOIN
+    return await db.rawQuery('''
+      SELECT 
+        a.id,a.kategori_transaksi,a.nama
+      FROM
+        m_tag_transaksi a 
     ''');
   }
 
