@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/api/ApiHelperMetodePembayaran.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/api/ApiHelperPremiPosisiKru.dart';
 import 'package:mila_kru_reguler/api/ApiHelperKruBis.dart';
@@ -148,7 +149,7 @@ class _LoginState extends State<Login> {
         String keydataPremikru = user.keydataPremikru;
         String persenPremikru = user.persenPremikru;
 
-        List<Map<String, dynamic>> penjualanData = await databaseHelper.getDataPenjualan();
+        List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getDataPenjualan();
         setState(() {
           listPenjualan = penjualanData;
         });

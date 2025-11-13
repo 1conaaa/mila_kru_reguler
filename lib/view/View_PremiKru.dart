@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 
@@ -404,7 +405,7 @@ class _PremiKruState extends State<PremiKru> {
             duration: Duration(seconds: 2), // Durasi tampilan SnackBar
           ),
         );
-        await databaseHelper.clearPenjualanTiket();
+        await PenjualanTiketService.instance.clearPenjualanTiket();
         await databaseHelper.clearResumeTransaksi();
         await databaseHelper.clearPremiHarianKru();
       } else {

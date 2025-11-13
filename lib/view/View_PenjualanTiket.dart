@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -446,7 +447,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     namaKotaAwal = namaKotaAwal.toUpperCase();
     namaKotaAkhir = namaKotaAkhir.toUpperCase();
 
-    List<Map<String, dynamic>> lastTransaksi = await DatabaseHelper.instance.getDataPenjualanTerakhir();
+    List<Map<String, dynamic>> lastTransaksi = await PenjualanTiketService.instance.getDataPenjualanTerakhir();
     String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ? lastTransaksi[0]['noOrderTransaksi'] : '';
     int rit = lastTransaksi.isNotEmpty ? lastTransaksi[0]['rit'] : 0;
     String kotaBerangkat = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_berangkat'] : '';

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:http/http.dart' as http;
+import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HistroyTransaksi extends StatefulWidget {
@@ -37,7 +38,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   // Method untuk mencari dan memfilter data penjualan berdasarkan rute kota
   void _searchRuteKota(String searchQuery) async {
     try {
-      List<Map<String, dynamic>> result = await databaseHelper.getDataRuteKota(searchQuery);
+      List<Map<String, dynamic>> result = await PenjualanTiketService.instance.getDataRuteKota(searchQuery);
       setState(() {
         listPenjualan = result;
       });
@@ -57,7 +58,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     await databaseHelper.initDatabase();
 
     // Mendapatkan data penjualan dengan kondisi status='N'
-    List<Map<String, dynamic>> penjualanData = await databaseHelper.getPenjualanByStatus('N');
+    List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getPenjualanByStatus('N');
     print('data penjualan : $penjualanData');
     if (penjualanData.isNotEmpty) {
       // Kirim data penjualan ke server
@@ -114,7 +115,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             // Berhasil mengirim data, perbarui status menjadi 'Y' pada tabel
             int id = penjualan['id'];
-            await databaseHelper.updatePenjualanStatus(id, 'Y');
+            await PenjualanTiketService.instance.updatePenjualanStatus(id, 'Y');
             await databaseHelper.closeDatabase();
             // Hitung progress pengiriman data
             dataSent++;
@@ -143,7 +144,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   }
 
   Future<void> _getListTransaksi() async {
-    List<Map<String, dynamic>> penjualanData = await databaseHelper.getDataPenjualan();
+    List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getDataPenjualan();
     setState(() {
       listPenjualan = penjualanData;      kotaTujuanList = penjualanData
           .map((e) => e['rute_kota'] as String)

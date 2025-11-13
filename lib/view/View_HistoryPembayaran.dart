@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
@@ -55,7 +56,8 @@ class _HistoryPembayaranState extends State<HistoryPembayaran> {
 
   Future<void> _loadDataInvoice() async {
     try {
-      final result = await dbHelper.getInvoicePenjualan();
+      final penjualanService = PenjualanTiketService.instance;
+      final result = await penjualanService.getInvoicePenjualan();
       setState(() {
         _dataInvoice = result;
         _isLoading = false;
@@ -158,6 +160,7 @@ class _HistoryPembayaranState extends State<HistoryPembayaran> {
       print('📋 Jumlah invoice yang perlu diperiksa: ${invoicesToUpdate.length}');
 
       for (var invoice in invoicesToUpdate) {
+        final penjualanService = PenjualanTiketService.instance;
         final idInvoice = invoice['id_invoice'];
         print('\n📝 Memproses invoice: $idInvoice');
         print('📌 Status bayar lokal saat ini: ${invoice['status_bayar']}');
@@ -173,7 +176,7 @@ class _HistoryPembayaranState extends State<HistoryPembayaran> {
             print('🆕 Invoice perlu diupdate ke status bayar=1');
 
             try {
-              await dbHelper.updateInvoiceStatus(
+              await penjualanService.updateInvoiceStatus(
                 idInvoice,
                 apiData['status_bayar'],
                 'Y', // Gunakan 'Y' sebagai default jika null

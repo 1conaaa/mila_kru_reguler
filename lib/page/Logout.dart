@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
@@ -16,7 +17,7 @@ class Logout extends StatelessWidget {
       await databaseHelper.clearUsersTable();
       await databaseHelper.clearKruBis();
       await databaseHelper.clearListKota();
-      await databaseHelper.clearPenjualanTiket();
+      await PenjualanTiketService.instance.clearPenjualanTiket();
       await databaseHelper.clearResumeTransaksi();
       await databaseHelper.clearPremiHarianKru();
       await databaseHelper.clearPremiPosisiKru();

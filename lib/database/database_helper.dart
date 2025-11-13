@@ -24,11 +24,11 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_13112025-v2.db';
+    String path = '${documentsDirectory.path}/bisapp_13112025-v4.db';
 
     return await openDatabase(
       path,
-      version: 5, // Update the version number
+      version: 7, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -91,6 +91,33 @@ class DatabaseHelper {
         pendapatan_disetor REAL,
         tanggal_transaksi TEXT,
         status TEXT, UNIQUE (no_pol, id_bus, id_user, id_group, id_garasi, id_company, tanggal_transaksi)
+      )
+    ''');
+
+      // Tabel t_setoran_kru
+      await db.execute('''
+      CREATE TABLE t_setoran_kru (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tgl_transaksi TEXT,
+        km_pulang REAL,
+        rit TEXT,
+        no_pol TEXT,
+        id_bus INTEGER,
+        kode_trayek TEXT,
+        id_personil INTEGER,
+        id_group INTEGER,
+        jumlah INTEGER,
+        id_transaksi TEXT,
+        coa TEXT,
+        nilai REAL,
+        id_tag_transaksi INTEGER,
+        status TEXT,
+        keterangan TEXT,
+        fupload TEXT,
+        file_name TEXT,
+        updated_at TEXT,
+        created_at TEXT,
+        UNIQUE(rit, no_pol, id_bus, kode_trayek, id_personil, id_group, id_tag_transaksi)
       )
     ''');
 
@@ -295,123 +322,7 @@ class DatabaseHelper {
     }
   }
 
-  Future<Map<String, int>> getSumJumlahTagihanReguler(String? kelasBus) async {
-    final db = await database;
 
-    List<Map<String, dynamic>> result;
-
-    if (kelasBus == 'Ekonomi') {
-      result = await db.rawQuery('''
-        SELECT SUM(x.total_tagihan) AS total_tagihan, SUM(x.jumlah_tiket) AS jumlah_tiket, SUM(x.rit) AS rit
-        FROM (
-          SELECT SUM(harga_kantor) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
-          FROM penjualan_tiket
-          WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan', 'online') AND status = 'Y' AND id_metode_bayar = '1'
-          GROUP BY rit
-          UNION ALL
-          SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
-          FROM penjualan_tiket
-          WHERE kategori_tiket IN ('langganan') AND status = 'Y' AND id_metode_bayar = '1'
-          GROUP BY rit
-        ) x
-      ''');
-    } else if (kelasBus == 'Non Ekonomi') {
-      result = await db.rawQuery('''
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, SUM(rit) AS rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'online') AND status = 'Y' AND id_metode_bayar = '1'
-    ''');
-    } else {
-      // Jika kelasBus tidak sesuai, kembalikan nilai default
-      return {
-        'rit': 0,
-        'totalPendapatanReguler': 0,
-        'jumlahTiketReguler': 0,
-      };
-    }
-
-
-    int rit = result.isNotEmpty ? result[0]['rit']?.toInt() ?? 0 : 0;
-    int totalPendapatanReguler = result.isNotEmpty ? result[0]['total_tagihan']?.toInt() ?? 0 : 0;
-    int jumlahTiketReguler = result.isNotEmpty ? result[0]['jumlah_tiket']?.toInt() ?? 0 : 0;
-
-    print('Total Pendapatan Reguler: $totalPendapatanReguler'); // Cetak hasil
-
-    return {
-      'rit': rit,
-      'totalPendapatanReguler': totalPendapatanReguler,
-      'jumlahTiketReguler': jumlahTiketReguler,
-    };
-  }
-
-
-  Future<Map<String, int>> getSumJumlahTagihanNonReguler(String? kelasBus) async {
-    final db = await database;
-    List<Map<String, dynamic>> result;
-
-    if (kelasBus == 'Ekonomi') {
-      result = await db.rawQuery('''
-    SELECT SUM(x.total_tagihan) AS total_tagihan, 
-           SUM(x.jumlah_tiket) AS jumlah_tiket, 
-           SUM(x.rit) AS rit
-    FROM (
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y'
-      UNION ALL
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y' 
-        AND id_metode_bayar != '1'
-    ) x
-  ''');
-    } else if (kelasBus == 'Non Ekonomi') {
-      result = await db.rawQuery('''
-    SELECT SUM(x.total_tagihan) AS total_tagihan, 
-           SUM(x.jumlah_tiket) AS jumlah_tiket, 
-           SUM(x.rit) AS rit
-    FROM (
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y'
-      UNION ALL
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y' 
-        AND id_metode_bayar != '1'
-    ) x
-  ''');
-    } else {
-      // Jika kelasBus tidak sesuai, kembalikan nilai default
-      return {
-        'rit': 0,
-        'totalPendapatanReguler': 0,
-        'jumlahTiketReguler': 0,
-      };
-    }
-
-    int rit = result.isNotEmpty ? result[0]['rit']?.toInt() ?? 0 : 0;
-    int totalPendapatanNonReguler = result.isNotEmpty ? result[0]['total_tagihan']?.toInt() ?? 0 : 0;
-    int jumlahTiketOnLine = result.isNotEmpty ? result[0]['jumlah_tiket']?.toInt() ?? 0 : 0;
-    print('Total Pendapatan Reguler: $totalPendapatanNonReguler'); // Cetak hasil
-    return {
-      'rit': rit,
-      'totalPendapatanNonReguler': totalPendapatanNonReguler,
-      'jumlahTiketOnLine': jumlahTiketOnLine,
-    };
-  }
 
   Future<Map<String, int>> getSumJumlahPendapatanBagasi(String? kelasBus) async {
     final db = await database;
@@ -449,96 +360,6 @@ class DatabaseHelper {
     };
   }
 
-
-  Future<List<Map<String, dynamic>>> getDataPenjualanTerakhir() async {
-    final db = await database;
-    return await db.rawQuery('''
-    SELECT 
-      a.id ||''|| a.tanggal_transaksi ||''|| a.id_bus ||''|| a.id_garasi ||''|| a.rit ||''|| a.kode_trayek AS noOrderTransaksi,a.rit,a.kota_berangkat,a.kota_tujuan,a.nama_pembeli,a.no_telepon,a.jumlah_tagihan,a.nominal_bayar,a.jumlah_kembalian,a.tanggal_transaksi
-    FROM 
-      penjualan_tiket AS a
-    ORDER BY a.id DESC LIMIT 1
-  ''');
-  }
-
-  Future<List<Map<String, dynamic>>> getDataPenjualan() async {
-    final db = await database;
-    return await db.rawQuery('''
-    SELECT 
-      a.*, 
-      a.id AS idKota, 
-      a.id || ' - ' || a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota,
-      c.nama_kota AS kota_tujuan
-    FROM 
-      penjualan_tiket AS a
-      LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
-      LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-    GROUP BY
-      a.kategori_tiket, b.nama_kota, c.nama_kota
-    ORDER BY 
-      a.id DESC
-  ''');
-  }
-
-
-  Future<List<Map<String, dynamic>>> getRuteKota() async {
-    final db = await database;
-    return await db.rawQuery('''
-    SELECT 
-      a.*, 
-      a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota,
-      c.nama_kota AS kota_tujuan
-    FROM 
-      penjualan_tiket AS a
-      LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
-      LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-    GROUP BY a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
-    ORDER BY a.id DESC
-  ''');
-  }
-
-  Future<List<Map<String, dynamic>>> getDataRuteKota(String searchQuery) async {
-    final db = await database;
-    String rawQuery;
-    List<dynamic> arguments;
-
-    if (searchQuery.isEmpty) {
-      rawQuery = '''
-      SELECT 
-        a.*, 
-        a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
-      FROM 
-        penjualan_tiket AS a
-        LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
-        LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-      GROUP BY a.ids
-      ORDER BY a.id DESC
-    ''';
-      arguments = [];
-    } else {
-      print('search id : $searchQuery');
-      List<String> pisahId = searchQuery.split('-');
-      String id = pisahId[0];
-      rawQuery = '''
-      SELECT 
-        a.*, 
-        a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
-      FROM 
-        penjualan_tiket AS a
-        LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
-        LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-      WHERE 
-        a.id >= ?
-      ORDER BY a.id DESC
-    ''';
-      arguments = [id];
-    }
-
-    print('Query SQL: $rawQuery'); // Cetak query sebelum dieksekusi
-
-    return await db.rawQuery(rawQuery, arguments);
-  }
-
   Future<List<Map<String, dynamic>>> getMasterPremiKru() async {
     final db = await database;
     return await db.rawQuery('''
@@ -556,10 +377,6 @@ class DatabaseHelper {
     await db.delete('m_jenis_paket');
   }
 
-  Future<void> clearPenjualanTiket() async {
-    final db = await database;
-    await db.delete('penjualan_tiket');
-  }
 
   Future<void> clearResumeTransaksi() async {
     final db = await database;
@@ -754,25 +571,6 @@ class DatabaseHelper {
   Future<void> clearInspectionItems() async {
     final db = await database;
     await db.delete('m_inspection_items');
-  }
-
-  Future<List<Map<String, dynamic>>> getPenjualanByStatus(String status) async {
-    final db = await database;
-    return await db.query(
-      'penjualan_tiket',
-      where: 'status = ?',
-      whereArgs: [status],
-    );
-  }
-
-  Future<void> updatePenjualanStatus(int id, String status) async {
-    final db = await database;
-    await db.update(
-      'penjualan_tiket',
-      {'status': status},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
   }
 
   Future<void> insertPremiPosisiKru(Map<String, dynamic> data) async {
@@ -1021,60 +819,6 @@ class DatabaseHelper {
       FROM
         m_tag_transaksi a 
     ''');
-  }
-
-  Future<List<Map<String, dynamic>>> getInvoicePenjualan() async {
-    final db = await database;
-    return await db.rawQuery('''
-    SELECT 
-      a.*,
-      b.nama_kota AS nama_kota_berangkat,
-      c.nama_kota AS nama_kota_tujuan,
-      d.*
-    FROM 
-      penjualan_tiket AS a
-      INNER JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
-      INNER JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-      INNER JOIN m_metode_pembayaran d ON a.id_metode_bayar = d.payment_channel
-    WHERE 
-      a.id_invoice IS NOT NULL AND a.id_invoice != ''
-    GROUP BY
-      a.id_invoice
-    ORDER BY 
-      a.id DESC
-  ''');
-  }
-
-  // database_helper.dart
-  Future<void> updateInvoiceStatus(String idInvoice, int statusBayar, String status) async {
-    final db = await database;
-    try {
-      // Update status
-      await db.update(
-        'penjualan_tiket',
-        {
-          'status_bayar': statusBayar,
-          'status': status,
-        },
-        where: 'id_invoice = ?',
-        whereArgs: [idInvoice],
-      );
-
-      // Ambil dan print data setelah update
-      final result = await db.query(
-        'penjualan_tiket',
-        where: 'id_invoice = ?',
-        whereArgs: [idInvoice],
-      );
-
-      print('✅ Data penjualan_tiket setelah update untuk id_invoice $idInvoice:');
-      for (var row in result) {
-        print(row);
-      }
-    } catch (e) {
-      print('❌ Error updating invoice status: $e');
-      throw e;
-    }
   }
 
 
