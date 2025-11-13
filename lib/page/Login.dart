@@ -106,11 +106,17 @@ class _LoginState extends State<Login> {
         await prefs.setString('idJadwalTrip', user.idJadwalTrip);
         await prefs.setString('tagTransaksiPendapatan', user.tagTransaksiPendapatan);
         await prefs.setString('tagTransaksiPengeluaran', user.tagTransaksiPengeluaran);
+        await prefs.setString('coaPendapatanBus', user.coaPendapatanBus);
+        await prefs.setString('coaPengeluaranBus', user.coaPengeluaranBus);
+        await prefs.setString('coaUtangPremi', user.coaUtangPremi);
 
         // 🧩 Tambahkan print untuk memeriksa nilainya
         print("=== DATA TAG TRANSAKSI ===");
         print("Pendapatan: ${user.tagTransaksiPendapatan}");
         print("Pengeluaran: ${user.tagTransaksiPengeluaran}");
+        print("COA Pendapatan: ${user.coaPendapatanBus}");
+        print("COA Pengeluaran: ${user.coaPengeluaranBus}");
+        print("COA Utang Premi: ${user.coaUtangPremi}");
         print("===========================");
 
         DatabaseHelper databaseHelper = DatabaseHelper();

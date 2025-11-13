@@ -88,4 +88,23 @@ class TagTransaksiService {
       whereArgs: [id],
     );
   }
+
+  Future<List<TagTransaksi>> getTagTransaksiByIds(List<int> ids) async {
+    if (ids.isEmpty) return [];
+
+    String placeholders = List.filled(ids.length, '?').join(',');
+    final db = await dbHelper.database;
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      'm_tag_transaksi',
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
+    );
+
+    return maps.map((map) => TagTransaksi(
+      id: map['id'],
+      kategoriTransaksi: map['kategori_transaksi']?.toString(),
+      nama: map['nama'],
+    )).toList();
+  }
 }

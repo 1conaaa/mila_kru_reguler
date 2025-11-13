@@ -44,6 +44,9 @@ class User {
   final String idJadwalTrip;
   final String tagTransaksiPendapatan;
   final String tagTransaksiPengeluaran;
+  final String coaPendapatanBus;
+  final String coaPengeluaranBus;
+  final String coaUtangPremi;
 
   User({
     required this.idUser,
@@ -69,6 +72,9 @@ class User {
     required this.idJadwalTrip,
     required this.tagTransaksiPendapatan,
     required this.tagTransaksiPengeluaran,
+    required this.coaPendapatanBus,
+    required this.coaPengeluaranBus,
+    required this.coaUtangPremi,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -96,6 +102,9 @@ class User {
       idJadwalTrip: json['id_jadwal_trip'] ?? '',
       tagTransaksiPendapatan: json['tag_transaksi_pendapatan'] ?? '',
       tagTransaksiPengeluaran: json['tag_transaksi_pengeluaran'] ?? '',
+      coaPendapatanBus: json['coa_pendapatan_bus'] ?? '',
+      coaPengeluaranBus: json['coa_pengeluaran_bus'] ?? '',
+      coaUtangPremi: json['coa_utang_premi'] ?? '',
     );
   }
 
@@ -124,6 +133,9 @@ class User {
       'idJadwalTrip': idJadwalTrip,
       'tagTransaksiPendapatan': tagTransaksiPendapatan,
       'tagTransaksiPengeluaran': tagTransaksiPengeluaran,
+      'coaPendapatanBus': coaPendapatanBus,
+      'coaPengeluaranBus': coaPengeluaranBus,
+      'coaUtangPremi': coaUtangPremi,
       'tanggal_simpan': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
   }
