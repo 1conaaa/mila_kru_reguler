@@ -152,7 +152,7 @@ class DatabaseHelper {
         merchant_id TEXT,
         redirect_url TEXT,
         fupload TEXT,
-        file_name TEXT,
+        file_name TEXT
       )
     ''');
 
