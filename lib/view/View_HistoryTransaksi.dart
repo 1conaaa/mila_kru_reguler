@@ -4,6 +4,8 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
+
 
 class HistroyTransaksi extends StatefulWidget {
   @override
@@ -49,98 +51,118 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
 
 
   void _pushDataPenjualan() async {
+    print("=== PUSH DATA PENJUALAN DIMULAI ===");
+
     setState(() {
       _isPushingData = true;
       _pushDataProgress = 0.0;
     });
+
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');
+
     await databaseHelper.initDatabase();
 
-    // Mendapatkan data penjualan dengan kondisi status='N'
-    List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getPenjualanByStatus('N');
-    print('data penjualan : $penjualanData');
+    List<Map<String, dynamic>> penjualanData =
+    await PenjualanTiketService.instance.getPenjualanByStatus('N');
+
     if (penjualanData.isNotEmpty) {
-      // Kirim data penjualan ke server
       int totalData = penjualanData.length;
       int dataSent = 0;
+
       for (var penjualan in penjualanData) {
-        String tanggalTransaksi = penjualan['tanggal_transaksi'];
-        String kategoriTiket = penjualan['kategori_tiket'];
-        int rit = penjualan['rit'];
-        String noPol = penjualan['no_pol'];
-        int idBus = penjualan['id_bus'];
-        String kodeTrayek = penjualan['kode_trayek'];
-        int idUser = penjualan['id_user'];
-        int idGroup = penjualan['id_group'];
-        String idKotaBerangkat = penjualan['kota_berangkat'];
-        String idKotaTujuan = penjualan['kota_tujuan'];
-        int jumlahTiket = penjualan['jumlah_tiket'];
-        double jumlahTagihan = penjualan['jumlah_tagihan'];
-        double hargaKantor = penjualan['harga_kantor'];
-        String status = penjualan['status'];
-        String namaPembeli = penjualan['nama_pembeli'];
-        String noTelepon = penjualan['no_telepon'];
-        String keterangan = penjualan['keterangan'];
+        print("\n=== KIRIM DATA ID: ${penjualan['id']} ===");
 
-        String apiUrl = 'https://apimila.sysconix.id/api/penjualantiket';
-        String queryParams = '?tgl_transaksi=${Uri.encodeFull(tanggalTransaksi)}'
-            '&kategori=${Uri.encodeFull(kategoriTiket)}'
-            '&rit=$rit'
-            '&no_pol=${Uri.encodeFull(noPol)}'
-            '&id_bus=$idBus'
-            '&kode_trayek=${Uri.encodeFull(kodeTrayek)}'
-            '&id_personil=$idUser'
-            '&id_group=$idGroup'
-            '&id_kota_berangkat=${Uri.encodeFull(idKotaBerangkat)}'
-            '&id_kota_tujuan=${Uri.encodeFull(idKotaTujuan)}'
-            '&jml_naik=$jumlahTiket'
-            '&pendapatan=$jumlahTagihan'
-            '&harga_kantor=$hargaKantor'
-            '&nama_pelanggan=${Uri.encodeFull(namaPembeli)}'
-            '&no_telepon=${Uri.encodeFull(noTelepon)}'
-            '&status=$status'
-            '&keterangan=${Uri.encodeFull(keterangan)}';
+        /// ambil foto
+        String? fotoPath = penjualan['fupload'];
+        String? fileName = penjualan['file_name'];
 
-        String apiUrlWithParams = apiUrl + queryParams;
-        print('link api $apiUrlWithParams - $token');
+        print("[DEBUG] Foto path: $fotoPath | file_name: $fileName");
+
+        String apiUrl = "https://apimila.sysconix.id/api/penjualantiket";
+
+        // build query params
+        String queryParams =
+            '?tgl_transaksi=${Uri.encodeFull(penjualan['tanggal_transaksi'])}'
+            '&kategori=${Uri.encodeFull(penjualan['kategori_tiket'])}'
+            '&rit=${penjualan['rit']}'
+            '&no_pol=${Uri.encodeFull(penjualan['no_pol'])}'
+            '&id_bus=${penjualan['id_bus']}'
+            '&kode_trayek=${Uri.encodeFull(penjualan['kode_trayek'])}'
+            '&id_personil=${penjualan['id_user']}'
+            '&id_group=${penjualan['id_group']}'
+            '&id_kota_berangkat=${Uri.encodeFull(penjualan['kota_berangkat'])}'
+            '&id_kota_tujuan=${Uri.encodeFull(penjualan['kota_tujuan'])}'
+            '&jml_naik=${penjualan['jumlah_tiket']}'
+            '&pendapatan=${penjualan['jumlah_tagihan']}'
+            '&harga_kantor=${penjualan['harga_kantor']}'
+            '&nama_pelanggan=${Uri.encodeFull(penjualan['nama_pembeli'])}'
+            '&no_telepon=${Uri.encodeFull(penjualan['no_telepon'])}'
+            '&status=${penjualan['status']}'
+            '&keterangan=${Uri.encodeFull(penjualan['keterangan'])}';
+
+        var uri = Uri.parse(apiUrl + queryParams);
+        var request = http.MultipartRequest("POST", uri);
+
+        request.headers['Authorization'] = 'Bearer $token';
+
+        // Jika ada foto, kirim sebagai multipart
+        if (fotoPath != null && fotoPath.isNotEmpty) {
+          File fotoFile = File(fotoPath);
+          if (fotoFile.existsSync()) {
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                'file_name[]',     // HARUS sesuai backend
+                fotoPath,
+                filename: fileName ?? "foto.jpg",
+              ),
+            );
+
+            print("[DEBUG] Foto ditambahkan ke request multipart");
+          } else {
+            print("[WARNING] Foto tidak ditemukan di path: $fotoPath");
+          }
+        }
+
         try {
-          final response = await http.post(
-            Uri.parse(apiUrlWithParams),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
-          );
+          print("[DEBUG] Mengirim multipart POST...");
+          var streamedResponse = await request.send();
+
+          var response = await http.Response.fromStream(streamedResponse);
+
+          print("[DEBUG] Response code: ${response.statusCode}");
+          print("[DEBUG] Response body: ${response.body}");
 
           if (response.statusCode == 200 || response.statusCode == 201) {
-            // Berhasil mengirim data, perbarui status menjadi 'Y' pada tabel
-            int id = penjualan['id'];
-            await PenjualanTiketService.instance.updatePenjualanStatus(id, 'Y');
-            await databaseHelper.closeDatabase();
-            // Hitung progress pengiriman data
+            print("[SUCCESS] Data berhasil dikirim (ID: ${penjualan['id']})");
+
+            // update status lokal
+            await PenjualanTiketService.instance
+                .updatePenjualanStatus(penjualan['id'], 'Y');
+
             dataSent++;
             double progress = dataSent / totalData;
+
             setState(() {
               _pushDataProgress = progress;
             });
           } else {
-            print('Gagal mengirim data penjualan. Status code: ${response.statusCode}');
+            print("[FAILED] Gagal kirim data!");
           }
         } catch (e) {
-          print('Terjadi kesalahan saat mengirim data penjualan: $e');
+          print("[ERROR] Exception: $e");
         }
       }
-      // Perbarui list penjualan setelah mengubah status
-      await _getListTransaksi();
 
-      print('Data penjualan dikirim');
-    } else {
-      print('Tidak ada data penjualan dengan status \'N\'');
+      await _getListTransaksi();
     }
+
     setState(() {
       _isPushingData = false;
       _pushDataProgress = 0.0;
     });
+
+    print("=== PUSH DATA SELESAI ===");
   }
 
   Future<void> _getListTransaksi() async {

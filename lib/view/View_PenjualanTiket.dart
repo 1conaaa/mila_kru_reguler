@@ -12,11 +12,14 @@ import 'package:image/image.dart' as img;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
-
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+
+
 
 final printerService = BluetoothPrinterService();
 
@@ -83,6 +86,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
   double marginKantor = 0;
   double marginTarikan = 0;
   double hargaKantor = 0;
+
   var jarakPP;
   var namaKotaTerakhir;
 
@@ -109,6 +113,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
   List<BluetoothDevice> _devices = [];
   BluetoothDevice? _selectedDevice;
   bool _isConnected = false;
+
+  XFile? fotoPenumpang;
+  bool isFotoVisible = false;
+  String? fotoLocalPath;
+  String? fotoFileName;
 
   @override
   void initState() {
@@ -495,11 +504,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
 
     // Menambahkan teks dan informasi tiket lainnya
-    bytes += generator.text("PT. ANDRY FEBIOLA TRANSPORTASI",
+    bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
         styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
-    bytes += generator.text("Probolinggo - Jatim 67251", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("IG: akas.aaa.official", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("WA: 0853-9991-2500", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("Probolinggo - Jatim 67214", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("WA: 0822-3490-9090", styles: PosStyles(align: PosAlign.center));
     bytes += generator.hr();
 
     // Menambahkan kota keberangkatan dan tujuan
@@ -541,7 +550,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     ]);
 
     bytes += generator.hr();
-    bytes += generator.qrcode("https://www.akasaurora.com/");
+    bytes += generator.qrcode("https://www.milaberkah.com/");
     bytes += generator.text('Barang hilang atau rusak resiko penumpang sendiri.', styles: PosStyles(align: PosAlign.center, bold: false));
     bytes += generator.text('Tiket ini, bukti transaksi yang sah dan mohon simpan tiket ini selama perjalanan Anda.', styles: PosStyles(align: PosAlign.center, bold: false));
     bytes += generator.text('Semoga Allah SWT melindungi kita dalam perjalanan ini.', styles: PosStyles(align: PosAlign.center, bold: false));
@@ -1293,10 +1302,14 @@ class _PenjualanFormState extends State<PenjualanForm> {
           status TEXT,
           kode_trayek TEXT,
           keterangan TEXT
+          fupload TEXT,
+          file_name TEXT
         )
       ''');
         print("Tabel penjualan_tiket berhasil dibuat");
       }
+      print("DEBUG FOTO LOCAL PATH: $fotoLocalPath");
+      print("DEBUG FOTO FILE NAME: $fotoFileName");
 
       await database.insert(
         'penjualan_tiket',{
@@ -1321,6 +1334,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
         'status': 'N',
         'kode_trayek': kodeTrayek,
         'keterangan': keteranganTagihan,
+        'fupload': fotoLocalPath ?? '',   // path file disimpan
+        'file_name': fotoFileName ?? '',  // nama file
       },
       );
       print('Data penjualan tiket berhasil disimpan:');
@@ -1372,7 +1387,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
           tanggal_transaksi TEXT,
           status TEXT,
           kode_trayek TEXT,
-          keterangan TEXT
+          keterangan TEXT,
+          fupload TEXT,
+          file_name TEXT
         )
       ''');
         print("Tabel penjualan_tiket berhasil dibuat");
@@ -1433,6 +1450,31 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
   }
 
+  Future<void> _ambilFoto() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? foto = await picker.pickImage(source: ImageSource.camera);
+
+    if (foto != null) {
+      String fileName = "penumpang_${DateTime.now().millisecondsSinceEpoch}.jpg";
+
+      final directory = await getApplicationDocumentsDirectory();
+      final folderPath = "${directory.path}/foto_penumpang";
+
+      await Directory(folderPath).create(recursive: true);
+
+      final String savedPath = "$folderPath/$fileName";
+
+      await File(foto.path).copy(savedPath);
+
+      setState(() {
+        fotoPenumpang = foto;
+        fotoLocalPath = savedPath;
+        fotoFileName = fileName;
+      });
+
+      print("Foto tersimpan di: $savedPath");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1790,6 +1832,259 @@ class _PenjualanFormState extends State<PenjualanForm> {
                       ),
                       SizedBox(height: 16.0),
                       Visibility(
+                        visible: isFotoVisible,
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header dengan icon
+                              Row(
+                                children: [
+                                  Icon(Icons.photo_camera, color: Colors.blue[700], size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Upload Foto Penumpang",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Konten utama
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Tombol Ambil Foto
+                                  Expanded(
+                                    flex: 2,
+                                    child: Container(
+                                      height: 120,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(10),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Colors.blue.shade50,
+                                            Colors.blue.shade100,
+                                          ],
+                                        ),
+                                        border: Border.all(
+                                          color: Colors.blue.shade200,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: _ambilFoto,
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(10),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue[700],
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: const Icon(
+                                                  Icons.camera_alt,
+                                                  color: Colors.white,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 12),
+                                              Text(
+                                                "Ambil Foto",
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.blue[700],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                "Kamera akan terbuka",
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 16),
+
+                                  // Preview Foto
+                                  Expanded(
+                                    flex: 1,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      height: 150,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: fotoPenumpang == null
+                                              ? Colors.grey.shade300
+                                              : Colors.green.shade300,
+                                          width: 1.5,
+                                        ),
+                                        color: fotoPenumpang == null
+                                            ? Colors.grey.shade50
+                                            : Colors.green.shade50,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.05),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: fotoPenumpang == null
+                                          ? Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.photo,
+                                            size: 40,
+                                            color: Colors.grey.shade400,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            "Belum ada foto",
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.grey.shade500,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                          : ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Stack(
+                                          children: [
+                                            Image.file(
+                                              File(fotoPenumpang!.path),
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                              height: double.infinity,
+                                            ),
+                                            // Overlay dengan efek gradien
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topCenter,
+                                                  end: Alignment.bottomCenter,
+                                                  colors: [
+                                                    Colors.transparent,
+                                                    Colors.black.withOpacity(0.1),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            // Badge konfirmasi di sudut
+                                            Positioned(
+                                              top: 8,
+                                              right: 8,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 6,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.green.shade500,
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.check,
+                                                      color: Colors.white,
+                                                      size: 12,
+                                                    ),
+                                                    const SizedBox(width: 2),
+                                                    Text(
+                                                      "OK",
+                                                      style: TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 10,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              // Status/Info tambahan
+                              if (fotoPenumpang != null) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.green.shade100,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green.shade600,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "Foto penumpang berhasil diambil",
+                                        style: TextStyle(
+                                          color: Colors.green.shade700,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                  SizedBox(height: 16),
+                      Visibility(
                         visible: isMetodePembayaranVisible,
                         child: DropdownButtonFormField<String>(
                           decoration: InputDecoration(
@@ -2056,7 +2351,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   void _updateVisibility(String selectedKategoriTiket) {
-    if(selectedKategoriTiket == 'default'){
+    // DEFAULT
+    if (selectedKategoriTiket == 'default') {
       isHargaKantorVisible = false;
       isTombolVisible = false;
       isKotaBerangkatVisible = false;
@@ -2069,8 +2365,18 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isKeteranganVisible = false;
       isMetodePembayaranVisible = false;
-    }else if (selectedKategoriTiket == 'red_bus' || selectedKategoriTiket == 'traveloka' || selectedKategoriTiket == 'go_asia' || selectedKategoriTiket == 'operan' || selectedKategoriTiket == 'sepi' || selectedKategoriTiket == 'tni' || selectedKategoriTiket == 'pelajar' || selectedKategoriTiket == 'gratis') {
-      if(kelasBus == 'Ekonomi'){
+      isFotoVisible = false;
+    }
+    // ==============================
+    // 1️⃣  KATEGORI TANPA FOTO
+    // ==============================
+    else if (selectedKategoriTiket == 'red_bus' ||
+        selectedKategoriTiket == 'traveloka' ||
+        selectedKategoriTiket == 'go_asia') {
+
+      isFotoVisible = false; // ← WAJIB TIDAK ADA FOTO
+
+      if (kelasBus == 'Ekonomi') {
         isHargaKantorVisible = true;
         isTombolVisible = true;
         isKotaBerangkatVisible = true;
@@ -2083,7 +2389,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isNotlpPembeliVisible = true;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
-      }else if(kelasBus == 'Non Ekonomi'){
+      } else if (kelasBus == 'Non Ekonomi') {
         isHargaKantorVisible = false;
         isTombolVisible = true;
         isKotaBerangkatVisible = true;
@@ -2097,18 +2403,63 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
       }
-    } else if (selectedKategoriTiket == 'reguler' && kelasBus == 'Ekonomi') {
+    }
+    // ==============================
+    // 2️⃣  KATEGORI WAJIB FOTO
+    // ==============================
+    else if (selectedKategoriTiket == 'operan' ||
+        selectedKategoriTiket == 'sepi' ||
+        selectedKategoriTiket == 'tni' ||
+        selectedKategoriTiket == 'pelajar' ||
+        selectedKategoriTiket == 'gratis') {
+
+      isFotoVisible = true; // ← WAJIB ADA FOTO
+
+      if (kelasBus == 'Ekonomi') {
+        isHargaKantorVisible = true;
+        isTombolVisible = true;
+        isKotaBerangkatVisible = true;
+        isKotaTujuanVisible = true;
+        isSarantagihanVisible = false;
+        isTagihanVisible = true;
+        isJumlahBayarVisible = false;
+        isJumlahKembalianVisible = false;
+        isNamaPembeliVisible = true;
+        isNotlpPembeliVisible = true;
+        isKeteranganVisible = true;
+        isMetodePembayaranVisible = false;
+      } else if (kelasBus == 'Non Ekonomi') {
+        isHargaKantorVisible = false;
+        isTombolVisible = true;
+        isKotaBerangkatVisible = true;
+        isKotaTujuanVisible = true;
+        isSarantagihanVisible = false;
+        isTagihanVisible = true;
+        isJumlahBayarVisible = false;
+        isJumlahKembalianVisible = false;
+        isNamaPembeliVisible = true;
+        isNotlpPembeliVisible = true;
+        isKeteranganVisible = true;
+        isMetodePembayaranVisible = false;
+      }
+    }
+
+    // ==============================
+    // 3️⃣  KATEGORI REGULER
+    // ==============================
+    else if (selectedKategoriTiket == 'reguler' && kelasBus == 'Ekonomi') {
       isHargaKantorVisible = true;
       isTombolVisible = true;
       isKotaBerangkatVisible = true;
       isKotaTujuanVisible = true;
-      isSarantagihanVisible = false; // Display sarantagihan for Ekonomi class
+      isSarantagihanVisible = false;
       isTagihanVisible = true;
       isJumlahBayarVisible = false;
       isJumlahKembalianVisible = false;
       isNamaPembeliVisible = false;
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
+      isFotoVisible = false;
     } else if (selectedKategoriTiket == 'reguler' && kelasBus == 'Non Ekonomi') {
       isHargaKantorVisible = false;
       isTombolVisible = true;
@@ -2121,30 +2472,38 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNamaPembeliVisible = false;
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
-    } else if (selectedKategoriTiket == 'langganan' && kelasBus == 'Ekonomi') {
+      isFotoVisible = false;
+    }
+
+    // ==============================
+    // 4️⃣  KATEGORI LANGGANAN
+    // ==============================
+    else if (selectedKategoriTiket == 'langganan' && kelasBus == 'Ekonomi') {
       isHargaKantorVisible = true;
       isTombolVisible = true;
       isKotaBerangkatVisible = true;
       isKotaTujuanVisible = true;
-      isSarantagihanVisible = false; // Display sarantagihan for Ekonomi class
+      isSarantagihanVisible = false;
       isTagihanVisible = true;
       isJumlahBayarVisible = false;
       isJumlahKembalianVisible = false;
       isNamaPembeliVisible = false;
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
+      isFotoVisible = true;
     } else if (selectedKategoriTiket == 'langganan' && kelasBus == 'Non Ekonomi') {
       isHargaKantorVisible = false;
       isTombolVisible = true;
       isKotaBerangkatVisible = true;
       isKotaTujuanVisible = true;
-      isSarantagihanVisible = true; // Display sarantagihan for Ekonomi class
+      isSarantagihanVisible = true;
       isTagihanVisible = true;
       isJumlahBayarVisible = false;
       isJumlahKembalianVisible = false;
       isNamaPembeliVisible = true;
       isNotlpPembeliVisible = true;
       isMetodePembayaranVisible = true;
+      isFotoVisible = true;
     }
   }
 
