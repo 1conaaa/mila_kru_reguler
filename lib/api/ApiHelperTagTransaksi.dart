@@ -18,7 +18,7 @@ class ApiHelperTagTransaksi {
         var jsonList = jsonDecode(response.body);
 
         if (jsonList is List) {
-          List<TagTransaksi> tagList = (jsonList as List).map((item) => TagTransaksi.fromJson(item)).toList();
+          List<TagTransaksi> tagList = (jsonList).map((item) => TagTransaksi.fromJson(item)).toList();
 
           TagTransaksiService tagService = TagTransaksiService();
 

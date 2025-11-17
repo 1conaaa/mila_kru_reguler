@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
@@ -12,6 +11,8 @@ import 'package:mila_kru_reguler/view/View_FormSetoran.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
+
+import 'package:mila_kru_reguler/utils/premi_bersih_calculator.dart';
 
 class FormRekapTransaksi extends StatefulWidget {
   @override
@@ -90,6 +91,16 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
   double get totalPendapatanReguler => 00;
 
+  double totalPendapatanRegulerValue = 00;
+  int jumlahTiketRegulerValue = 0;
+
+  double totalPendapatanNonRegulerValue = 00;
+  int jumlahTiketOnlineValue = 0;
+
+  double totalPendapatanBagasiValue = 00;
+  int jumlahBarangBagasiValue = 0;
+
+
   get persenPremiExtra => null;
   get existingDataId => null;
 
@@ -112,8 +123,64 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   void initState() {
     super.initState();
     databaseHelper = DatabaseHelper();
-    _loadLastRekapTransaksi();
+
     _loadTagTransaksi(); // Load data tag transaksi
+    _loadLastRekapTransaksi();
+  }
+
+  void _handleCalculatePremiBersih() {
+    final result = PremiBersihCalculator.calculatePremiBersih(
+      tagPendapatan: tagPendapatan,
+      tagPengeluaran: tagPengeluaran,
+      tagPremi: tagPremi,
+      tagBersihSetoran: tagBersihSetoran,
+      controllers: _controllers,
+      jumlahControllers: _jumlahControllers,
+      literSolarControllers: _literSolarControllers,
+    );
+
+    // Update field yang dihitung otomatis
+    PremiBersihCalculator.updateAutoCalculatedFields(
+      calculationResult: result,
+      controllers: _controllers,
+    );
+  }
+
+  // TAMBAHKAN FUNGSI INI di dalam class _FormRekapTransaksiState
+  void _isiControllerPendapatan() {
+    print('=== MENGISI CONTROLLER PENDAPATAN ===');
+
+    // Isi data untuk Pendapatan Tiket Reguler (tag 1)
+    if (_controllers.containsKey(1)) {
+      _controllers[1]!.text = totalPendapatanRegulerValue.toInt().toString();
+      print('✓ _controllers[1] diisi: ${totalPendapatanRegulerValue.toInt()}');
+    }
+    if (_jumlahControllers.containsKey(1)) {
+      _jumlahControllers[1]!.text = jumlahTiketRegulerValue.toString();
+      print('✓ _jumlahControllers[1] diisi: $jumlahTiketRegulerValue');
+    }
+
+    // Isi data untuk Pendapatan Tiket OTA (tag 2)
+    if (_controllers.containsKey(2)) {
+      _controllers[2]!.text = totalPendapatanNonRegulerValue.toInt().toString();
+      print('✓ _controllers[2] diisi: ${totalPendapatanNonRegulerValue.toInt()}');
+    }
+    if (_jumlahControllers.containsKey(2)) {
+      _jumlahControllers[2]!.text = jumlahTiketOnlineValue.toString();
+      print('✓ _jumlahControllers[2] diisi: $jumlahTiketOnlineValue');
+    }
+
+    // Isi data untuk Pendapatan Bagasi (tag 3)
+    if (_controllers.containsKey(3)) {
+      _controllers[3]!.text = totalPendapatanBagasiValue.toInt().toString();
+      print('✓ _controllers[3] diisi: ${totalPendapatanBagasiValue.toInt()}');
+    }
+    if (_jumlahControllers.containsKey(3)) {
+      _jumlahControllers[3]!.text = jumlahBarangBagasiValue.toString();
+      print('✓ _jumlahControllers[3] diisi: $jumlahBarangBagasiValue');
+    }
+
+    print('=== SELESAI MENGISI CONTROLLER ===');
   }
 
   Future<void> _getUserData() async {
@@ -138,6 +205,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         persenPremikruController.text = persenPremikru!;
       });
       print('premi pe $premiExtra , pt $persenPremikru $namaTrayek');
+      print('premi persen kru $keydataPremikru');
     }
   }
 
@@ -202,6 +270,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         _literSolarControllers[tag.id] = TextEditingController();
       }
 
+      // Setelah semua controller dibuat, panggil _loadLastRekapTransaksi
+      // untuk mengisi data pendapatan ke controller
+      await _loadLastRekapTransaksi();
+
       setState(() {});
     }
   }
@@ -210,71 +282,50 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     await databaseHelper.initDatabase();
     await _getUserData();
 
-    // Ambil data dari PenjualanTiketService (reguler & non-reguler)
+    // ambil instance service secara lokal
     final penjualanService = PenjualanTiketService.instance;
 
+    // 1. Ambil semua data terlebih dahulu
     final hasilReguler = await penjualanService.getSumJumlahTagihanReguler(kelasBus);
     final hasilNonReguler = await penjualanService.getSumJumlahTagihanNonReguler(kelasBus);
-
-    // Ambil data bagasi tetap dari DatabaseHelper (sesuai permintaan)
     final hasilBagasi = await databaseHelper.getSumJumlahPendapatanBagasi(kelasBus);
 
-    // Ambil nilai aman dengan fallback ke 0 jika null
-    final int ritValue = (hasilReguler['rit'] ?? 0);
-    final int totalPendapatanRegulerValue = (hasilReguler['totalPendapatanReguler'] ?? 0);
-    final int jumlahTiketRegulerValue = (hasilReguler['jumlahTiketReguler'] ?? 0);
+    print("=== DEBUG Rekap ===");
+    print("Reguler: $hasilReguler");
+    print("Non Reguler: $hasilNonReguler");
+    print("Bagasi: $hasilBagasi");
 
-    final int totalPendapatanNonRegulerValue = (hasilNonReguler['totalPendapatanNonReguler'] ?? 0);
-    final int jumlahTiketOnLineValue = (hasilNonReguler['jumlahTiketOnLine'] ?? 0);
-
-    final int totalPendapatanBagasiValue = (hasilBagasi['totalPendapatanBagasi'] ?? 0);
-    final int jumlahBarangBagasiValue = (hasilBagasi['jumlahBarangBagasi'] ?? 0);
-
-    // Convert ke string untuk UI
-    final String ritkeStr = ritValue.toString();
-    final String pendapatanTiketRegulerStr = totalPendapatanRegulerValue.toString();
-    final String nilaiTiketRegulerStr = jumlahTiketRegulerValue.toString();
-
-    final String pendapatanTiketOnlineStr = totalPendapatanNonRegulerValue.toString();
-    final String nilaiTiketOnLineStr = jumlahTiketOnLineValue.toString();
-
-    final String pendapatanBagasiStr = totalPendapatanBagasiValue.toString();
-    final String banyakBarangBagasiStr = jumlahBarangBagasiValue.toString();
-
+    // 2. Isi nilai dalam setState setelah variabel siap
     setState(() {
-      ritke = ritkeStr;
-      pendapatanTiketReguler = pendapatanTiketRegulerStr;
-      nilaiTiketReguler = nilaiTiketRegulerStr;
-      pendapatanTiketOnline = pendapatanTiketOnlineStr;
-      nilaiTiketOnLine = nilaiTiketOnLineStr;
-      pendapatanBagasi = pendapatanBagasiStr;
-      banyakBarangBagasi = banyakBarangBagasiStr;
+      // ―――― Reguler ――――
+      totalPendapatanRegulerValue =
+          (hasilReguler['totalPendapatanReguler'] ?? 0).toDouble();
+      jumlahTiketRegulerValue =
+          (hasilReguler['jumlahTiketReguler'] ?? 0).toInt();
+
+      // ―――― Non Reguler / Online ――――
+      totalPendapatanNonRegulerValue =
+          (hasilNonReguler['totalPendapatanNonReguler'] ?? 0).toDouble();
+      jumlahTiketOnlineValue =
+          (hasilNonReguler['jumlahTiketOnLine'] ?? 0).toInt();
+
+      // ―――― Bagasi ――――
+      totalPendapatanBagasiValue =
+          (hasilBagasi['totalPendapatanBagasi'] ?? 0).toDouble();
+      jumlahBarangBagasiValue =
+          (hasilBagasi['jumlahBarangBagasi'] ?? 0).toInt();
     });
 
-    ritController.text = ritkeStr;
+    print("=== Nilai Setelah setState ===");
+    print("Reguler Pendapatan: $totalPendapatanRegulerValue");
+    print("Reguler Tiket: $jumlahTiketRegulerValue");
+    print("NonReg Pendapatan: $totalPendapatanNonRegulerValue");
+    print("Online Tiket: $jumlahTiketOnlineValue");
+    print("Bagasi Pendapatan: $totalPendapatanBagasiValue");
+    print("Bagasi Barang: $jumlahBarangBagasiValue");
 
-    // Update controllers (formatting aman: fallback 0)
-    ritController.text = ritkeStr;
-
-    pendapatanTiketRegulerController.text =
-        formatter.format(totalPendapatanRegulerValue);
-    jumlahTiketRegulerController.text = nilaiTiketRegulerStr;
-
-    pendapatanTiketNonRegulerController.text =
-        formatter.format(totalPendapatanNonRegulerValue);
-    jumlahTiketOnLineController.text = nilaiTiketOnLineStr;
-
-    pendapatanBagasiController.text =
-        formatter.format(totalPendapatanBagasiValue);
-    jumlahBarangBagasiController.text = banyakBarangBagasiStr;
-
-    // Tutup database jika memang ingin menutup
-    await databaseHelper.closeDatabase();
-
-    // Logging
-    print('cetak pendapatan tiket reguler $pendapatanTiketReguler $nilaiTiketReguler');
-    print('cetak pendapatan tiket non reguler $pendapatanTiketOnline $nilaiTiketOnLine');
-    print('cetak pendapatan bagasi $pendapatanBagasi $banyakBarangBagasi');
+    // 3. ISI CONTROLLER dengan data yang sudah dihitung
+    _isiControllerPendapatan();
   }
 
   bool _requiresJumlah(TagTransaksi tag) {
@@ -526,35 +577,260 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   }
 
   void _onSimpanPressed() async {
-    List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getPenjualanByStatus('N');
-    if (penjualanData.isNotEmpty) {
+    final ValueNotifier<String> progress = ValueNotifier<String>('Memulai pengecekan...');
+    // Tampilkan dialog progres (tidak dismissible)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Proses Simpan — Debug'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ValueListenableBuilder<String>(
+                  valueListenable: progress,
+                  builder: (context, value, child) {
+                    return Text(value);
+                  },
+                ),
+                SizedBox(height: 12),
+                LinearProgressIndicator(),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                // Jangan tutup otomatis kecuali proses selesai; tetap beri opsi kalau memang ingin membatalkan
+                Navigator.of(context).pop();
+              },
+              child: Text('Tutup (Debug)'),
+            ),
+          ],
+        );
+      },
+    );
+
+    try {
+      // STEP 1: cek transaksi penjualan belum dikirim
+      print('STEP 1: Memanggil getPenjualanByStatus(\'N\')');
+      progress.value = '1/5 — Mengecek transaksi penjualan yang belum dikirim...';
+      await Future.delayed(Duration(milliseconds: 200)); // beri waktu UI update
+
+      List<Map<String, dynamic>> penjualanData =
+      await PenjualanTiketService.instance.getPenjualanByStatus('N');
+
+      print('STEP 1 RESULT: ditemukan ${penjualanData.length} baris (status N)');
+      progress.value = '1/5 — Ditemukan ${penjualanData.length} transaksi belum dikirim';
+      await Future.delayed(Duration(milliseconds: 150));
+
+      if (penjualanData.isNotEmpty) {
+        // Print sample data ke log (maks 5 baris)
+        final sampleCount = penjualanData.length > 5 ? 5 : penjualanData.length;
+        print('=== SAMPLE DATA (first $sampleCount) ===');
+        for (int i = 0; i < sampleCount; i++) {
+          print('Row ${i + 1}: ${penjualanData[i]}');
+        }
+        print('=======================================');
+
+        // Tutup dialog progress sebelum menampilkan alert
+        Navigator.of(context).pop();
+
+        // Tampilkan dialog yang menjelaskan ada data yang belum dikirim
+        showDialog(
+          context: context,
+          builder: (BuildContext ctx) {
+            return AlertDialog(
+              title: Text('Data Belum Dikirim'),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: [
+                    Text('Masih ada transaksi penjualan yang belum dikirim.'),
+                    SizedBox(height: 8),
+                    Text('Jumlah: ${penjualanData.length}'),
+                    SizedBox(height: 8),
+                    Text('Silakan kirim data tersebut terlebih dahulu di menu:\n👉 Penjualan Tiket → Transaksi.'),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text('Tutup'),
+                ),
+              ],
+            );
+          },
+        );
+        return;
+      }
+
+      // STEP 2: validasi form
+      print('STEP 2: Validasi form');
+      progress.value = '2/5 — Memvalidasi form...';
+      await Future.delayed(Duration(milliseconds: 150));
+
+      final isValid = _formKey.currentState?.validate() ?? false;
+      print('STEP 2 RESULT: isValid = $isValid');
+
+      if (!isValid) {
+        progress.value = '2/5 — Form tidak valid. Periksa input.';
+        await Future.delayed(Duration(milliseconds: 200));
+
+        // Tutup dialog progres dan beri feedback
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Form belum valid — periksa isian yang wajib.')),
+        );
+        return;
+      }
+
+      // STEP 3: persiapan menyimpan (log nilai penting)
+      print('STEP 3: Persiapan menyimpan— membaca controller dan state saat ini');
+      progress.value = '3/5 — Menyiapkan data untuk disimpan...';
+      await Future.delayed(Duration(milliseconds: 150));
+
+      // Contoh logging elemen yang penting (rit, km, noPol)
+      print('DEBUG: ritController=${ritController.text}');
+      print('DEBUG: kmMasukGarasiController=${kmMasukGarasiController.text}');
+      print('DEBUG: noPol=$noPol, idBus=$idBus, idUser=$idUser, idGroup=$idGroup');
+
+      // STEP 4: panggil fungsi penyimpanan utama
+      print('STEP 4: Memanggil _simpanValueRekap()');
+      progress.value = '4/5 — Menyimpan rekap (proses dapat memakan waktu)...';
+      await Future.delayed(Duration(milliseconds: 150));
+
+      // Biarkan _simpanValueRekap() berjalan; jika ingin debug di dalamnya,
+      // tambah progress update / callback di fungsi tersebut.
+      await _simpanValueRekap();
+
+      // STEP 5: selesai
+      print('STEP 5: Selesai menyimpan rekap');
+      progress.value = '5/5 — Selesai menyimpan rekap.';
+      await Future.delayed(Duration(milliseconds: 250));
+
+      // Tutup dialog progres
+      Navigator.of(context).pop();
+
+      // Feedback sukses
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Data rekap berhasil disimpan (debug).')),
+      );
+    } catch (e, st) {
+      // Tampilkan error dengan rincian di log dan UI
+      print('ERROR di _onSimpanPressed: $e');
+      print(st);
+
+      // Tutup dialog progres jika masih terbuka
+      try {
+        Navigator.of(context).pop();
+      } catch (_) {}
+
+      // Tampilkan dialog error
       showDialog(
         context: context,
-        builder: (BuildContext context) {
+        builder: (BuildContext ctx) {
           return AlertDialog(
-            title: Text('Data Belum Dikirim'),
-            content: Text(
-              'Masih ada transaksi penjualan yang belum dikirim.\n\n'
-                  'Silakan kirim data tersebut terlebih dahulu di menu:\n'
-                  '👉 Penjualan Tiket → Transaksi.',
-              style: TextStyle(fontSize: 16),
+            title: Text('Error saat menyimpan'),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: [
+                  Text('Terjadi error: $e'),
+                  SizedBox(height: 8),
+                  Text('Lihat console log untuk stack trace lengkap.'),
+                ],
+              ),
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(ctx),
                 child: Text('Tutup'),
               ),
             ],
           );
         },
       );
-      return;
-    }
 
-    if (_formKey.currentState!.validate()) {
-      await _simpanValueRekap();
+      // Juga tunjukkan SnackBar singkat
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan data rekap.')),
+      );
     }
   }
+
+  void _calculatePremiBersih(
+      TextEditingController pendapatanTiketRegulerController,
+      TextEditingController pendapatanTiketNonRegulerController,
+      TextEditingController pendapatanBagasiController,
+      TextEditingController tolController,
+      TextEditingController tprController,
+      TextEditingController perpalController,
+      TextEditingController litersolarController,
+      TextEditingController nominalsolarController,
+      TextEditingController perbaikanController,
+      TextEditingController premiExtraController,
+      TextEditingController persenPremikruController,
+      ) {
+    // Debug awal
+    print('=== Hitung Premi Bersih ===');
+    print('RegulerCtrl: ${pendapatanTiketRegulerController.text}');
+    print('NonRegulerCtrl: ${pendapatanTiketNonRegulerController.text}');
+    print('BagasiCtrl: ${pendapatanBagasiController.text}');
+
+    // Parse input pendapatan
+    double nominalTiketReguler = double.tryParse(
+      pendapatanTiketRegulerController.text.replaceAll('.', '').replaceAll(',00', ''),
+    ) ??
+        0.0;
+
+    double nominalTiketOnline = double.tryParse(
+      pendapatanTiketNonRegulerController.text.replaceAll('.', '').replaceAll(',00', ''),
+    ) ??
+        0.0;
+
+    double pendapatanBagasi = double.tryParse(
+      pendapatanBagasiController.text.replaceAll('.', '').replaceAll(',00', ''),
+    ) ??
+        0.0;
+
+    print('Nominal Reguler: $nominalTiketReguler');
+    print('Nominal Online: $nominalTiketOnline');
+    print('Nominal Bagasi: $pendapatanBagasi');
+
+    // Parse input pengeluaran
+    double pengeluaranTol = double.tryParse(tolController.text) ?? 0.0;
+    double pengeluaranTpr = double.tryParse(tprController.text) ?? 0.0;
+    double pengeluaranPerpal = double.tryParse(perpalController.text) ?? 0.0;
+    double literSolar = double.tryParse(litersolarController.text) ?? 0.0;
+    double nominalSolar = double.tryParse(nominalsolarController.text) ?? 0.0;
+    double perbaikan = double.tryParse(perbaikanController.text) ?? 0.0;
+
+    double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+
+    double pengOprs = pengeluaranPerpal + pengeluaranTpr + pengeluaranTol + nominalSolar;
+    double pengLain = pengOprs + perbaikan;
+
+    // Persentase Premi
+    double persenPremiExtra =
+        (double.tryParse(premiExtraController.text.replaceAll('%', '')) ?? 0.0) / 100;
+
+    double persenPremiKruCtrl =
+    (double.tryParse(persenPremikruController.text.replaceAll('%', '')) ?? 0.0);
+
+    double persenPremiKru = (persenPremiKruCtrl -
+        (double.tryParse(premiExtraController.text.replaceAll('%', '')) ?? 0.0)) /
+        100;
+
+    print('Persen Premi Extra: $persenPremiExtra');
+    print('Persen Premi Kru: $persenPremiKru');
+    print("Trayek: $namaTrayek");
+
+  }
+
+
 
   bool _isPengeluaran(TagTransaksi tag) {
     return tagPengeluaran.any((pengeluaran) => pengeluaran.id == tag.id);
@@ -562,6 +838,15 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
   @override
   Widget build(BuildContext context) {
+    // Debug sebelum membuat widget
+    print('=== FINAL CHECK SEBELUM BUILD WIDGET ===');
+    print('_controllers[1]: "${_controllers[1]?.text}"');
+    print('_jumlahControllers[1]: "${_jumlahControllers[1]?.text}"');
+    print('_controllers[2]: "${_controllers[2]?.text}"');
+    print('_jumlahControllers[2]: "${_jumlahControllers[2]?.text}"');
+    print('_controllers[3]: "${_controllers[3]?.text}"');
+    print('_jumlahControllers[3]: "${_jumlahControllers[3]?.text}"');
+
     return ViewFormRekapTransaksi(
       formKey: _formKey,
       kmMasukGarasiController: kmMasukGarasiController,
@@ -571,15 +856,16 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       tagBersihSetoran: tagBersihSetoran,
       controllers: _controllers,
       jumlahControllers: _jumlahControllers,
-      literSolarControllers: _literSolarControllers, // Tambahkan parameter baru
-      onImageUpload: _onImageUpload, // Sekarang menerima 2 parameter
-      uploadedImages: _uploadedImages, // Tambahkan status upload
-      onRemoveImage: _removeImage, // Tambahkan fungsi hapus
+      literSolarControllers: _literSolarControllers,
+      onImageUpload: _onImageUpload,
+      uploadedImages: _uploadedImages,
+      onRemoveImage: _removeImage,
       onSimpan: _onSimpanPressed,
       isPengeluaran: _isPengeluaran,
       requiresImage: _requiresImage,
       requiresJumlah: _requiresJumlah,
-      requiresLiterSolar: _requiresLiterSolar, // Tambahkan parameter baru
+      requiresLiterSolar: _requiresLiterSolar,
+      onCalculatePremiBersih: _handleCalculatePremiBersih,
     );
   }
 
@@ -600,7 +886,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       String coaPengeluaranBus = firstUser['coaPengeluaranBus'] ?? '';
       String coaUtangPremi = firstUser['coaUtangPremi'] ?? '';
 
-      print('COA Data:');
+      print('COA Data xxx:');
       print('- Pendapatan Bus: $coaPendapatanBus');
       print('- Pengeluaran Bus: $coaPengeluaranBus');
       print('- Utang Premi: $coaUtangPremi');

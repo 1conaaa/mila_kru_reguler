@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert'; // Untuk jsonEncode
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluttertoast/fluttertoast.dart';

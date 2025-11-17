@@ -225,8 +225,34 @@ class PenjualanTiketService {
   Future<Map<String, int>> getSumJumlahTagihanNonReguler(String? kelasBus) async {
     final db = await database;
     List<Map<String, dynamic>> result;
+    print("kelas bus : $kelasBus");
+
+    final cekCount = await db.rawQuery('SELECT COUNT(*) AS total FROM penjualan_tiket');
+
+    print("=== DEBUG: JUMLAH DATA penjualan_tiket ===");
+
+    int total = 0;
+
+// pastikan nilai tidak null dan bisa dikonversi
+    var rawTotal = cekCount.first['total'];
+    if (rawTotal != null) {
+      total = int.tryParse(rawTotal.toString()) ?? 0;
+    }
+
+    print("Total baris: $total");
+
+    if (total > 0) {
+      final cekData = await db.rawQuery('SELECT * FROM penjualan_tiket LIMIT 5');
+      print("=== DEBUG: SAMPLE DATA penjualan_tiket (5 baris pertama) ===");
+      for (var row in cekData) {
+        print(row);
+      }
+    } else {
+      print("=== TABEL penjualan_tiket KOSONG ===");
+    }
 
     if (kelasBus == 'Ekonomi') {
+      print("1. kelas bus : $kelasBus");
       result = await db.rawQuery('''
     SELECT SUM(x.total_tagihan) AS total_tagihan, 
            SUM(x.jumlah_tiket) AS jumlah_tiket, 
@@ -249,6 +275,7 @@ class PenjualanTiketService {
     ) x
    ''');
     } else if (kelasBus == 'Non Ekonomi') {
+      print("2. kelas bus : $kelasBus");
       result = await db.rawQuery('''
     SELECT SUM(x.total_tagihan) AS total_tagihan, 
            SUM(x.jumlah_tiket) AS jumlah_tiket, 
@@ -271,6 +298,7 @@ class PenjualanTiketService {
     ) x
    ''');
     } else {
+      print("3. kelas bus : $kelasBus");
       // Jika kelasBus tidak sesuai, kembalikan nilai default
       return {
         'rit': 0,

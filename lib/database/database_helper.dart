@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
 import 'dart:io';
 
 class DatabaseHelper {
@@ -24,11 +23,11 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_13112025-v4.db';
+    String path = '${documentsDirectory.path}/bisapp_15112025-v1.db';
 
     return await openDatabase(
       path,
-      version: 7, // Update the version number
+      version: 1, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -151,7 +150,9 @@ class DatabaseHelper {
         status_bayar INTEGER,
         trx_id TEXT,
         merchant_id TEXT,
-        redirect_url TEXT
+        redirect_url TEXT,
+        fupload TEXT,
+        file_name TEXT,
       )
     ''');
 

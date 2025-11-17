@@ -208,7 +208,7 @@ class _LoginState extends State<Login> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.amber[400], // 🎨 Warna background biru
-        title: Text('Aplikasi BIS MILA BERKAH'),
+        title: Text('Aplikasi BIS MILA SEJAHTERA'),
         automaticallyImplyLeading: false,
       ),
       backgroundColor: Colors.blue[700], // 🎨 Warna background biru
