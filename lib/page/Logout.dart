@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
+import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
+import 'package:mila_kru_reguler/services/setoranKru_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 import 'package:mila_kru_reguler/page/logout_success_screen.dart';
+import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
 
 class Logout extends StatelessWidget {
   Future<void> _clearData(BuildContext context) async {
@@ -14,21 +17,26 @@ class Logout extends StatelessWidget {
       DatabaseHelper databaseHelper = DatabaseHelper();
       await databaseHelper.initDatabase();
 
+      // Inisialisasi services
+      final penjualanTiketService = PenjualanTiketService.instance;
+      final premiHarianKruService = PremiHarianKruService();
+      final setoranKruService = SetoranKruService();
+      final premiPosisiKruService = PremiPosisiKruService();
+      final tagService = TagTransaksiService();
+
       await databaseHelper.clearUsersTable();
       await databaseHelper.clearKruBis();
       await databaseHelper.clearListKota();
-      await PenjualanTiketService.instance.clearPenjualanTiket();
+      await penjualanTiketService.clearPenjualanTiket();
       await databaseHelper.clearResumeTransaksi();
-      await databaseHelper.clearPremiHarianKru();
-      await databaseHelper.clearPremiPosisiKru();
+      await premiHarianKruService.clearPremiHarianKru();
+      await setoranKruService.clearSetoran();
+      await premiPosisiKruService.clearPremiPosisiKru();
       await databaseHelper.clearInspectionItems();
       await databaseHelper.clearJenisPaket();
       await databaseHelper.clearOrderBagasi();
       await databaseHelper.clearOrderBagasiStatus();
       await databaseHelper.clearMetodePembayaran();
-
-      // Gunakan TagTransaksiService untuk clear table m_tag_transaksi
-      TagTransaksiService tagService = TagTransaksiService();
       await tagService.clearTagTransaksi();
 
       await databaseHelper.closeDatabase();

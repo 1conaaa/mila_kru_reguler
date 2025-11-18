@@ -1,8 +1,16 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:mila_kru_reguler/models/setoranKru_model.dart';
+import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
+import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
+import 'package:mila_kru_reguler/services/setoranKru_service.dart';
+import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
+import 'package:mila_kru_reguler/services/data_pusher_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 
@@ -13,28 +21,53 @@ class PremiKru extends StatefulWidget {
 
 class _PremiKruState extends State<PremiKru> {
   DatabaseHelper databaseHelper = DatabaseHelper();
+  final PremiHarianKruService premiHarianKruService = PremiHarianKruService();
+  final SetoranKruService setoranKruService = SetoranKruService();
+  final TagTransaksiService tagTransaksiService = TagTransaksiService();
+  final DataPusherService dataPusherService = DataPusherService();
+
   List<Map<String, dynamic>> listPremiHarianKru = [];
-  List<Map<String, dynamic>> listResumeTransaksi = [];
-  late Future<List<Map<String, dynamic>>> resumeTransaksi; // Initialize as late
+  late Future<List<SetoranKru>> setoranKruData;
   bool _isPushingData = false;
   double _pushDataProgress = 0.0;
   double _uploadProgress = 0.0;
 
   NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp');
 
-  get id_bus => null;
-
-  get id_transaksi => null;
-
-  get idTransaksiGenerated => null;
+  DateTime? _selectedDate;
 
   @override
   void initState() {
     super.initState();
-    resumeTransaksi = databaseHelper.queryResumeTransaksi(); // Initialize the variable here
+    setoranKruData = setoranKruService.getAllSetoran();
     _getListPremiKru();
-    _getResumeTransaksi();
     _loadLastPremiKru();
+  }
+
+  // Method untuk mendapatkan semua data tag transaksi
+  Future<List<TagTransaksi>> _getAllTagTransaksi() async {
+    try {
+      return await tagTransaksiService.getAllTagTransaksi();
+    } catch (e) {
+      print('Error getting tag transaksi: $e');
+      return [];
+    }
+  }
+
+  // Method untuk mendapatkan nama tag dari list berdasarkan idTagTransaksi
+  String _getNamaTagFromList(int? idTagTransaksi, List<TagTransaksi> tagList) {
+    if (idTagTransaksi == null) return '-';
+
+    try {
+      final tag = tagList.firstWhere(
+            (tag) => tag.id == idTagTransaksi,
+        orElse: () => TagTransaksi(id: 0, kategoriTransaksi: '', nama: 'Tag Tidak Ditemukan'),
+      );
+
+      return tag.nama ?? 'Tag $idTagTransaksi';
+    } catch (e) {
+      return 'Tag $idTagTransaksi';
+    }
   }
 
   void _updateUploadProgress(double progress) {
@@ -50,7 +83,7 @@ class _PremiKruState extends State<PremiKru> {
   }
 
   Future<void> _getListPremiKru() async {
-    List<Map<String, dynamic>> premiKruData = await databaseHelper.getPremiHarianKru();
+    List<Map<String, dynamic>> premiKruData = await premiHarianKruService.getPremiHarianKruWithKruBis();
     setState(() {
       listPremiHarianKru = premiKruData;
     });
@@ -61,364 +94,288 @@ class _PremiKruState extends State<PremiKru> {
     }
   }
 
-  void _getResumeTransaksi() async {
-    List<Map<String, dynamic>> resumeData = await databaseHelper.queryResumeTransaksi();
+  // Method untuk refresh data setoran kru
+  Future<void> _refreshSetoranKruData() async {
     setState(() {
-      listResumeTransaksi = resumeData;
+      setoranKruData = setoranKruService.getAllSetoran();
     });
-    // print('cek resume : $resumeData');
-    if (listResumeTransaksi.isEmpty) {
-      print('Tidak ada data dalam tabel resume_transaksi.');
-    } else {
-      print('Data ditemukan dalam tabel resume_transaksi.');
-    }
-
-    if (listResumeTransaksi.isNotEmpty) {
-      List<String> keys = [];
-
-      for (var item in listResumeTransaksi) {
-        item.forEach((key, value) {
-          keys.add(key);
-          // print('$key: $value');
-        });
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('id_resume', item['id']);
-        await prefs.setInt('id_user_login', item['id_user']);
-        print('id user ${item['id_user']}');
-        await prefs.setInt('id_bus', item['id_bus']);
-        await prefs.setString('no_pol', item['no_pol']);
-        await prefs.setInt('id_group', item['id_group']);
-        await prefs.setInt('id_garasi', item['id_garasi']);
-        await prefs.setInt('id_company', item['id_company']);
-        // await prefs.setString('kode_trayek', item['kode_trayek']);
-        await prefs.setInt('jumlah_tiket', item['jumlah_tiket']);
-        await prefs.setDouble('km_masuk_garasi', item['km_masuk_garasi']);
-
-        String pendapatanRegulerFormatted = listResumeTransaksi[0]['pendapatan_reguler'].replaceAll('.', '');
-        pendapatanRegulerFormatted = pendapatanRegulerFormatted.replaceAll(',', '.');
-        double pendapatan_reguler = double.parse(pendapatanRegulerFormatted);
-        await prefs.setDouble('pendapatan_reguler', pendapatan_reguler);
-
-        String pendapatanOnlineFormatted = listResumeTransaksi[0]['pendapatan_online'].replaceAll('.', '');
-        pendapatanOnlineFormatted = pendapatanOnlineFormatted.replaceAll(',', '.');
-        double pendapatan_online = double.parse(pendapatanOnlineFormatted);
-        await prefs.setDouble('pendapatan_online', pendapatan_online);
-
-        await prefs.setDouble('pendapatan_bagasi_perusahaan', item['pendapatan_bagasi_perusahaan']);
-        await prefs.setDouble('pendapatan_bagasi_kru', item['pendapatan_bagasi_kru']);
-        await prefs.setDouble('biaya_perbaikan', item['biaya_perbaikan']);
-        await prefs.setString('keterangan_perbaikan', item['keterangan_perbaikan']);
-        await prefs.setDouble('biaya_tol', item['biaya_tol']);
-        await prefs.setDouble('biaya_tpr', item['biaya_tpr']);
-        await prefs.setDouble('liter_solar', item['liter_solar']);
-        await prefs.setDouble('biaya_solar', item['biaya_solar']);
-        await prefs.setDouble('biaya_perpal', item['biaya_perpal']);
-
-        String biaya_premi_extraFormatted = listResumeTransaksi[0]['biaya_premi_extra'].replaceAll('.', '');
-        biaya_premi_extraFormatted = biaya_premi_extraFormatted.replaceAll(',', '.');
-        double biaya_premi_extra = double.parse(biaya_premi_extraFormatted);
-        await prefs.setDouble('biaya_premi_extra', biaya_premi_extra);
-
-        String biaya_premi_disetorFormatted = listResumeTransaksi[0]['biaya_premi_disetor'].replaceAll('.', '');
-        biaya_premi_disetorFormatted = biaya_premi_disetorFormatted.replaceAll(',', '.');
-        double biaya_premi_disetor = double.parse(biaya_premi_disetorFormatted);
-        await prefs.setDouble('biaya_premi_disetor', biaya_premi_disetor);
-
-        String pendapatan_bersihFormatted = listResumeTransaksi[0]['pendapatan_bersih'].replaceAll('.', '');
-        pendapatan_bersihFormatted = pendapatan_bersihFormatted.replaceAll(',', '.');
-        double pendapatan_bersih = double.parse(pendapatan_bersihFormatted);
-        await prefs.setDouble('pendapatan_bersih', pendapatan_bersih);
-
-        String pendapatan_disetorFormatted = listResumeTransaksi[0]['pendapatan_disetor'].replaceAll('.', '');
-        pendapatan_disetorFormatted = pendapatan_disetorFormatted.replaceAll(',', '.');
-        double pendapatan_disetor = double.parse(pendapatan_disetorFormatted);
-        await prefs.setDouble('pendapatan_disetor', pendapatan_disetor);
-
-        await prefs.setString('tanggal_transaksi', item['tanggal_transaksi']);
-
-      }
-
-    }
-
   }
 
-  void _pushDataPremiHarianKru() async {
-
-    if (_selectedDate != null) {
-      // Mulai proses pengiriman data
-      // Mulai proses pengiriman data
-      String tanggal_transaksi = DateFormat('yyyy-MM-dd').format(_selectedDate!);
-      print("Data dikirim untuk tanggal: $tanggal_transaksi");
-
-      setState(() {
-        _isPushingData = true;
-        _uploadProgress = 0.0;
-      });
-
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? token = prefs.getString('token');
-      await databaseHelper.initDatabase();
-      int id_user_login = await prefs.getInt('id_user_login') ?? 0;
-      print('id_user_login $id_user_login');
-      int id_group = await prefs.getInt('id_group') ?? 0;
-      int id_bus = await prefs.getInt('id_bus') ?? 0;
-      String no_pol = await prefs.getString('no_pol') ?? '';
-      int id_garasi = await prefs.getInt('id_garasi') ?? 0;
-      int id_company = await prefs.getInt('id_company') ?? 0;
-      // String kode_trayek = await prefs.getString('kode_trayek') ?? '';
-      int jumlah_tiket = await prefs.getInt('jumlah_tiket') ?? 0;
-      double km_masuk_garasi = await prefs.getDouble('km_masuk_garasi') ?? 0;
-      double pendapatan_reguler = await prefs.getDouble('pendapatan_reguler') ?? 0;
-      double pendapatan_online = await prefs.getDouble('pendapatan_online') ?? 0;
-      double pendapatan_bagasi_perusahaan = await prefs.getDouble('pendapatan_bagasi_perusahaan') ?? 0;
-      double pendapatan_bagasi_kru = await prefs.getDouble('pendapatan_bagasi_kru') ?? 0;
-      double biaya_perbaikan = await prefs.getDouble('biaya_perbaikan') ?? 0;
-      String keterangan_perbaikan = await prefs.getString('keterangan_perbaikan') ?? '';
-      double biaya_tol = await prefs.getDouble('biaya_tol') ?? 0;
-      double biaya_tpr = await prefs.getDouble('biaya_tpr') ?? 0;
-      double liter_solar = await prefs.getDouble('liter_solar') ?? 0;
-      double biaya_solar = await prefs.getDouble('biaya_solar') ?? 0;
-      double biaya_perpal = await prefs.getDouble('biaya_perpal') ?? 0;
-      double biaya_premi_extra = await prefs.getDouble('biaya_premi_extra') ?? 0;
-      double biaya_premi_disetor = await prefs.getDouble('biaya_premi_disetor') ?? 0;
-      double pendapatan_bersih = await prefs.getDouble('pendapatan_bersih') ?? 0;
-      double pendapatan_disetor = await prefs.getDouble('pendapatan_disetor') ?? 0;
-      // String tanggal_transaksi = await prefs.getString('tanggal_transaksi') ?? '';
-
-
-      print('object : $pendapatan_reguler ,  $_selectedDate');
-      try {
-        // Mendapatkan id_transaksi terakhir dari table t_transaksi_detail
-        String apiUrlLastId = 'https://apimila.sysconix.id/api/lastidtransaksi';
-        String queryParamsLastId = '?kode_transaksi=KEUBIS';
-
-        String apiUrlWithParamsqueryParamsLastId = apiUrlLastId + queryParamsLastId;
-        final responseLastId = await http.get(
-          Uri.parse(apiUrlWithParamsqueryParamsLastId),
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        );
-        print("object $apiUrlWithParamsqueryParamsLastId");
-        if (responseLastId.statusCode == 200 || responseLastId.statusCode == 201) {
-          final jsonResponseLastId = json.decode(responseLastId.body);
-
-          print('json response $jsonResponseLastId');
-          if (jsonResponseLastId != null && jsonResponseLastId['success'] == true) {
-            final lastid = jsonResponseLastId['lastid'];
-            final kode_transaksi = jsonResponseLastId['kode_transaksi'];
-            if (lastid != null) {
-              final idTransaksi = lastid['id_transaksi'];
-              await prefs.setString('idTransaksi', idTransaksi);
-              print('ID Transaksi: $idTransaksi');
-
-              String idTransaksiSubstring = idTransaksi.substring(6);
-              int idTransaksiNumber = int.parse(idTransaksiSubstring);
-              int idtransaksi = idTransaksiNumber + 1;
-              String idTransaksiGenerated = 'KEUBIS' + idtransaksi.toString();
-
-              print('1.ID Transaksi Generate: $idTransaksiGenerated');
-
-              // Lanjutkan dengan mengirim data premi harian kru ke server
-              await _sendPremiHarianKruData(tanggal_transaksi,idTransaksiGenerated, token);
-              await _sendResumeTransaksi(tanggal_transaksi,idTransaksiGenerated, token);
-            } else {
-              print('Error: \'kode_transaksi\' bernilai null atau tidak ada dalam respons JSON.');
-              int idTransaksiNumber = 0;
-              int idtransaksi = idTransaksiNumber + 1;
-              String idTransaksiGenerated = 'KEUBIS' + idtransaksi.toString();
-
-              print('2.ID Transaksi Generate: $idTransaksiGenerated');
-
-              // Lanjutkan dengan mengirim data premi harian kru ke server
-              await _sendPremiHarianKruData(tanggal_transaksi,idTransaksiGenerated, token);
-              await _sendResumeTransaksi(tanggal_transaksi,idTransaksiGenerated, token);
-
-            }
-          } else {
-            print('2. Tidak ada data  resume transaksi dengan status \'N\'');
-          }
-
-        } else {
-          print('Gagal menampilkan data. Status code: ${responseLastId.statusCode}');
-        }
-
-      } catch (e) {
-        print('Terjadi kesalahan saat menampilkan data: $e');
-      } finally {
-        await databaseHelper.closeDatabase();
-      }
-      setState(() {
-        _isPushingData = false;
-        _pushDataProgress = 0.0;
-      });
-    } else {
-      // Tampilkan pesan jika tanggal belum dipilih
+  Future<void> _pushDataPremiHarianKru() async {
+    if (_selectedDate == null) {
       print("Silakan pilih tanggal terlebih dahulu.");
-      // Tampilkan pesan jika tanggal belum dipilih
       _showAlertDialog(context, "Silakan pilih tanggal terlebih dahulu.");
+      return;
     }
 
-  }
+    setState(() {
+      _isPushingData = true;
+      _uploadProgress = 0.0;
+    });
 
-  Future<void> _sendPremiHarianKruData(String tanggal_transaksi,String idTransaksiGenerated, String? token) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String noPol = await prefs.getString('noPol') ?? '';
-    String kodeTrayek = await prefs.getString('kode_trayek') ?? '';
-
-    List<Map<String, dynamic>> premiKruData = await databaseHelper.getPremiHarianKruByStatus('N');
-
-    if (premiKruData.isNotEmpty) {
-      print('premi kru :$premiKruData');
-      // Kirim data penjualan ke server
-      int idBus = await prefs.getInt('idBus') ?? 0;
-      String apiUrl = 'https://apimila.sysconix.id/api/premihariankru';
-
-      int totalDataPremiKru = premiKruData.length;
-      int dataSent = 0;
-      for (var row in premiKruData) {
-        int id_user = row['id_user'];
-        int id_group = row['id_group'];
-        String nama_kru = row['nama_kru'];
-        double persen_premi_disetor = row['persen_premi_disetor'];
-        double nominal_premi_disetor = row['nominal_premi_disetor'];
-        String tanggal_simpan = row['tanggal_simpan'];
-        String status = row['status'];
-
-        double progress = dataSent / totalDataPremiKru;
-        _updateUploadProgress(progress);
-
-        String queryParams = '?id_transaksi=${Uri.encodeFull(idTransaksiGenerated)}'
-            '&no_pol=${Uri.encodeFull(noPol)}'
-            '&id_bus=$idBus'
-            '&kode_trayek=${Uri.encodeFull(kodeTrayek)}'
-            '&id_personil=$id_user'
-            '&id_group=$id_group'
-            '&persen=$persen_premi_disetor'
-            '&nominal=$nominal_premi_disetor'
-            '&tgl_transaksi=${Uri.encodeFull(tanggal_simpan)}';
-
-        String apiUrlWithParams = apiUrl + queryParams;
-        print('object 1 : $apiUrlWithParams');
-        try {
-          final response = await http.post(Uri.parse(apiUrlWithParams),
-            headers: {
-              'Authorization': 'Bearer $token',
-            },
-          );
-
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            int id = row['id'];
-            await databaseHelper.updatePremiHarianKruStatus(id, 'Y');
-            print('Berhasil mengirim data premi harian kru. Status code: ${response.statusCode}');
-            dataSent++;
-            double progress = dataSent / totalDataPremiKru;
-            setState(() {
-              _pushDataProgress = progress;
-            });
-          } else {
-            print('Gagal mengirim data premi harian kru. Status code: ${response.statusCode}');
-          }
-        } catch (e) {
-          print('Terjadi kesalahan saat mengirim data premi harian kru: $e');
-        }
-        dataSent++;
-      }
-      await _getListPremiKru();
-    } else {
-      print('Tidak ada data premi harian kru dengan status \'N\'');
-    }
-  }
-
-  Future<void> _sendResumeTransaksi(String tanggal_transaksi,String idTransaksiGenerated, String? token) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String noPol = await prefs.getString('noPol') ?? '';
-    String kodeTrayek = await prefs.getString('kode_trayek') ?? '';
-    // String tanggal_transaksi = await prefs.getString('tanggal_transaksi') ?? '';
-    int id_bus = await prefs.getInt('id_bus') ?? 0;
-    int id_user_login = await prefs.getInt('id_user_login') ?? 0;
-    int id_group = await prefs.getInt('id_group') ?? 0;
-    int id_garasi = await prefs.getInt('id_garasi') ?? 0;
-    int id_company = await prefs.getInt('id_company') ?? 0;
-    double km_masuk_garasi = await prefs.getDouble('km_masuk_garasi') ?? 0;
-    int jumlah_tiket = await prefs.getInt('jumlah_tiket') ?? 0;
-    double pendapatan_reguler = await prefs.getDouble('pendapatan_reguler') ?? 0;
-    double pendapatan_online = await prefs.getDouble('pendapatan_online') ?? 0;
-    double pendapatan_bagasi_perusahaan = await prefs.getDouble('pendapatan_bagasi_perusahaan') ?? 0;
-    double pendapatan_bagasi_kru = await prefs.getDouble('pendapatan_bagasi_kru') ?? 0;
-    double biaya_perbaikan = await prefs.getDouble('biaya_perbaikan') ?? 0;
-    String keterangan_perbaikan = await prefs.getString('keterangan_perbaikan') ?? '';
-    double biaya_tol = await prefs.getDouble('biaya_tol') ?? 0;
-    double biaya_tpr = await prefs.getDouble('biaya_tpr') ?? 0;
-    double liter_solar = await prefs.getDouble('liter_solar') ?? 0;
-    double biaya_solar = await prefs.getDouble('biaya_solar') ?? 0;
-    double biaya_perpal = await prefs.getDouble('biaya_perpal') ?? 0;
-    double biaya_premi_extra = await prefs.getDouble('biaya_premi_extra') ?? 0;
-    double biaya_premi_disetor = await prefs.getDouble('biaya_premi_disetor') ?? 0;
-    double pendapatan_bersih = await prefs.getDouble('pendapatan_bersih') ?? 0;
-    double pendapatan_disetor = await prefs.getDouble('pendapatan_disetor') ?? 0;
-
-    String apiUrlResumeTransaksi = 'https://apimila.sysconix.id/api/resumesetoranbisharian';
-    String queryParamsResumeTransaksi = '?tgl_transaksi=${Uri.encodeFull(tanggal_transaksi)}'
-        '&id_transaksi=${Uri.encodeFull(idTransaksiGenerated)}'
-        '&no_pol=${Uri.encodeFull(noPol)}'
-        '&id_bus=$id_bus'
-        '&kode_trayek=${Uri.encodeFull(kodeTrayek)}'
-        '&id_personil=$id_user_login'
-        '&id_group=$id_group'
-        '&id_garasi=$id_garasi'
-        '&id_company=$id_company'
-        '&km_pulang=$km_masuk_garasi'
-        '&jumlah_tiket=$jumlah_tiket'
-        '&pendapatan=$pendapatan_reguler'
-        '&tiket_online=$pendapatan_online'
-        '&bagasi=$pendapatan_bagasi_perusahaan'
-        '&bagasi_kru=$pendapatan_bagasi_kru'
-        '&perbaikan=$biaya_perbaikan'
-        '&keterangan_perbaikan=${Uri.encodeFull(keterangan_perbaikan)}'
-        '&tol=$biaya_tol'
-        '&tpr=$biaya_tpr'
-        '&liter_solar=$liter_solar'
-        '&solar=$biaya_solar'
-        '&perpal=$biaya_perpal'
-        '&premi_extra=$biaya_premi_extra'
-        '&premi_disetor=$biaya_premi_disetor'
-        '&setoran=$pendapatan_disetor'
-        '&bersih=$pendapatan_bersih';
-
-    String apiUrlWithParamsResumeTransaksi = apiUrlResumeTransaksi + queryParamsResumeTransaksi;
-    print('object 2 : $apiUrlWithParamsResumeTransaksi');
     try {
-      final response = await http.post(
-        Uri.parse(apiUrlWithParamsResumeTransaksi),
-        headers: {
-          'Authorization': 'Bearer $token',
+      // 1️⃣ Kirim premi harian kru
+      await dataPusherService.pushDataPremiHarianKru(
+        selectedDate: _selectedDate!,
+        onProgress: _updateUploadProgress,
+        onSuccess: () {
+          _getListPremiKru();
+          _refreshSetoranKruData();
         },
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        int id = await prefs.getInt('id_resume') ?? 0;
-        await databaseHelper.updateResumeTransaksiStatus(id, 'Y');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Berhasil mengirim data resume transaksi. Status code: ${response.statusCode}'),
-            duration: Duration(seconds: 2), // Durasi tampilan SnackBar
-          ),
-        );
-        await PenjualanTiketService.instance.clearPenjualanTiket();
-        await databaseHelper.clearResumeTransaksi();
-        await databaseHelper.clearPremiHarianKru();
-      } else {
-        print('Gagal mengirim data  resume transaksi. Status code: ${response.statusCode}');
+      // 2️⃣ Ambil token dan idTransaksi dari SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      String? idTransaksi = prefs.getString('idTransaksi');
+
+      if (idTransaksi == null) {
+        // fallback generate
+        idTransaksi = "KEUBIS${DateTime.now().millisecondsSinceEpoch}";
+        prefs.setString('idTransaksi', idTransaksi);
+        print("Using fallback transaction ID: $idTransaksi");
       }
+
+      // 3️⃣ Ambil data setoran kru lokal yang status 'N'
+      final List<SetoranKru> setoranKruToSend =
+      await SetoranKruService().getAllSetoran();
+      final List<SetoranKru> filteredSetoran =
+      setoranKruToSend.where((e) => e.status == 'N').toList();
+
+      if (filteredSetoran.isEmpty) {
+        print('Tidak ada data setoran kru untuk dikirim.');
+        return;
+      }
+
+      // 4️⃣ Persiapkan rows JSON
+      final List<Map<String, dynamic>> rowsList = filteredSetoran.map((d) {
+        return {
+          'tgl_transaksi': d.tglTransaksi,
+          'km_pulang': d.kmPulang ?? '',
+          'rit': d.rit,
+          'no_pol': d.noPol,
+          'id_bus': d.idBus,
+          'kode_trayek': d.kodeTrayek,
+          'id_personil': d.idPersonil,
+          'id_group': d.idGroup,
+          'jumlah': d.jumlah ?? '',
+          'coa': d.coa ?? '',
+          'nilai': d.nilai,
+          'id_tag_transaksi': d.idTagTransaksi,
+          'status': d.status,
+          'keterangan': d.keterangan ?? '',
+          // jika mau file diikutkan bisa ditambahkan url/file path
+        };
+      }).toList();
+
+      // 5️⃣ Definisikan callback untuk update status
+      Future<void> updateStatusCallback(String idTransaksi) async {
+        print('🔄 Memulai update status untuk id_transaksi: $idTransaksi');
+        for (var s in filteredSetoran) {
+          try {
+            await SetoranKruService().updateSetoran(s.copyWith(status: 'Y'));
+            print('✅ Status updated untuk setoran ID: ${s.id}');
+          } catch (e) {
+            print('❌ Gagal update status untuk setoran ID: ${s.id} - Error: $e');
+          }
+        }
+        print('✅ Semua status berhasil diupdate ke Y');
+      }
+
+      // 6️⃣ Kirim data ke API dengan callback
+      final response = await kirimSetoranKruMobile(
+        idTransaksi: idTransaksi,
+        token: token!,
+        rows: rowsList,
+        files: filteredSetoran,
+        onSuccessCallback: updateStatusCallback, // Tambahkan callback di sini
+      );
+
+      print('Setoran kru berhasil dikirim: $response');
+
+      // 7️⃣ Tidak perlu update status lagi di sini karena sudah dilakukan di callback
+      print('✅ Data berhasil dikirim dan status sudah diupdate via callback');
+
     } catch (e) {
-      print('Terjadi kesalahan saat mengirim data resume transaksi: $e');
+      print('Error pushing data: $e');
+      _showAlertDialog(context, "Terjadi kesalahan saat mengirim data: $e");
+    } finally {
+      setState(() {
+        _isPushingData = false;
+        _uploadProgress = 0.0;
+      });
     }
   }
 
-  DateTime? _selectedDate;
+// ===========================================
+// Fungsi kirim data ke API Lumen
+// ===========================================
+  Future<Map<String, dynamic>> kirimSetoranKruMobile({
+    required String idTransaksi,
+    required String token,
+    required List<Map<String, dynamic>> rows,
+    required List<SetoranKru> files,
+    required Function(String) onSuccessCallback,
+  }) async {
+    const String apiUrl = 'https://apimila.sysconix.id/api/simpansetorankrumobile';
 
-  // Fungsi untuk menampilkan Date Picker dan memilih tanggal
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+
+      // Add Authorization
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Content-Type'] = 'multipart/form-data';
+
+      // Kirim id_transaksi
+      request.fields['id_transaksi'] = idTransaksi;
+
+      // Kirim rows sebagai JSON string - pastikan format benar
+      List<Map<String, dynamic>> cleanedRows = [];
+      for (var row in rows) {
+        // Bersihkan data dari nilai null atau format yang tidak diinginkan
+        Map<String, dynamic> cleanedRow = {};
+        row.forEach((key, value) {
+          if (value != null) {
+            cleanedRow[key] = value;
+          }
+        });
+        cleanedRows.add(cleanedRow);
+      }
+
+      request.fields['rows'] = jsonEncode(cleanedRows);
+
+      // Debug: Print data yang dikirim
+      print('📤 Data yang dikirim ke API:');
+      print('ID Transaksi: $idTransaksi');
+      print('Jumlah rows: ${cleanedRows.length}');
+      print('Rows JSON: ${jsonEncode(cleanedRows)}');
+
+      // Kirim file jika ada - PERBAIKI BAGIAN INI
+      for (int i = 0; i < files.length; i++) {
+        final d = files[i];
+        if (d.fupload != null && d.fupload!.isNotEmpty && File(d.fupload!).existsSync()) {
+          try {
+            var multipartFile = await http.MultipartFile.fromPath(
+                'file_name[$i]',
+                d.fupload!
+            );
+            request.files.add(multipartFile);
+            print('📎 File $i dilampirkan: ${d.fupload}');
+          } catch (e) {
+            print('⚠️  Gagal melampirkan file $i: ${d.fupload} - Error: $e');
+          }
+        } else {
+          print('⚠️  File $i tidak valid atau tidak ditemukan: ${d.fupload}');
+        }
+      }
+
+      print('🚀 Mengirim ${cleanedRows.length} data ke API...');
+
+      // Tambahkan timeout
+      var streamedResponse = await request.send().timeout(
+        Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Request timeout setelah 30 detik');
+        },
+      );
+
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      Map<String, dynamic> responseData;
+      try {
+        responseData = jsonDecode(response.body);
+      } catch (e) {
+        throw Exception('Gagal parsing response JSON: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        if (responseData['success'] == true) {
+          print('✅ Berhasil mengirim data setoran kru');
+
+          // Panggil callback untuk update status = 'Y'
+          try {
+            await onSuccessCallback(idTransaksi);
+            print('✅ Status berhasil diupdate ke Y untuk id_transaksi: $idTransaksi');
+          } catch (e) {
+            print('⚠️  Berhasil kirim data tapi gagal update status: $e');
+            // Tidak rethrow error update status, karena data sudah berhasil dikirim ke server
+          }
+
+          return responseData;
+        } else {
+          // Handle case where status code 200 but success: false
+          String errorMessage = responseData['message'] ?? 'Unknown error from API';
+          throw Exception('API response success: false - $errorMessage');
+        }
+      } else if (response.statusCode == 401) {
+        throw Exception('Unauthorized - Token mungkin expired atau tidak valid');
+      } else if (response.statusCode == 422) {
+        // Validasi error - berikan informasi lebih detail
+        String validationError = responseData['message'] ?? 'Data validation failed';
+        String errorDetails = responseData['errors'] != null
+            ? ' - Details: ${responseData['errors']}'
+            : '';
+        throw Exception('Validasi gagal: $validationError$errorDetails');
+      } else if (response.statusCode == 500) {
+        throw Exception('Server error (500) - Silakan coba lagi nanti');
+      } else {
+        throw Exception('HTTP Error ${response.statusCode}: ${response.body}');
+      }
+    } on TimeoutException catch (e) {
+      print('❌ Timeout: $e');
+      throw Exception('Timeout - Koneksi terlalu lama, periksa koneksi internet Anda');
+    } on SocketException catch (e) {
+      print('❌ Socket Error: $e');
+      throw Exception('Koneksi jaringan terputus - Periksa koneksi internet Anda');
+    } catch (e) {
+      print('❌ Error dalam kirimSetoranKruMobile: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateStatusSetoranKru(String idTransaksi) async {
+    final db = await DatabaseHelper().database;
+
+    try {
+      // Update status menjadi 'Y' hanya untuk field yang ada di database
+      int updatedRows = await db.update(
+        't_setoran_kru',
+        {
+          'status': 'Y',
+          'updated_at': DateTime.now().toIso8601String(),
+        },
+        where: 'id_transaksi = ? AND status = ?',
+        whereArgs: [idTransaksi, 'N'], // Hanya update yang belum terkirim
+      );
+
+      print('✅ Updated $updatedRows rows dengan status Y untuk id_transaksi: $idTransaksi');
+
+      if (updatedRows == 0) {
+        print('⚠️  Tidak ada data yang diupdate - mungkin sudah berstatus Y');
+      }
+    } catch (e) {
+      print('❌ Gagal update status di database: $e');
+
+      // Fallback: coba update tanpa field yang problematic
+      try {
+        int updatedRows = await db.update(
+          't_setoran_kru',
+          {'status': 'Y'},
+          where: 'id_transaksi = ?',
+          whereArgs: [idTransaksi],
+        );
+        print('✅ Fallback update berhasil: $updatedRows rows');
+      } catch (e2) {
+        print('❌ Fallback update juga gagal: $e2');
+        throw e; // Tetap throw error original
+      }
+    }
+  }
+
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -452,16 +409,13 @@ class _PremiKruState extends State<PremiKru> {
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
-    // Menambahkan LinearProgressIndicator atau CircularProgressIndicator
     if (_isPushingData) {
       return Stack(
         children: [
           Container(
-            color: Colors.grey.withOpacity(0.5), // Latar belakang abu-abu transparan
+            color: Colors.grey.withOpacity(0.5),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -476,11 +430,10 @@ class _PremiKruState extends State<PremiKru> {
         ],
       );
     } else {
-      // Tampilkan widget lain jika tidak sedang mengirim data
       return Scaffold(
         appBar: AppBar(
           title: Text('Data Premi Disetor Harian Kru'),
-          automaticallyImplyLeading: false, // Menghilangkan icon arrow back
+          automaticallyImplyLeading: false,
           actions: [
             IconButton(
               icon: Icon(Icons.calendar_today),
@@ -496,11 +449,19 @@ class _PremiKruState extends State<PremiKru> {
               },
               tooltip: 'Kirim Data',
             ),
+            IconButton(
+              icon: Icon(Icons.refresh),
+              onPressed: () {
+                _refreshSetoranKruData();
+              },
+              tooltip: 'Refresh Data Setoran',
+            ),
           ],
         ),
         body: SingleChildScrollView(
           child: Column(
             children: [
+              // Tabel Data Premi Harian Kru
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
@@ -510,24 +471,24 @@ class _PremiKruState extends State<PremiKru> {
                         child: Center(
                           child: Text('Kru', style: TextStyle(fontSize: 18)),
                         ),
-                      ), // Lebarkan kolom "Kru" dengan menggunakan Expanded
+                      ),
                     ),
                     DataColumn(
                       label: Expanded(
                         child: Center(
                           child: Text('%', style: TextStyle(fontSize: 18)),
                         ),
-                      ), // Lebarkan kolom "Kru" dengan menggunakan Expanded
-                    ),
-                    DataColumn(
-                      label: Center(
-                        child: Text('Nominal', style: TextStyle(fontSize: 18)), // Ubah ukuran font menjadi 18
                       ),
-                      numeric: true, // Mengaktifkan rata kanan pada kolom
                     ),
                     DataColumn(
                       label: Center(
-                        child: Text('Status', style: TextStyle(fontSize: 18)), // Ubah ukuran font menjadi 18
+                        child: Text('Nominal', style: TextStyle(fontSize: 18)),
+                      ),
+                      numeric: true,
+                    ),
+                    DataColumn(
+                      label: Center(
+                        child: Text('Status', style: TextStyle(fontSize: 18)),
                       ),
                     ),
                   ],
@@ -537,25 +498,25 @@ class _PremiKruState extends State<PremiKru> {
                         DataCell(
                           Text(
                             item['nama_kru'].toString(),
-                            style: TextStyle(fontSize: 16), // Ubah ukuran font menjadi 16
+                            style: TextStyle(fontSize: 16),
                           ),
                         ),
                         DataCell(
                           Text(
                             item['persen_premi'].toString(),
-                            style: TextStyle(fontSize: 16), // Ubah ukuran font menjadi 16
+                            style: TextStyle(fontSize: 16),
                           ),
                         ),
                         DataCell(
                           Text(
                             formatter.format(item['nominal_premi_disetor']),
-                            style: TextStyle(fontSize: 16), // Ubah ukuran font menjadi 16
+                            style: TextStyle(fontSize: 16),
                           ),
                         ),
                         DataCell(
                           Text(
                             item['status'].toString(),
-                            style: TextStyle(fontSize: 16), // Ubah ukuran font menjadi 16
+                            style: TextStyle(fontSize: 16),
                           ),
                         ),
                       ],
@@ -564,111 +525,88 @@ class _PremiKruState extends State<PremiKru> {
                 ),
               ),
               SizedBox(height: 20),
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: resumeTransaksi,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(), // Display a progress indicator while loading the data
-                    );
-                  } else if (snapshot.hasError) {
-                    return Center(
-                      child: Text('Error: ${snapshot.error}'), // Display an error message if there's an error
-                    );
-                  } else if (snapshot.hasData) {
-                    List<Map<String, dynamic>> resumeData = snapshot.data!;
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(), // Disable ListView's own scrolling
-                            itemCount: resumeData.length,
-                            itemBuilder: (context, index) {
-                              return ListTile(
-                                title: Padding(
-                                  padding: EdgeInsets.only(left: 20.0),
-                                  child: Text(
-                                    'Data Rekap Pendapatan Pengeluaran Harian:',
-                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                subtitle: Padding(
-                                  padding: EdgeInsets.only(left: 20.0), // Menggeser ke kanan sebanyak 20 piksel
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      SizedBox(height: 20),
-                                      Text('ID User: ${resumeData[index]['id_user'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Status: ${resumeData[index]['status'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Nomor Polisi: ${resumeData[index]['no_pol'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Kode Trayek: ${resumeData[index]['kode_trayek'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('KM Masuk Garasi: ${resumeData[index]['km_masuk_garasi'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Jumlah Tiket: ${resumeData[index]['jumlah_tiket'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Pendapatan Reguler: ${resumeData[index]['pendapatan_reguler'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Pendapatan Online: ${resumeData[index]['pendapatan_online'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Pendapatan Bagasi Perusahaan: ${resumeData[index]['pendapatan_bagasi_perusahaan'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Pendapatan Bagasi Kru: ${resumeData[index]['pendapatan_bagasi_kru'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Perbaikan: ${resumeData[index]['biaya_perbaikan'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Keterangan Perbaikan: ${resumeData[index]['keterangan_perbaikan'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Tol: ${resumeData[index]['biaya_tol'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Operasi Harian Bus: ${resumeData[index]['biaya_tpr'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Liter Solar: ${resumeData[index]['liter_solar'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Solar: ${resumeData[index]['biaya_solar'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Perpal: ${resumeData[index]['biaya_perpal'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Premi Extra: ${resumeData[index]['biaya_premi_extra'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Premi Disetor: ${resumeData[index]['biaya_premi_disetor'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Pendapatan Bersih: ${resumeData[index]['pendapatan_bersih'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Pendapatan Disetor: ${resumeData[index]['pendapatan_disetor'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Tanggal Transaksi: ${resumeData[index]['tanggal_transaksi'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                      Text('Status: ${resumeData[index]['status'].toString()}', style: TextStyle(fontSize: 18)),
-                                      SizedBox(height: 10),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  } else {
-                    return Center(
-                      child: Text('No data available'), // Display a message when there's no data
-                    );
-                  }
-                },
-              ),
 
+              // Data Setoran Kru dari Service
+              Container(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Data Setoran Kru',
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 10),
+                    FutureBuilder<List<SetoranKru>>(
+                      future: setoranKruData,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        } else if (snapshot.hasError) {
+                          return Center(
+                            child: Text('Error: ${snapshot.error}'),
+                          );
+                        } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                          List<SetoranKru> setoranData = snapshot.data!;
+
+                          return FutureBuilder<List<TagTransaksi>>(
+                            future: _getAllTagTransaksi(),
+                            builder: (context, tagSnapshot) {
+                              if (tagSnapshot.connectionState == ConnectionState.waiting) {
+                                return Center(child: CircularProgressIndicator());
+                              } else if (tagSnapshot.hasError) {
+                                return Center(child: Text('Error loading tags'));
+                              } else {
+                                List<TagTransaksi> tagList = tagSnapshot.data ?? [];
+
+                                return SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: DataTable(
+                                    columns: [
+                                      DataColumn(label: Text('ID')),
+                                      DataColumn(label: Text('Nama Tag')),
+                                      DataColumn(label: Text('Nilai'), numeric: true),
+                                      DataColumn(label: Text('Keterangan')),
+                                      DataColumn(label: Text('Status')),
+                                    ],
+                                    rows: setoranData.map(
+                                          (setoran) => DataRow(
+                                        cells: [
+                                          DataCell(Text(setoran.id?.toString() ?? '-')),
+                                          DataCell(Text(
+                                              _getNamaTagFromList(setoran.idTagTransaksi, tagList)
+                                          )),
+                                          DataCell(Text(
+                                              setoran.nilai != null
+                                                  ? formatter.format(setoran.nilai!)
+                                                  : '-'
+                                          )),
+                                          DataCell(Text(setoran.keterangan ?? '-')),
+                                          DataCell(Text(setoran.status ?? '-')),
+                                        ],
+                                      ),
+                                    ).toList(),
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        } else {
+                          return Center(
+                            child: Text('Tidak ada data setoran kru'),
+                          );
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
       );
     }
   }
-
-
-
 }

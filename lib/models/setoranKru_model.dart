@@ -43,6 +43,52 @@ class SetoranKru {
     required this.createdAt,
   });
 
+  SetoranKru copyWith({
+    int? id,
+    String? tglTransaksi,
+    double? kmPulang,
+    String? rit,
+    String? noPol,
+    int? idBus,
+    String? kodeTrayek,
+    int? idPersonil,
+    int? idGroup,
+    int? jumlah,
+    String? idTransaksi,
+    String? coa,
+    double? nilai,
+    int? idTagTransaksi,
+    String? status,
+    String? keterangan,
+    String? fupload,
+    String? fileName,
+    String? updatedAt,
+    String? createdAt,
+  }) {
+    return SetoranKru(
+      id: id ?? this.id,
+      tglTransaksi: tglTransaksi ?? this.tglTransaksi,
+      kmPulang: kmPulang ?? this.kmPulang,
+      rit: rit ?? this.rit,
+      noPol: noPol ?? this.noPol,
+      idBus: idBus ?? this.idBus,
+      kodeTrayek: kodeTrayek ?? this.kodeTrayek,
+      idPersonil: idPersonil ?? this.idPersonil,
+      idGroup: idGroup ?? this.idGroup,
+      jumlah: jumlah ?? this.jumlah,
+      idTransaksi: idTransaksi ?? this.idTransaksi,
+      coa: coa ?? this.coa,
+      nilai: nilai ?? this.nilai,
+      idTagTransaksi: idTagTransaksi ?? this.idTagTransaksi,
+      status: status ?? this.status,
+      keterangan: keterangan ?? this.keterangan,
+      fupload: fupload ?? this.fupload,
+      fileName: fileName ?? this.fileName,
+      updatedAt: updatedAt ?? this.updatedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory SetoranKru.fromMap(Map<String, dynamic> json) => SetoranKru(
     id: json['id'],
     tglTransaksi: json['tgl_transaksi'],

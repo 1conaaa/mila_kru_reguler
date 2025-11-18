@@ -21,6 +21,8 @@ class SimpanButton extends StatelessWidget {
                 child: Text('Simpan'),
                 style: ButtonStyle(
                   minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
+                  backgroundColor: WidgetStateProperty.all(Colors.green),
+                  foregroundColor: WidgetStateProperty.all(Colors.white),
                 ),
               ),
             ),

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/models/premi_harian_kru_model.dart';
+import 'package:mila_kru_reguler/models/premi_posisi_kru_model.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
+import 'package:mila_kru_reguler/models/user_data.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
+import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
+import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
@@ -21,6 +26,7 @@ class FormRekapTransaksi extends StatefulWidget {
 
 class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   final TextEditingController _textController = TextEditingController(text: 'Hidden Value');
+  final PremiPosisiKruService _premiService = PremiPosisiKruService(); // Inisialisasi service
   final bool _isHidden = true;
 
   String? selectedKotaBerangkat;
@@ -80,6 +86,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   TextEditingController premiExtraController = TextEditingController();
   TextEditingController persenPremikruController = TextEditingController();
 
+  TextEditingController coaPendapatanBusController = TextEditingController();
+  TextEditingController coaPengeluaranBusController = TextEditingController();
+  TextEditingController coaUtangPremiController = TextEditingController();
+
   TextEditingController nominalPremiExtraController = TextEditingController();
   TextEditingController nominalPremiKruController = TextEditingController();
   TextEditingController nominalPendapatanBersihController = TextEditingController();
@@ -100,7 +110,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   double totalPendapatanBagasiValue = 00;
   int jumlahBarangBagasiValue = 0;
 
-
   get persenPremiExtra => null;
   get existingDataId => null;
 
@@ -119,31 +128,54 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   List<TagTransaksi> tagPremi = [];
   List<TagTransaksi> tagBersihSetoran = [];
 
+  // Tambahkan deklarasi userData
+  UserData? _userData;
+
   @override
   void initState() {
     super.initState();
     databaseHelper = DatabaseHelper();
-
     _loadTagTransaksi(); // Load data tag transaksi
     _loadLastRekapTransaksi();
+    _getUserData(); // Load user data
   }
 
   void _handleCalculatePremiBersih() {
-    final result = PremiBersihCalculator.calculatePremiBersih(
-      tagPendapatan: tagPendapatan,
-      tagPengeluaran: tagPengeluaran,
-      tagPremi: tagPremi,
-      tagBersihSetoran: tagBersihSetoran,
-      controllers: _controllers,
-      jumlahControllers: _jumlahControllers,
-      literSolarControllers: _literSolarControllers,
-    );
+    if (_userData == null) {
+      print('User data belum tersedia, menggunakan kalkulasi tanpa user data');
+      final result = PremiBersihCalculator.calculatePremiBersihWithoutUser(
+        tagPendapatan: tagPendapatan,
+        tagPengeluaran: tagPengeluaran,
+        tagPremi: tagPremi,
+        tagBersihSetoran: tagBersihSetoran,
+        controllers: _controllers,
+        jumlahControllers: _jumlahControllers,
+        literSolarControllers: _literSolarControllers,
+      );
 
-    // Update field yang dihitung otomatis
-    PremiBersihCalculator.updateAutoCalculatedFields(
-      calculationResult: result,
-      controllers: _controllers,
-    );
+      PremiBersihCalculator.updateAutoCalculatedFieldsWithoutUser(
+        calculationResult: result,
+        controllers: _controllers,
+      );
+    } else {
+      print('Menggunakan user data untuk kalkulasi: $_userData');
+      final result = PremiBersihCalculator.calculatePremiBersih(
+        tagPendapatan: tagPendapatan,
+        tagPengeluaran: tagPengeluaran,
+        tagPremi: tagPremi,
+        tagBersihSetoran: tagBersihSetoran,
+        controllers: _controllers,
+        jumlahControllers: _jumlahControllers,
+        literSolarControllers: _literSolarControllers,
+        userData: _userData!, // Gunakan userData yang sudah ada
+      );
+
+      PremiBersihCalculator.updateAutoCalculatedFields(
+        calculationResult: result,
+        controllers: _controllers,
+        userData: _userData!,
+      );
+    }
   }
 
   // TAMBAHKAN FUNGSI INI di dalam class _FormRekapTransaksiState
@@ -184,28 +216,64 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   }
 
   Future<void> _getUserData() async {
-    List<Map<String, dynamic>> users = await databaseHelper.queryUsers();
-    if (users.isNotEmpty) {
-      Map<String, dynamic> firstUser = users[0];
+    try {
+      List<Map<String, dynamic>> users = await databaseHelper.queryUsers();
+
+      print('=== [DEBUG] DATABASE QUERY RESULTS ===');
+      print('Number of users: ${users.length}');
+
+      if (users.isNotEmpty) {
+        Map<String, dynamic> firstUser = users[0];
+
+        // Debug field premi dengan camelCase
+        print('=== [DEBUG] PREMI FIELDS (CAMEL CASE) ===');
+        print('premiExtra: ${firstUser['premiExtra']}');
+        print('persenPremikru: ${firstUser['persenPremikru']}');
+        print('keydataPremiextra: ${firstUser['keydataPremiextra']}');
+        print('keydataPremikru: ${firstUser['keydataPremikru']}');
+
+        print('coaPendapatanBus = ${firstUser['coaPendapatanBus']}');
+        print('coaPengeluaranBus = ${firstUser['coaPengeluaranBus']}');
+        print('coaUtangPremi = ${firstUser['coaUtangPremi']}');
+
+        setState(() {
+          _userData = UserData.fromMap(firstUser);
+
+          // Update variabel lokal dengan camelCase
+          idUser = firstUser['id_user'];
+          idGroup = firstUser['id_group'];
+          idCompany = firstUser['id_company'];
+          idGarasi = firstUser['id_garasi'];
+          idBus = firstUser['id_bus'];
+          noPol = firstUser['no_pol'];
+          namaTrayek = firstUser['nama_trayek'];
+          jenisTrayek = firstUser['jenis_trayek'];
+          kelasBus = firstUser['kelas_bus'];
+          keydataPremiextra = firstUser['keydataPremiextra']; // CAMEL CASE
+          premiExtra = firstUser['premiExtra']; // CAMEL CASE
+          premiExtraController.text = premiExtra ?? '0';
+          keydataPremikru = firstUser['keydataPremikru']; // CAMEL CASE
+          persenPremikru = firstUser['persenPremikru']; // CAMEL CASE
+          persenPremikruController.text = persenPremikru ?? '0';
+          coaPendapatanBusController.text = firstUser['coaPendapatanBus'];
+          coaPengeluaranBusController.text = firstUser['coaPengeluaranBus'];
+          coaUtangPremiController.text = firstUser['coaUtangPremi'];
+        });
+
+        print('=== [DEBUG] AFTER UserData.fromMap ===');
+        print('UserData object: $_userData');
+
+      } else {
+        setState(() {
+          _userData = UserData.empty();
+        });
+        print('No user data found, using empty data');
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
       setState(() {
-        idUser = firstUser['id_user'];
-        idGroup = firstUser['id_group'];
-        idCompany = firstUser['id_company'];
-        idGarasi = firstUser['id_garasi'];
-        idBus = firstUser['id_bus'];
-        noPol = firstUser['no_pol'];
-        namaTrayek = firstUser['nama_trayek'];
-        jenisTrayek = firstUser['jenis_trayek'];
-        kelasBus = firstUser['kelas_bus'];
-        keydataPremiextra = firstUser['keydataPremiextra'];
-        premiExtra = firstUser['premiExtra'];
-        premiExtraController.text = premiExtra!;
-        keydataPremikru = firstUser['keydataPremikru'];
-        persenPremikru = firstUser['persenPremikru'];
-        persenPremikruController.text = persenPremikru!;
+        _userData = UserData.empty();
       });
-      print('premi pe $premiExtra , pt $persenPremikru $namaTrayek');
-      print('premi persen kru $keydataPremikru');
     }
   }
 
@@ -345,7 +413,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     return tagsWithLiterSolar.contains(tag.nama);
   }
 
-
   // Fungsi untuk menentukan apakah tag memerlukan upload gambar
   bool _requiresImage(TagTransaksi tag) {
     List<String> tagsWithImage = [
@@ -357,7 +424,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     return tagsWithImage.contains(tag.nama);
   }
 
-  // Fungsi untuk handle upload gambar
   // Fungsi untuk handle upload gambar
   Future<void> _onImageUpload(TagTransaksi tag, bool fromCamera) async {
     try {
@@ -401,7 +467,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     }
   }
 
-// Fungsi untuk meminta izin kamera
+  // Fungsi untuk meminta izin kamera
   Future<void> _requestCameraPermission() async {
     final status = await Permission.camera.request();
     if (status.isDenied) {
@@ -416,7 +482,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     }
   }
 
-// Fungsi untuk meminta izin galeri
+  // Fungsi untuk meminta izin galeri
   Future<void> _requestGalleryPermission() async {
     if (Platform.isAndroid) {
       final status = await Permission.storage.request();
@@ -445,7 +511,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     }
   }
 
-// Dialog untuk meminta izin
+  // Dialog untuk meminta izin
   void _showPermissionDialog(String title, String message) {
     showDialog(
       context: context,
@@ -471,7 +537,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     );
   }
 
-// Dialog untuk membuka pengaturan
+  // Dialog untuk membuka pengaturan
   void _showOpenSettingsDialog() {
     showDialog(
       context: context,
@@ -497,7 +563,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     );
   }
 
-// Tampilkan preview gambar
+  // Tampilkan preview gambar
   void _showImagePreview(TagTransaksi tag, File imageFile) {
     showDialog(
       context: context,
@@ -542,7 +608,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     );
   }
 
-// Tampilkan error dialog
+  // Tampilkan error dialog
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -561,7 +627,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     );
   }
 
-// Fungsi untuk menghapus gambar yang sudah diupload
+  // Fungsi untuk menghapus gambar yang sudah diupload
   void _removeImage(TagTransaksi tag) {
     setState(() {
       _imageFiles.remove(tag.id);
@@ -620,12 +686,28 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       progress.value = '1/5 — Mengecek transaksi penjualan yang belum dikirim...';
       await Future.delayed(Duration(milliseconds: 200)); // beri waktu UI update
 
-      List<Map<String, dynamic>> penjualanData =
-      await PenjualanTiketService.instance.getPenjualanByStatus('N');
+      List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getPenjualanByStatus('N');
 
       print('STEP 1 RESULT: ditemukan ${penjualanData.length} baris (status N)');
       progress.value = '1/5 — Ditemukan ${penjualanData.length} transaksi belum dikirim';
       await Future.delayed(Duration(milliseconds: 150));
+
+      // STEP 1a: Dapatkan nilai rit dari penjualan tiket
+      print('STEP 1a: Mendapatkan nilai rit dari penjualan tiket...');
+      progress.value = '1a/5 — Mendapatkan data rit...';
+
+      final List<String> ritList = await PenjualanTiketService.instance.getRitFromPenjualanTiket();
+      final String? lastRit = await PenjualanTiketService.instance.getLastRitFromPenjualanTiket();
+
+      print('STEP 1a RESULT:');
+      print('  - Daftar rit: $ritList');
+      print('  - Rit terakhir: $lastRit');
+
+      // Auto-fill rit controller jika ada rit terakhir
+      if (lastRit != null && lastRit.isNotEmpty) {
+        ritController.text = lastRit;
+        print('✅ Rit controller diisi otomatis: $lastRit');
+      }
 
       if (penjualanData.isNotEmpty) {
         // Print sample data ke log (maks 5 baris)
@@ -761,77 +843,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     }
   }
 
-  void _calculatePremiBersih(
-      TextEditingController pendapatanTiketRegulerController,
-      TextEditingController pendapatanTiketNonRegulerController,
-      TextEditingController pendapatanBagasiController,
-      TextEditingController tolController,
-      TextEditingController tprController,
-      TextEditingController perpalController,
-      TextEditingController litersolarController,
-      TextEditingController nominalsolarController,
-      TextEditingController perbaikanController,
-      TextEditingController premiExtraController,
-      TextEditingController persenPremikruController,
-      ) {
-    // Debug awal
-    print('=== Hitung Premi Bersih ===');
-    print('RegulerCtrl: ${pendapatanTiketRegulerController.text}');
-    print('NonRegulerCtrl: ${pendapatanTiketNonRegulerController.text}');
-    print('BagasiCtrl: ${pendapatanBagasiController.text}');
-
-    // Parse input pendapatan
-    double nominalTiketReguler = double.tryParse(
-      pendapatanTiketRegulerController.text.replaceAll('.', '').replaceAll(',00', ''),
-    ) ??
-        0.0;
-
-    double nominalTiketOnline = double.tryParse(
-      pendapatanTiketNonRegulerController.text.replaceAll('.', '').replaceAll(',00', ''),
-    ) ??
-        0.0;
-
-    double pendapatanBagasi = double.tryParse(
-      pendapatanBagasiController.text.replaceAll('.', '').replaceAll(',00', ''),
-    ) ??
-        0.0;
-
-    print('Nominal Reguler: $nominalTiketReguler');
-    print('Nominal Online: $nominalTiketOnline');
-    print('Nominal Bagasi: $pendapatanBagasi');
-
-    // Parse input pengeluaran
-    double pengeluaranTol = double.tryParse(tolController.text) ?? 0.0;
-    double pengeluaranTpr = double.tryParse(tprController.text) ?? 0.0;
-    double pengeluaranPerpal = double.tryParse(perpalController.text) ?? 0.0;
-    double literSolar = double.tryParse(litersolarController.text) ?? 0.0;
-    double nominalSolar = double.tryParse(nominalsolarController.text) ?? 0.0;
-    double perbaikan = double.tryParse(perbaikanController.text) ?? 0.0;
-
-    double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
-
-    double pengOprs = pengeluaranPerpal + pengeluaranTpr + pengeluaranTol + nominalSolar;
-    double pengLain = pengOprs + perbaikan;
-
-    // Persentase Premi
-    double persenPremiExtra =
-        (double.tryParse(premiExtraController.text.replaceAll('%', '')) ?? 0.0) / 100;
-
-    double persenPremiKruCtrl =
-    (double.tryParse(persenPremikruController.text.replaceAll('%', '')) ?? 0.0);
-
-    double persenPremiKru = (persenPremiKruCtrl -
-        (double.tryParse(premiExtraController.text.replaceAll('%', '')) ?? 0.0)) /
-        100;
-
-    print('Persen Premi Extra: $persenPremiExtra');
-    print('Persen Premi Kru: $persenPremiKru');
-    print("Trayek: $namaTrayek");
-
-  }
-
-
-
   bool _isPengeluaran(TagTransaksi tag) {
     return tagPengeluaran.any((pengeluaran) => pengeluaran.id == tag.id);
   }
@@ -871,6 +882,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
   Future<void> _simpanValueRekap() async {
     final setoranService = SetoranKruService();
+    final premiService = PremiPosisiKruService();
+    final premiHarianService = PremiHarianKruService(); // Service untuk premi harian
     final now = DateTime.now();
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
 
@@ -882,178 +895,418 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       }
 
       Map<String, dynamic> firstUser = users[0];
-      String coaPendapatanBus = firstUser['coaPendapatanBus'] ?? '';
-      String coaPengeluaranBus = firstUser['coaPengeluaranBus'] ?? '';
-      String coaUtangPremi = firstUser['coaUtangPremi'] ?? '';
-
-      print('COA Data xxx:');
-      print('- Pendapatan Bus: $coaPendapatanBus');
-      print('- Pengeluaran Bus: $coaPengeluaranBus');
-      print('- Utang Premi: $coaUtangPremi');
 
       print('=== MULAI SIMPAN REKAP ===');
       print('Tanggal Transaksi: $formattedDate');
       print('KM Pulang: ${kmMasukGarasiController.text}');
-      print('Rit: ${ritController.text}');
+
+      print('DEBUG RIT _simpanValueRekap: ritController=${ritController.text}');
+
+      // DEBUG: Cek nilai rit
+      final ritValue = ritController.text;
+      if (ritValue.isEmpty) {
+        print('❌ Error: Rit harus diisi');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Rit harus diisi')),
+        );
+        return;
+      }
+
+      print('Rit: $ritValue');
       print('No. Pol: $noPol');
       print('Id Bus: $idBus, Kode Trayek: $namaTrayek');
       print('Id Personil: $idUser, Id Group: $idGroup');
 
-      // Loop untuk simpan pendapatan
+      // 1. GENERATE ID TRANSAKSI dengan format: BUS.MMYYYY.milisecond.idUser
+      final monthYear = DateFormat('MMyyyy').format(now);
+      final milliseconds = now.millisecondsSinceEpoch;
+      final idTransaksi = 'BUS.$monthYear.$milliseconds.$idUser';
+      print('🆔 ID Transaksi Generated: $idTransaksi');
+
+      // Kumpulkan semua setoran dasar terlebih dahulu
+      List<SetoranKru> semuaSetoran = [];
+
+      // 2. Kumpulkan setoran pendapatan
       for (var tag in tagPendapatan) {
         final valueText = _controllers[tag.id]?.text ?? '0';
-        final nilai = double.tryParse(valueText.replaceAll(',', '')) ?? 0;
+        final nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
+        final coaPendapatan = coaPendapatanBusController.text;
 
-        print('--- Pendapatan ---');
-        print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
+        // Hanya simpan jika nilai > 0
+        if (nilai > 0) {
+          print('--- Pendapatan ---');
+          print('coa Pendapatan: ${coaPendapatan}');
+          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
 
-        final setoran = SetoranKru(
-          tglTransaksi: formattedDate,
-          kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-          rit: ritController.text,
-          noPol: noPol ?? '',
-          idBus: idBus,
-          kodeTrayek: namaTrayek ?? '',
-          idPersonil: idUser,
-          idGroup: idGroup,
-          jumlah: 1,
-          idTransaksi: null,
-          coa: null,
-          nilai: nilai,
-          idTagTransaksi: tag.id,
-          status: 'N',
-          keterangan: null,
-          fupload: null,
-          fileName: null,
-          updatedAt: formattedDate,
-          createdAt: formattedDate,
-        );
+          final setoran = SetoranKru(
+            tglTransaksi: formattedDate,
+            kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+            rit: ritValue,
+            noPol: noPol ?? '',
+            idBus: idBus,
+            kodeTrayek: namaTrayek ?? '',
+            idPersonil: idUser,
+            idGroup: idGroup,
+            jumlah: 1,
+            idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
+            coa: coaPendapatan ?? '',
+            nilai: nilai,
+            idTagTransaksi: tag.id,
+            status: 'N',
+            keterangan: null,
+            fupload: null,
+            fileName: null,
+            updatedAt: formattedDate,
+            createdAt: formattedDate,
+          );
 
-        print('Menyimpan setoran pendapatan: $setoran');
-        await setoranService.insertSetoran(setoran);
-        print('Selesai insert pendapatan tag ID: ${tag.id}');
+          semuaSetoran.add(setoran);
+          print('✅ Pendapatan ditambahkan: ${tag.nama}');
+        }
       }
 
-      // Loop untuk simpan pengeluaran
+      // 3. Kumpulkan setoran pengeluaran
       for (var tag in tagPengeluaran) {
-        final valueText = _controllers[tag.id]?.text ?? '0';
-        final nilai = double.tryParse(valueText.replaceAll(',', '')) ?? 0;
+        double nilai = 0;
+        int jumlah = 1;
+        String? keterangan = null;
+        final coaPengeluaran = coaPengeluaranBusController.text;
 
-        print('--- Pengeluaran ---');
-        print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
+        if (tag.id == 16) { // Biaya Solar
+          final nominalSolarText = _controllers[tag.id]?.text ?? '0';
+          final nominalSolar = double.tryParse(
+              nominalSolarText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
 
-        final setoran = SetoranKru(
-          tglTransaksi: formattedDate,
-          kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-          rit: ritController.text,
-          noPol: noPol ?? '',
-          idBus: idBus,
-          kodeTrayek: namaTrayek ?? '',
-          idPersonil: idUser,
-          idGroup: idGroup,
-          jumlah: 1,
-          idTransaksi: null,
-          coa: null,
-          nilai: nilai,
-          idTagTransaksi: tag.id,
-          status: 'N',
-          keterangan: null,
-          fupload: null,
-          fileName: null,
-          updatedAt: formattedDate,
-          createdAt: formattedDate,
-        );
+          final literSolarText = _literSolarControllers[tag.id]?.text ?? '0';
+          final literSolar = double.tryParse(literSolarText) ?? 0;
 
-        print('Menyimpan setoran pengeluaran: $setoran');
-        await setoranService.insertSetoran(setoran);
-        print('Selesai insert pengeluaran tag ID: ${tag.id}');
+          print('--- Biaya Solar ---');
+          nilai = nominalSolar;
+          jumlah = literSolar.toInt(); // Convert to int
+          keterangan = literSolar > 0 ? 'Solar: $literSolar liter' : null;
+
+          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}');
+          print('Nominal Solar: $nilai, Liter Solar: $jumlah');
+
+        } else { // Biaya Lainnya
+          final valueText = _controllers[tag.id]?.text ?? '0';
+          nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
+          jumlah = 1;
+
+          print('--- Biaya Lainnya ---');
+          print('coa Pengeluaran: ${coaPengeluaran}');
+          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
+        }
+
+        // Hanya simpan jika nilai > 0
+        if (nilai > 0) {
+          final setoran = SetoranKru(
+            tglTransaksi: formattedDate,
+            kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+            rit: ritValue,
+            noPol: noPol ?? '',
+            idBus: idBus,
+            kodeTrayek: namaTrayek ?? '',
+            idPersonil: idUser,
+            idGroup: idGroup,
+            jumlah: jumlah,
+            idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
+            coa: coaPengeluaran ?? '',
+            nilai: nilai,
+            idTagTransaksi: tag.id,
+            status: 'N',
+            keterangan: keterangan,
+            fupload: null,
+            fileName: null,
+            updatedAt: formattedDate,
+            createdAt: formattedDate,
+          );
+
+          semuaSetoran.add(setoran);
+          print('✅ Pengeluaran ditambahkan: ${tag.nama}');
+        } else {
+          print('⚠️ Skip pengeluaran ${tag.nama} - nilai 0');
+        }
       }
 
-      // Loop untuk simpan pengeluaran
+      // 4. Kumpulkan setoran premi (TIDAK termasuk PremiPosisiKru - id_tag_transaksi 32)
       for (var tag in tagPremi) {
+        // Skip jika ini adalah tag untuk Premi Posisi Kru (id_tag_transaksi = 32)
+        if (tag.id == 32) {
+          print('⏭️ Skip Premi Posisi Kru (id_tag_transaksi: 32) - akan disimpan di table premi_harian_kru');
+          continue;
+        }
+
         final valueText = _controllers[tag.id]?.text ?? '0';
-        final nilai = double.tryParse(valueText.replaceAll(',', '')) ?? 0;
+        final nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
+        final coaUtangPremi = coaUtangPremiController.text;
 
-        print('--- PREMI ---');
-        print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
+        // Hanya simpan jika nilai > 0
+        if (nilai > 0) {
+          print('--- PREMI ---');
+          print('coa Utang Premi: ${coaUtangPremi}');
+          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
 
-        final setoran = SetoranKru(
-          tglTransaksi: formattedDate,
-          kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-          rit: ritController.text,
-          noPol: noPol ?? '',
-          idBus: idBus,
-          kodeTrayek: namaTrayek ?? '',
-          idPersonil: idUser,
-          idGroup: idGroup,
-          jumlah: 1,
-          idTransaksi: null,
-          coa: null,
-          nilai: nilai,
-          idTagTransaksi: tag.id,
-          status: 'N',
-          keterangan: null,
-          fupload: null,
-          fileName: null,
-          updatedAt: formattedDate,
-          createdAt: formattedDate,
-        );
+          final setoran = SetoranKru(
+            tglTransaksi: formattedDate,
+            kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+            rit: ritValue,
+            noPol: noPol ?? '',
+            idBus: idBus,
+            kodeTrayek: namaTrayek ?? '',
+            idPersonil: idUser,
+            idGroup: idGroup,
+            jumlah: 1,
+            idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
+            coa: coaUtangPremi,
+            nilai: nilai,
+            idTagTransaksi: tag.id,
+            status: 'N',
+            keterangan: null,
+            fupload: null,
+            fileName: null,
+            updatedAt: formattedDate,
+            createdAt: formattedDate,
+          );
 
-        print('Menyimpan Premi : $setoran');
-        await setoranService.insertSetoran(setoran);
-        print('Selesai insert premi tag ID: ${tag.id}');
+          semuaSetoran.add(setoran);
+          print('✅ Premi ditambahkan: ${tag.nama}');
+        } else {
+          print('⚠️ Skip premi ${tag.nama} - nilai 0');
+        }
       }
 
+      // 5. Kumpulkan setoran bersih setoran
       for (var tag in tagBersihSetoran) {
         final valueText = _controllers[tag.id]?.text ?? '0';
-        final nilai = double.tryParse(valueText.replaceAll(',', '')) ?? 0;
+        final nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
 
-        print('--- BERSIH SETORAN ---');
-        print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
+        // Hanya simpan jika nilai > 0
+        if (nilai > 0) {
+          print('--- BERSIH SETORAN ---');
+          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
 
-        final setoran = SetoranKru(
-          tglTransaksi: formattedDate,
-          kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-          rit: ritController.text,
-          noPol: noPol ?? '',
-          idBus: idBus,
-          kodeTrayek: namaTrayek ?? '',
-          idPersonil: idUser,
-          idGroup: idGroup,
-          jumlah: 1,
-          idTransaksi: null,
-          coa: null,
-          nilai: nilai,
-          idTagTransaksi: tag.id,
-          status: 'N',
-          keterangan: null,
-          fupload: null,
-          fileName: null,
-          updatedAt: formattedDate,
-          createdAt: formattedDate,
-        );
+          final setoran = SetoranKru(
+            tglTransaksi: formattedDate,
+            kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+            rit: ritValue,
+            noPol: noPol ?? '',
+            idBus: idBus,
+            kodeTrayek: namaTrayek ?? '',
+            idPersonil: idUser,
+            idGroup: idGroup,
+            jumlah: 1,
+            idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
+            coa: null,
+            nilai: nilai,
+            idTagTransaksi: tag.id,
+            status: 'N',
+            keterangan: null,
+            fupload: null,
+            fileName: null,
+            updatedAt: formattedDate,
+            createdAt: formattedDate,
+          );
 
-        print('Menyimpan bersih setoran: $setoran');
-        await setoranService.insertSetoran(setoran);
-        print('Selesai insert bersih setoran tag ID: ${tag.id}');
+          semuaSetoran.add(setoran);
+          print('✅ Bersih Setoran ditambahkan: ${tag.nama}');
+        } else {
+          print('⚠️ Skip bersih setoran ${tag.nama} - nilai 0');
+        }
       }
 
+      // 6. Dapatkan nominal premi kru dari hasil kalkulasi terakhir
+      print('--- MENDAPATKAN NOMINAL PREMI KRU ---');
+      final calculationResult = PremiBersihCalculator.calculatePremiBersih(
+        tagPendapatan: tagPendapatan,
+        tagPengeluaran: tagPengeluaran,
+        tagPremi: tagPremi,
+        tagBersihSetoran: tagBersihSetoran,
+        controllers: _controllers,
+        jumlahControllers: _jumlahControllers,
+        literSolarControllers: _literSolarControllers,
+        userData: _userData!,
+      );
+
+      final double nominalPremiKru = (calculationResult['nominalPremiKru'] as double?) ?? 0.0;
+      print('Nominal Premi Kru dari kalkulasi: $nominalPremiKru');
+
+      print('=== MENJALANKAN SIMPAN SETORAN LENGKAP ===');
+      print('Total setoran dasar: ${semuaSetoran.length}');
+      print('Nominal Premi Kru: $nominalPremiKru');
+
+      // 7. Ambil data premi posisi kru dan kru bis untuk perhitungan
+      final List<PremiPosisiKru> premiList = await premiService.getAllPremiPosisiKru();
+      final List<Map<String, dynamic>> kruBisList = await databaseHelper.getKruBis();
+
+      // DEBUG: Validasi data yang didapat
+      print('=== DEBUG DATA PREMI DAN KRU ===');
+      print('📊 Jumlah premi posisi kru: ${premiList.length}');
+      print('📊 Jumlah data kru bis: ${kruBisList.length}');
+
+      if (premiList.isEmpty) {
+        print('❌ CRITICAL: premiList KOSONG - tidak bisa menghitung premi kru');
+      } else {
+        print('✅ Data premi tersedia:');
+        for (var i = 0; i < premiList.length; i++) {
+          final premi = premiList[i];
+          print('   $i. ${premi.namaPremi} - ${premi.persenPremi}');
+        }
+      }
+
+      if (kruBisList.isEmpty) {
+        print('❌ CRITICAL: kruBisList KOSONG - tidak ada kru untuk hitung premi');
+      } else {
+        print('✅ Data kru bis tersedia:');
+        for (var kru in kruBisList) {
+          print('   - ${kru['nama_lengkap']} sebagai ${kru['group_name']}');
+        }
+      }
+      print('=== END DEBUG DATA ===');
+
+      // 8. HITUNG DAN SIMPAN PREMI HARIAN KRU ke table premi_harian_kru
+      print('--- HITUNG DAN SIMPAN PREMI HARIAN KRU ---');
+      List<PremiHarianKru> premiHarianList = [];
+
+      // Fungsi helper untuk normalisasi nama posisi
+      String _normalizePositionName(String positionName) {
+        final normalized = positionName.toLowerCase().trim();
+
+        // Mapping manual untuk berbagai kemungkinan penulisan
+        final mapping = {
+          'supir': 'supir',
+          'driver': 'supir',
+          'sopir': 'supir',
+          'kernet': 'kernet',
+          'kenek': 'kernet',
+          'asisten': 'kernet',
+          'kondektur': 'kondektur',
+          'kondek': 'kondektur',
+          'pramugara': 'kondektur',
+        };
+
+        return mapping[normalized] ?? normalized;
+      }
+
+      for (var kru in kruBisList) {
+        final int idPersonil = kru['id_personil'];
+        final int idGroup = kru['id_group'];
+        final String namaLengkap = kru['nama_lengkap'];
+        final String groupName = kru['group_name'];
+
+        print('🔍 Proses kru: $namaLengkap ($groupName)');
+
+        // PERBAIKAN: Gunakan matching yang case-insensitive dengan helper function
+        PremiPosisiKru? premiKru;
+        try {
+          final normalizedGroupName = _normalizePositionName(groupName);
+
+          premiKru = premiList.firstWhere(
+                (premi) {
+              final premiName = (premi.namaPremi ?? '').toLowerCase().trim();
+
+              // Debug matching process
+              print('   🔄 Mencocokkan: "$premiName" dengan "$normalizedGroupName" (dari "$groupName")');
+
+              return premiName == normalizedGroupName;
+            },
+          );
+        } catch (e) {
+          print('   ⚠️ Premi tidak ditemukan untuk "$groupName"');
+
+          // Tampilkan daftar premi yang tersedia untuk membantu debugging
+          print('   📋 Daftar premi tersedia:');
+          for (var p in premiList) {
+            print('      - "${p.namaPremi}" (${p.persenPremi})');
+          }
+          continue;
+        }
+
+        print('   ✅ Premi ditemukan: ${premiKru.namaPremi} - ${premiKru.persenPremi}');
+
+        final String persenPremiStr = (premiKru.persenPremi ?? '0').toString();
+        final double persenPremi = double.tryParse(persenPremiStr.replaceAll('%', '').replaceAll(' ', '')) ?? 0.0;
+
+        // Hitung nominal premi harian
+        final double nominalPremiHarian = (nominalPremiKru * persenPremi) / 100;
+
+        print('   📊 Perhitungan premi harian:');
+        print('      - Persen premi: $persenPremi%');
+        print('      - Nominal premi kru: $nominalPremiKru');
+        print('      - Hasil: $nominalPremiHarian');
+
+        // Simpan ke premi_harian_kru
+        if (nominalPremiHarian > 0) {
+          final premiHarian = PremiHarianKru(
+            idTransaksi: int.tryParse(idTransaksi.replaceAll('BUS.', '')) ?? 0,
+            idUser: idPersonil,
+            idGroup: idGroup,
+            persenPremiDisetor: persenPremi,
+            nominalPremiDisetor: nominalPremiHarian,
+            tanggalSimpan: formattedDate,
+            status: 'N',
+          );
+
+          premiHarianList.add(premiHarian);
+          print('   ✅ Premi harian disiapkan untuk $namaLengkap: Rp$nominalPremiHarian');
+        } else {
+          print('   ⚠️ Premi harian 0 untuk $namaLengkap, tidak disimpan');
+        }
+      }
+
+      // 9. Simpan semua data premi harian kru
+      if (premiHarianList.isNotEmpty) {
+        try {
+          await premiHarianService.insertBulkPremiHarianKru(premiHarianList);
+          print('✅ ${premiHarianList.length} data premi harian kru berhasil disimpan');
+        } catch (e) {
+          print('❌ Gagal menyimpan premi harian kru: $e');
+        }
+      } else {
+        print('⚠️ Tidak ada data premi harian kru yang disimpan');
+      }
+
+      // Debug: tampilkan semua setoran yang akan disimpan
+      print('--- DETAIL SETORAN YANG AKAN DISIMPAN ---');
+      for (var i = 0; i < semuaSetoran.length; i++) {
+        final setoran = semuaSetoran[i];
+        print('$i. ${setoran.idTagTransaksi}: Rp${setoran.nilai} (jumlah: ${setoran.jumlah})');
+      }
+
+      // 10. Gunakan simpanSetoranLengkap untuk menyimpan semua data setoran (TANPA premi posisi kru)
+      await setoranService.simpanSetoranLengkap(
+        setoranList: semuaSetoran,
+        nominalPremiKru: nominalPremiKru,
+        tanggalTransaksi: formattedDate,
+        rit: ritValue,
+        noPol: noPol ?? '',
+        idBus: idBus,
+        kodeTrayek: namaTrayek ?? '',
+      );
+
       print('=== SELESAI SIMPAN REKAP ===');
+      print('✅ Setoran dasar: ${semuaSetoran.length} transaksi');
+      print('✅ Premi harian kru: ${premiHarianList.length} data');
 
       // Beri feedback ke user
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data rekap berhasil disimpan')),
+        SnackBar(content: Text('Data rekap berhasil disimpan - ${semuaSetoran.length} transaksi setoran + ${premiHarianList.length} premi kru')),
       );
 
       // Reset form jika perlu
       _controllers.forEach((key, controller) => controller.clear());
+      _jumlahControllers.forEach((key, controller) => controller.clear());
+      _literSolarControllers.forEach((key, controller) => controller.clear());
       kmMasukGarasiController.clear();
+      ritController.clear();
+
+      print('✅ Form berhasil direset');
 
     } catch (e, stackTrace) {
-      print('Error menyimpan data rekap: $e');
+      print('❌ Error menyimpan data rekap: $e');
       print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan data rekap')),
+        SnackBar(content: Text('Gagal menyimpan data rekap: ${e.toString()}')),
       );
     }
   }
@@ -1066,9 +1319,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   }
 
   void printTableContents(Database database, String tableName) async {
-
+    // Implementation if needed
   }
 
-  void _kirimValueRekap() {}
-
+  void _kirimValueRekap() {
+    // Implementation if needed
+  }
 }

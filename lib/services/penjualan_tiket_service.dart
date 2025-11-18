@@ -317,4 +317,59 @@ class PenjualanTiketService {
       'jumlahTiketOnLine': jumlahTiketOnLine,
     };
   }
+
+  // Method untuk mendapatkan nilai rit dari penjualan tiket
+  Future<List<String>> getRitFromPenjualanTiket() async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT DISTINCT rit 
+      FROM penjualan_tiket 
+      WHERE status = 'Y'
+      ORDER BY rit
+    ''');
+
+      // Extract rit values and convert to String list
+      final List<String> ritList = maps
+          .where((map) => map['rit'] != null)
+          .map((map) => map['rit'].toString())
+          .toList();
+
+      print('=== [DEBUG] RIT DARI PENJUALAN TIKET ===');
+      print('Jumlah rit ditemukan: ${ritList.length}');
+      print('Daftar rit: $ritList');
+
+      return ritList;
+    } catch (e) {
+      print('❌ Error get rit from penjualan tiket: $e');
+      return [];
+    }
+  }
+
+// Method untuk mendapatkan rit terakhir
+  Future<String?> getLastRitFromPenjualanTiket() async {
+    try {
+      final db = await database;
+      final List<Map<String, dynamic>> maps = await db.rawQuery('''
+      SELECT rit 
+      FROM penjualan_tiket 
+      WHERE status = 'Y'
+      ORDER BY id DESC 
+      LIMIT 1
+    ''');
+
+      if (maps.isNotEmpty && maps.first['rit'] != null) {
+        final String lastRit = maps.first['rit'].toString();
+        print('=== [DEBUG] RIT TERAKHIR ===');
+        print('Rit terakhir: $lastRit');
+        return lastRit;
+      }
+
+      print('⚠️ Tidak ada rit ditemukan');
+      return null;
+    } catch (e) {
+      print('❌ Error get last rit: $e');
+      return null;
+    }
+  }
 }

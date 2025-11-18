@@ -23,7 +23,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_18112025-v1.db';
+    String path = '${documentsDirectory.path}/bisapp_19112025-v1.db';
 
     return await openDatabase(
       path,
@@ -41,10 +41,11 @@ class DatabaseHelper {
   Future<void> _createTables(Database db, int version) async {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS m_premi_posisi_kru (
-        id INTEGER PRIMARY KEY,
-        nama_premi TEXT,
-        persen_premi TEXT,
-        tanggal_simpan TEXT, UNIQUE (nama_premi, persen_premi)
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nama_premi TEXT NOT NULL,
+        persen_premi TEXT NOT NULL,
+        tanggal_simpan TEXT NOT NULL,
+        UNIQUE(nama_premi)
       )
     ''');
 
@@ -214,7 +215,6 @@ class DatabaseHelper {
       coaPendapatanBus TEXT,
       coaPengeluaranBus TEXT,
       coaUtangPremi TEXT,
-      noKontak TEXT,
       UNIQUE (id_user, id_group, id_company, id_garasi, id_bus, no_pol, tanggal_simpan)
     )
     ''');
@@ -417,45 +417,6 @@ class DatabaseHelper {
     );
   }
 
-  Future<void> clearPremiHarianKru() async {
-    final db = await database;
-    await db.delete('premi_harian_kru');
-  }
-
-  Future<List<Map<String, dynamic>>> getPremiHarianKru() async {
-    final db = await database;
-    return await db.rawQuery('''
-    SELECT a.*, b.nama_lengkap AS nama_kru, (a.persen_premi_disetor*100) AS persen_premi 
-    FROM premi_harian_kru AS a
-    JOIN kru_bis AS b ON a.id_user = b.id_personil
-  ''');
-  }
-
-  Future<List<Map<String, dynamic>>> getPremiHarianKruByStatus(String status) async {
-    final db = await database;
-    return await db.rawQuery('''
-    SELECT a.*, b.nama_lengkap AS nama_kru, (a.persen_premi_disetor*100) AS persen_premi 
-    FROM premi_harian_kru AS a
-    JOIN kru_bis AS b ON a.id_user = b.id_personil
-    WHERE a.status = ?
-  ''', [status]);
-  }
-
-  Future<void> updatePremiHarianKruStatus(int id, String status) async {
-    final db = await database;
-    await db.update(
-      'premi_harian_kru',
-      {'status': status},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  Future<void> clearPremiPosisiKru() async {
-    final db = await database;
-    await db.delete('m_premi_posisi_kru');
-  }
-
   Future<void> updateInspectionStatusQc(int id) async {
     final db = await database;
     await db.update(
@@ -573,35 +534,6 @@ class DatabaseHelper {
   Future<void> clearInspectionItems() async {
     final db = await database;
     await db.delete('m_inspection_items');
-  }
-
-  Future<void> insertPremiPosisiKru(Map<String, dynamic> data) async {
-    final db = await database;
-    await db.insert('m_premi_posisi_kru', data);
-  }
-
-  Future<List<Map<String, dynamic>>> getPremiPosisiKru() async {
-    final db = await database;
-    return await db.query('m_premi_posisi_kru');
-  }
-
-  Future<void> updatePremiPosisiKru(int id, String deskripsi) async {
-    final db = await database;
-    await db.update(
-      'm_premi_posisi_kru',
-      {'id': id},
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-  }
-
-  Future<void> deletePremiPosisiKru(int id) async {
-    final db = await database;
-    await db.delete(
-      'm_premi_posisi_kru',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
   }
 
   Future<void> insertUser(Map<String, dynamic> user) async {
