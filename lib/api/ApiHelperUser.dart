@@ -47,6 +47,7 @@ class User {
   final String coaPendapatanBus;
   final String coaPengeluaranBus;
   final String coaUtangPremi;
+  final String noKontak;
 
   User({
     required this.idUser,
@@ -75,6 +76,7 @@ class User {
     required this.coaPendapatanBus,
     required this.coaPengeluaranBus,
     required this.coaUtangPremi,
+    required this.noKontak,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -105,6 +107,7 @@ class User {
       coaPendapatanBus: json['coa_pendapatan_bus'] ?? '',
       coaPengeluaranBus: json['coa_pengeluaran_bus'] ?? '',
       coaUtangPremi: json['coa_utang_premi'] ?? '',
+      noKontak: json['no_kontak'] ?? '',
     );
   }
 
@@ -136,6 +139,7 @@ class User {
       'coaPendapatanBus': coaPendapatanBus,
       'coaPengeluaranBus': coaPengeluaranBus,
       'coaUtangPremi': coaUtangPremi,
+      'noKontak': noKontak,
       'tanggal_simpan': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
   }

@@ -446,6 +446,10 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<List<int>> getTicket() async {
+    // Ambil SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090'; // Default value jika tidak ada
+
     int idkotaAwal = int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
     int idkotaAkhir = int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
 
@@ -484,7 +488,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
     // 1. TAMBAHKAN LOGO DI SINI (SEBELUM TEKS APAPUN)
     try {
-      final ByteData logoData = await rootBundle.load('assets/images/logo_print.png');
+      final ByteData logoData = await rootBundle.load('assets/images/icon_mila.png');
       final Uint8List logoBytes = logoData.buffer.asUint8List();
 
       // Decode gambar
@@ -506,9 +510,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
     // Menambahkan teks dan informasi tiket lainnya
     bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
         styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
-    bytes += generator.text("Probolinggo - Jatim 67214", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("Probolinggo - Jawa Timur 67214", styles: PosStyles(align: PosAlign.center));
     bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("WA: 0822-3490-9090", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("WA: $noWhatsapp", styles: PosStyles(align: PosAlign.center));
     bytes += generator.hr();
 
     // Menambahkan kota keberangkatan dan tujuan
