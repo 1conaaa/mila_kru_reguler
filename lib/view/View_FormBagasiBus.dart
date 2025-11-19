@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -30,6 +31,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   Map<int, String> deskripsi = {}; // Untuk menyimpan komentar dari TextField
   Map<int, double> persen = {}; // Untuk menyimpan nilai persen sebagai double
   String? selectedJenisPaket; // Ubah tipe data menjadi String?
+  final UserService _userService = UserService(); // Tambahkan ini
 
   // Definisikan variabel yang belum ada
   int qtyBarang = 0;
@@ -302,7 +304,8 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
   Future<void> _getUserData() async {
     try {
-      List<Map<String, dynamic>> users = await databaseHelper.queryUsers();
+      // GUNAKAN UserService instead of databaseHelper
+      List<Map<String, dynamic>> users = await _userService.getUsers();
       if (users.isNotEmpty) {
         Map<String, dynamic> firstUser = users[0];
         setState(() {

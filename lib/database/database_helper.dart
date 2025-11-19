@@ -19,15 +19,20 @@ class DatabaseHelper {
     return _database!;
   }
 
+  // Tambahkan method initDatabase yang hilang
+  Future<void> initDatabase() async {
+    _database = await database;
+  }
+
   get databaseHelper => null;
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_19112025-v1.db';
+    String path = '${documentsDirectory.path}/bisapp_19112025-v3.db';
 
     return await openDatabase(
       path,
-      version: 1, // Update the version number
+      version: 3, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -215,6 +220,7 @@ class DatabaseHelper {
       coaPendapatanBus TEXT,
       coaPengeluaranBus TEXT,
       coaUtangPremi TEXT,
+      noKontak TEXT,
       UNIQUE (id_user, id_group, id_company, id_garasi, id_bus, no_pol, tanggal_simpan)
     )
     ''');
@@ -323,8 +329,6 @@ class DatabaseHelper {
       _database = null;
     }
   }
-
-
 
   Future<Map<String, int>> getSumJumlahPendapatanBagasi(String? kelasBus) async {
     final db = await database;
@@ -534,40 +538,6 @@ class DatabaseHelper {
   Future<void> clearInspectionItems() async {
     final db = await database;
     await db.delete('m_inspection_items');
-  }
-
-  Future<void> insertUser(Map<String, dynamic> user) async {
-    final db = await database;
-    await db.insert('users', user);
-  }
-
-  Future<List<Map<String, dynamic>>> getUsers() async {
-    final db = await database;
-    return await db.query('users');
-  }
-
-  Future<void> updateUser(int id, String name) async {
-    final db = await database;
-    await db.update('users', {'name': name}, where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<void> deleteUser(int id) async {
-    final db = await database;
-    await db.delete('users', where: 'id = ?', whereArgs: [id]);
-  }
-
-  Future<void> initDatabase() async {
-    _database = await database;
-  }
-
-  Future<List<Map<String, dynamic>>> queryUsers() async {
-    final db = await database;
-    return await db.query('users');
-  }
-
-  Future<void> clearUsersTable() async {
-    final db = await database;
-    await db.delete('users');
   }
 
   Future<void> insertKruBis(Map<String, dynamic> data) async {

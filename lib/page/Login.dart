@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/api/ApiHelperMetodePembayaran.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
+import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/api/ApiHelperPremiPosisiKru.dart';
 import 'package:mila_kru_reguler/api/ApiHelperKruBis.dart';
@@ -28,6 +29,7 @@ class _LoginState extends State<Login> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
+  final UserService _userService = UserService(); // Tambahkan ini
 
   @override
   void dispose() {
@@ -122,14 +124,11 @@ class _LoginState extends State<Login> {
         print("No Kontak: ${user.noKontak}");
         print("===========================");
 
-        DatabaseHelper databaseHelper = DatabaseHelper();
         try {
-          await databaseHelper.initDatabase();
-          await databaseHelper.insertUser(user.toMap());
-          print('Data berhasil disimpan:');
-          await databaseHelper.closeDatabase();
+          await _userService.insertUser(user.toMap());
+          print('User data saved successfully');
         } catch (e) {
-          print('Error: $e');
+          print('Error saving user data: $e');
         }
 
         Navigator.pushReplacementNamed(context, '/');

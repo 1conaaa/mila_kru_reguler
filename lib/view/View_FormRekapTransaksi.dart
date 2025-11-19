@@ -9,6 +9,7 @@ import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
 import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
+import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
@@ -28,6 +29,9 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   final TextEditingController _textController = TextEditingController(text: 'Hidden Value');
   final PremiPosisiKruService _premiService = PremiPosisiKruService(); // Inisialisasi service
   final bool _isHidden = true;
+  final UserService _userService = UserService(); // Tambahkan ini
+
+  double totalPendapatanBersih = 0.0; // Tambahkan ini
 
   String? selectedKotaBerangkat;
   String? selectedKotaTujuan;
@@ -217,7 +221,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
   Future<void> _getUserData() async {
     try {
-      List<Map<String, dynamic>> users = await databaseHelper.queryUsers();
+      // GUNAKAN UserService instead of databaseHelper
+      List<Map<String, dynamic>> users = await _userService.getUsers();
 
       print('=== [DEBUG] DATABASE QUERY RESULTS ===');
       print('Number of users: ${users.length}');
@@ -281,7 +286,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   Future<void> _loadTagTransaksi() async {
     await databaseHelper.initDatabase();
 
-    List<Map<String, dynamic>> users = await databaseHelper.queryUsers();
+    List<Map<String, dynamic>> users = await _userService.getUsers();
     if (users.isEmpty) return;
 
     Map<String, dynamic> firstUser = users[0];
@@ -366,22 +371,16 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     // 2. Isi nilai dalam setState setelah variabel siap
     setState(() {
       // ―――― Reguler ――――
-      totalPendapatanRegulerValue =
-          (hasilReguler['totalPendapatanReguler'] ?? 0).toDouble();
-      jumlahTiketRegulerValue =
-          (hasilReguler['jumlahTiketReguler'] ?? 0).toInt();
+      totalPendapatanRegulerValue = (hasilReguler['totalPendapatanReguler'] ?? 0).toDouble();
+      jumlahTiketRegulerValue = (hasilReguler['jumlahTiketReguler'] ?? 0).toInt();
 
       // ―――― Non Reguler / Online ――――
-      totalPendapatanNonRegulerValue =
-          (hasilNonReguler['totalPendapatanNonReguler'] ?? 0).toDouble();
-      jumlahTiketOnlineValue =
-          (hasilNonReguler['jumlahTiketOnLine'] ?? 0).toInt();
+      totalPendapatanNonRegulerValue = (hasilNonReguler['totalPendapatanNonReguler'] ?? 0).toDouble();
+      jumlahTiketOnlineValue = (hasilNonReguler['jumlahTiketOnLine'] ?? 0).toInt();
 
       // ―――― Bagasi ――――
-      totalPendapatanBagasiValue =
-          (hasilBagasi['totalPendapatanBagasi'] ?? 0).toDouble();
-      jumlahBarangBagasiValue =
-          (hasilBagasi['jumlahBarangBagasi'] ?? 0).toInt();
+      totalPendapatanBagasiValue = (hasilBagasi['totalPendapatanBagasi'] ?? 0).toDouble();
+      jumlahBarangBagasiValue = (hasilBagasi['jumlahBarangBagasi'] ?? 0).toInt();
     });
 
     print("=== Nilai Setelah setState ===");
@@ -850,7 +849,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   @override
   Widget build(BuildContext context) {
     // Debug sebelum membuat widget
-    print('=== FINAL CHECK SEBELUM BUILD WIDGET ===');
+    print('=== FINAL CHECK SEBELUM BUILD WIDGET x===');
     print('_controllers[1]: "${_controllers[1]?.text}"');
     print('_jumlahControllers[1]: "${_jumlahControllers[1]?.text}"');
     print('_controllers[2]: "${_controllers[2]?.text}"');
@@ -888,7 +887,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
 
     try {
-      List<Map<String, dynamic>> users = await databaseHelper.queryUsers();
+      List<Map<String, dynamic>> users = await _userService.getUsers();
       if (users.isEmpty) {
         print('Tidak ada data user');
         return;
@@ -1083,6 +1082,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
         // Hanya simpan jika nilai > 0
         if (nilai > 0) {
+          totalPendapatanBersih += nilai;
           print('--- BERSIH SETORAN ---');
           print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
 
@@ -1115,8 +1115,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         }
       }
 
-      // 6. Dapatkan nominal premi kru dari hasil kalkulasi terakhir
-      print('--- MENDAPATKAN NOMINAL PREMI KRU ---');
+      // 6. Dapatkan hasil kalkulasi lengkap dari PremiBersihCalculator
+      print('--- MENDAPATKAN HASIL KALKULASI PREMI BERSIH ---');
       final calculationResult = PremiBersihCalculator.calculatePremiBersih(
         tagPendapatan: tagPendapatan,
         tagPengeluaran: tagPengeluaran,
@@ -1128,8 +1128,27 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         userData: _userData!,
       );
 
+// Ekstrak semua nilai yang diperlukan dari calculationResult
       final double nominalPremiKru = (calculationResult['nominalPremiKru'] as double?) ?? 0.0;
-      print('Nominal Premi Kru dari kalkulasi: $nominalPremiKru');
+      final double nominalPremiExtra = (calculationResult['nominalPremiExtra'] as double?) ?? 0.0;
+      final double pendapatanBersih = (calculationResult['pendapatanBersih'] as double?) ?? 0.0;
+      final double pendapatanDisetor = (calculationResult['pendapatanDisetor'] as double?) ?? 0.0;
+      final double totalPendapatan = (calculationResult['totalPendapatan'] as double?) ?? 0.0;
+      final double totalPengeluaran = (calculationResult['totalPengeluaran'] as double?) ?? 0.0;
+      final double sisaPendapatan = (calculationResult['sisaPendapatan'] as double?) ?? 0.0;
+      final double tolAdjustment = (calculationResult['tolAdjustment'] as double?) ?? 0.0;
+
+// Debug output untuk memverifikasi nilai
+      print('=== HASIL KALKULASI YANG DIEKSTRAK ===');
+      print('📊 Nominal Premi Kru: $nominalPremiKru');
+      print('📊 Nominal Premi Extra: $nominalPremiExtra');
+      print('💰 Pendapatan Bersih: $pendapatanBersih');
+      print('💰 Pendapatan Disetor: $pendapatanDisetor');
+      print('💰 Total Pendapatan: $totalPendapatan');
+      print('💰 Total Pengeluaran: $totalPengeluaran');
+      print('💰 Sisa Pendapatan: $sisaPendapatan');
+      print('💰 Tol Adjustment: $tolAdjustment');
+      print('====================================');
 
       print('=== MENJALANKAN SIMPAN SETORAN LENGKAP ===');
       print('Total setoran dasar: ${semuaSetoran.length}');
@@ -1228,7 +1247,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         final double persenPremi = double.tryParse(persenPremiStr.replaceAll('%', '').replaceAll(' ', '')) ?? 0.0;
 
         // Hitung nominal premi harian
-        final double nominalPremiHarian = (nominalPremiKru * persenPremi) / 100;
+        final double nominalPremiHarian = (pendapatanBersih * persenPremi) / 100;
+        print('rumus premi harian : $pendapatanBersih x $persenPremi');
 
         print('   📊 Perhitungan premi harian:');
         print('      - Persen premi: $persenPremi%');

@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:mila_kru_reguler/models/user_data.dart';
+import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/database/database_helper.dart';
@@ -21,9 +23,10 @@ class _HomeState extends State<Home> {
   String? namaTrayek;
   String? token;
   String? namaLengkap;
+  String? noKontak;
 
   List<dynamic> notifikasiList = [];
-
+  final UserService _userService = UserService();
   final DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
   @override
@@ -44,6 +47,7 @@ class _HomeState extends State<Home> {
       token = prefs.getString('token') ?? '';
       namaTrayek = prefs.getString('namaTrayek') ?? '';
       namaLengkap = prefs.getString('namaLengkap') ?? '';
+      noKontak = prefs.getString('noKontak') ?? '';
     });
 
     await _fetchNotifikasi();
@@ -87,13 +91,16 @@ class _HomeState extends State<Home> {
     }
   }
 
-  /// 🔹 Query user lokal
-  Future<List<Map<String, dynamic>>> _getUserData() async {
-    await databaseHelper.initDatabase();
-    final users = await databaseHelper.queryUsers();
-    await databaseHelper.closeDatabase();
-    return users;
+  // Method untuk mendapatkan semua user data
+  Future<List<UserData>> getAllUserData() async {
+    try {
+      return await _userService.getAllUsersAsUserData();
+    } catch (e) {
+      print('Error getting all users: $e');
+      return [];
+    }
   }
+
 
   /// 🔹 Query kru bus lokal
   Future<List<Map<String, dynamic>>> _getKruBis() async {
@@ -159,46 +166,76 @@ class _HomeState extends State<Home> {
                   elevation: 4.0,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: FutureBuilder<List<Map<String, dynamic>>>(
-                      future: _getUserData(),
-                      builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
+                    child: FutureBuilder<List<UserData>>(
+                      future: getAllUserData(),
+                      builder: (BuildContext context, AsyncSnapshot<List<UserData>> snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(
+                          return const Center(
                             child: CircularProgressIndicator(),
                           );
                         } else if (snapshot.hasError) {
-                          return Text('Failed to fetch user data from database.');
+                          return const Text('Gagal memuat data pengguna dari database.');
                         } else if (snapshot.hasData) {
-                          List<Map<String, dynamic>> users = snapshot.data!;
+                          List<UserData> users = snapshot.data!;
+
+                          if (users.isEmpty) {
+                            return const Text('Tidak ada data pengguna.');
+                          }
+
                           return ListView.builder(
                             shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
+                            physics: const NeverScrollableScrollPhysics(),
                             itemCount: users.length,
                             itemBuilder: (BuildContext context, int index) {
-                              Map<String, dynamic> user = users[index];
+                              UserData user = users[index];
                               return Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Nama Lengkap: ${user['nama_lengkap']}',
-                                    style: TextStyle(fontSize: 16.0),
+                                    'Nama Lengkap: ${namaLengkap ?? "Tidak tersedia"}',
+                                    style: const TextStyle(fontSize: 16.0),
                                   ),
-                                  SizedBox(height: 8.0),
+                                  const SizedBox(height: 8.0),
                                   Text(
-                                    'ID Bus: ${user['id_bus']}',
-                                    style: TextStyle(fontSize: 16.0),
+                                    'ID User: ${user.idUser}',
+                                    style: const TextStyle(fontSize: 16.0),
                                   ),
-                                  SizedBox(height: 8.0),
+                                  const SizedBox(height: 8.0),
                                   Text(
-                                    'Nomor Polisi: ${user['no_pol']}',
-                                    style: TextStyle(fontSize: 16.0),
+                                    'ID Bus: ${user.idBus}',
+                                    style: const TextStyle(fontSize: 16.0),
                                   ),
-                                  SizedBox(height: 8.0),
+                                  const SizedBox(height: 8.0),
                                   Text(
-                                    'Nama Trayek: ${user['nama_trayek']}',
-                                    style: TextStyle(fontSize: 16.0),
+                                    'Nomor Polisi: ${user.noPol}',
+                                    style: const TextStyle(fontSize: 16.0),
                                   ),
-                                  SizedBox(height: 16.0),
+                                  const SizedBox(height: 8.0),
+                                  Text(
+                                    'Nama Trayek: ${user.namaTrayek}',
+                                    style: const TextStyle(fontSize: 16.0),
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  Text(
+                                    'Jenis Trayek: ${user.jenisTrayek}',
+                                    style: const TextStyle(fontSize: 16.0),
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  Text(
+                                    'Kelas Bus: ${user.kelasBus}',
+                                    style: const TextStyle(fontSize: 16.0),
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  Text(
+                                    'Premi Extra: ${user.premiExtra}',
+                                    style: const TextStyle(fontSize: 16.0),
+                                  ),
+                                  const SizedBox(height: 8.0),
+                                  Text(
+                                    'Persen Premi Kru: ${user.persenPremikru}%',
+                                    style: const TextStyle(fontSize: 16.0),
+                                  ),
+                                  const SizedBox(height: 16.0),
                                 ],
                               );
                             },

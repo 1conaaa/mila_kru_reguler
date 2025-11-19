@@ -15,6 +15,7 @@ class UserData {
   final String coaPendapatanBus;
   final String coaPengeluaranBus;
   final String coaUtangPremi;
+  final String noKontak;
 
   UserData({
     required this.idUser,
@@ -33,6 +34,7 @@ class UserData {
     required this.coaPendapatanBus,
     required this.coaPengeluaranBus,
     required this.coaUtangPremi,
+    required this.noKontak,
   });
 
   // Factory constructor untuk membuat UserData dari Map
@@ -54,6 +56,7 @@ class UserData {
       coaPendapatanBus: map['coaPendapatanBus'] ?? '',
       coaPengeluaranBus: map['coaPengeluaranBus'] ?? '',
       coaUtangPremi: map['coaUtangPremi'] ?? '',
+      noKontak: map['noKontak'] ?? '',
     );
   }
 
@@ -76,6 +79,7 @@ class UserData {
       coaPendapatanBus: '',
       coaPengeluaranBus: '',
       coaUtangPremi: '',
+      noKontak: '',
     );
   }
 

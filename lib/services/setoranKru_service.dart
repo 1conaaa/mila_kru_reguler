@@ -145,39 +145,6 @@ class SetoranKruService {
         print('   - Nominal premi kru: $nominalPremiKru');
         print('   - Hasil: $nominalPremiBawah');
 
-        // 4. Simpan premi bawah ke tabel setoran kru
-        // if (nominalPremiBawah > 0) {
-        //   final setoranPremiBawah = SetoranKru(
-        //     tglTransaksi: tanggalTransaksi,
-        //     kmPulang: 0,
-        //     rit: rit,
-        //     noPol: noPol,
-        //     idBus: idBus,
-        //     kodeTrayek: kodeTrayek,
-        //     idPersonil: idPersonil,
-        //     idGroup: idGroup,
-        //     jumlah: 1,
-        //     idTransaksi: 'PREMI_BAWAH_${DateTime.now().millisecondsSinceEpoch}_$idPersonil',
-        //     coa: null,
-        //     nilai: nominalPremiBawah,
-        //     idTagTransaksi: 32,
-        //     status: 'N',
-        //     keterangan: 'Premi Bawah untuk $namaLengkap ($groupName)',
-        //     fupload: null,
-        //     fileName: null,
-        //     updatedAt: DateTime.now().toString(),
-        //     createdAt: DateTime.now().toString(),
-        //   );
-        //
-        //   try {
-        //     final result = await insertSetoran(setoranPremiBawah);
-        //     print('✅ Premi bawah berhasil disimpan untuk $namaLengkap: ID $result');
-        //   } catch (e) {
-        //     print('❌ Gagal menyimpan premi bawah untuk $namaLengkap: $e');
-        //   }
-        // } else {
-        //   print('⚠️ Premi bawah 0 untuk $namaLengkap, tidak disimpan');
-        // }
       }
 
       print('=== [DEBUG] SELESAI HITUNG PREMI BAWAH KRU ===');

@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
-import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
@@ -580,7 +579,7 @@ class _PremiKruState extends State<PremiKru> {
                                           )),
                                           DataCell(Text(
                                               setoran.nilai != null
-                                                  ? formatter.format(setoran.nilai!)
+                                                  ? formatter.format(setoran.nilai)
                                                   : '-'
                                           )),
                                           DataCell(Text(setoran.keterangan ?? '-')),

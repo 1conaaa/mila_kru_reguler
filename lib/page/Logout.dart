@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
+import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
@@ -23,8 +24,9 @@ class Logout extends StatelessWidget {
       final setoranKruService = SetoranKruService();
       final premiPosisiKruService = PremiPosisiKruService();
       final tagService = TagTransaksiService();
+      final userService = UserService();
 
-      await databaseHelper.clearUsersTable();
+      await userService.clearUsersTable();
       await databaseHelper.clearKruBis();
       await databaseHelper.clearListKota();
       await penjualanTiketService.clearPenjualanTiket();

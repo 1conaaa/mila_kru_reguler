@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
+import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -59,6 +60,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
   double totalTagihanPlusBiayaAdmin = 0.0;
   bool isTotalDenganAdminVisible = false;
   TextEditingController totalDenganAdminController = TextEditingController();
+
+  final UserService _userService = UserService(); // Tambahkan ini
 
   int idUser = 0;
   int idGroup = 0;
@@ -260,7 +263,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<void> _getUserData() async {
-    List<Map<String, dynamic>> users = await databaseHelper.queryUsers();
+    List<Map<String, dynamic>> users = await _userService.getUsers();
     if (users.isNotEmpty) {
       Map<String, dynamic> firstUser = users[0];
       setState(() {
