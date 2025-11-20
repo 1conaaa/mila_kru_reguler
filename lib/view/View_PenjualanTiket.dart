@@ -21,7 +21,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 
-
 final printerService = BluetoothPrinterService();
 
 class PenjualanForm extends StatefulWidget {
@@ -141,7 +140,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
   DatabaseHelper databaseHelper = DatabaseHelper();
 
   TextEditingController sarantagihanController = TextEditingController();
-  NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
+  NumberFormat formatter = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,   // <-- hilangkan ,00
+  );
 
   Future<void> _loadLastKotaTerakhir() async {
     await databaseHelper.initDatabase();
@@ -294,6 +297,17 @@ class _PenjualanFormState extends State<PenjualanForm> {
       kembalianController.text = formatter.format(jumlahKembalian);
       print('kembalian $jumlahKembalian');
     });
+  }
+
+  int pembulatanRibuan(double nilai) {
+    int floorValue = nilai.floor();           // hilangkan desimal
+    int sisa = floorValue % 1000;             // ambil 3 digit terakhir
+
+    if (sisa < 500) {
+      return floorValue - sisa;               // bulatkan ke bawah
+    } else {
+      return floorValue + (1000 - sisa);      // bulatkan ke atas
+    }
   }
 
   @override
@@ -566,48 +580,49 @@ class _PenjualanFormState extends State<PenjualanForm> {
     return bytes;
   }
 
-  void _calculateTagihan(String? selectedKategoriTiket, String? kelasBus, int jumlahTiket, String? selectedKotaBerangkat, String? selectedKotaTujuan) async {
-    double jarakAwal = double.tryParse(selectedKotaBerangkat!.split(' - ')[1]) ?? 0;
-    int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
+  void _calculateTagihan(
+      String? selectedKategoriTiket,
+      String? kelasBus,
+      int jumlahTiket,
+      String? selectedKotaBerangkat,
+      String? selectedKotaTujuan) async {
 
+    double jarakAwal = double.tryParse(selectedKotaBerangkat!.split(' - ')[1]) ?? 0;
     double jarakAkhir = double.tryParse(selectedKotaTujuan!.split(' - ')[1]) ?? 0;
-    int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
 
     double selisihJarak = (jarakAwal - jarakAkhir).abs();
 
-    if (kelasBus == 'Non Ekonomi') {
-      jumlahTagihan = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-      print('1. value calculate $kelasBus : $biayaPerkursi , $marginKantor , $jarakPP , $selisihJarak , $jumlahTiket , $jumlahTagihan');
-      sarantagihanController.text = formatter.format(jumlahTagihan);
-    } else if (kelasBus == 'Ekonomi') {
-      switch(selectedKategoriTiket){
-        case'reguler':
-          jumlahTagihan = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-          break;
-        case'red_bus':
-        case'traveloka':
-        case'go_asia':
-          jumlahTagihan = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-          break;
-        case'operan':
-          jumlahTagihan = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-          break;
-        case'sepi':
-        case'tni':
-        case'sepi':
-        case'pelajar':
-        case'langganan':
-          jumlahTagihan = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-          break;
-        case'gratis':
-          jumlahTagihan = 0;
-          break;
-      }
+    // ----------------------------
+    // HITUNG HARGA KANTOR
+    // ----------------------------
+    double hargaKantor = ((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket;
 
-      print('2. value calculate $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $biayaPerkursi $marginKantor $marginTarikan $jarakPP $selisihJarak $jumlahTagihan');
-      hargaKantorController.text = formatter.format(jumlahTagihan);
+    // ----------------------------
+    // HITUNG HARGA TARIKAN (BEDA!)
+    // ----------------------------
+    double hargaTarikan = ((biayaPerkursi + marginTarikan) / jarakPP) * selisihJarak * jumlahTiket;
 
+    // Kasus khusus gratis
+    if (selectedKategoriTiket == 'gratis') {
+      hargaKantor = 0;
+      hargaTarikan = 0;
     }
+
+    print("Hitung harga kantor: $hargaKantor");
+    print("Hitung harga tarikan: $hargaTarikan");
+
+    setState(() {
+      // bulatkan nilai
+      int hargaKantorBulat   = pembulatanRibuan(hargaKantor);
+      int hargaTarikanBulat  = pembulatanRibuan(hargaTarikan);
+
+      // tampilkan ke controller (tanpa desimal)
+      hargaKantorController.text = formatter.format(hargaKantorBulat);
+      tagihanController.text     = formatter.format(hargaTarikanBulat);
+
+      jumlahTagihan = hargaTarikanBulat.toDouble();
+    });
+
   }
 
   Future<void> _kirimKeBackendAPI(
@@ -1459,18 +1474,24 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
   Future<void> _ambilFoto() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? foto = await picker.pickImage(source: ImageSource.camera);
+
+    final XFile? foto = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 40,        // 0 - 100 (semakin kecil semakin kecil ukuran)
+      maxWidth: 800,           // resize otomatis
+      maxHeight: 800,
+    );
 
     if (foto != null) {
       String fileName = "penumpang_${DateTime.now().millisecondsSinceEpoch}.jpg";
 
       final directory = await getApplicationDocumentsDirectory();
       final folderPath = "${directory.path}/foto_penumpang";
-
       await Directory(folderPath).create(recursive: true);
 
       final String savedPath = "$folderPath/$fileName";
 
+      // langsung copy hasil foto yg sudah terkompres
       await File(foto.path).copy(savedPath);
 
       setState(() {
