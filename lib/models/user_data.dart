@@ -6,6 +6,7 @@ class UserData {
   final int idBus;
   final String noPol;
   final String namaTrayek;
+  final String kodeTrayek;
   final String jenisTrayek;
   final String kelasBus;
   final String keydataPremiextra;
@@ -25,6 +26,7 @@ class UserData {
     required this.idBus,
     required this.noPol,
     required this.namaTrayek,
+    required this.kodeTrayek,
     required this.jenisTrayek,
     required this.kelasBus,
     required this.keydataPremiextra,
@@ -48,6 +50,7 @@ class UserData {
       noPol: map['no_pol'] ?? '',
       namaTrayek: map['nama_trayek'] ?? '',
       jenisTrayek: map['jenis_trayek'] ?? '',
+      kodeTrayek: map['kode_trayek'] ?? '',
       kelasBus: map['kelas_bus'] ?? '',
       keydataPremiextra: map['keydataPremiextra'] ?? '',
       premiExtra: map['premiExtra'] ?? '',
@@ -70,6 +73,7 @@ class UserData {
       idBus: 0,
       noPol: '',
       namaTrayek: '',
+      kodeTrayek: '',
       jenisTrayek: '',
       kelasBus: '',
       keydataPremiextra: '',

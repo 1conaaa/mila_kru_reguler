@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:sqflite/sqflite.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
@@ -203,10 +205,43 @@ class SetoranKruService {
 
   // Get all
   Future<List<SetoranKru>> getAllSetoran() async {
-    final db = await _dbHelper.database;
-    final maps = await db.query('t_setoran_kru');
-    return maps.map((e) => SetoranKru.fromMap(e)).toList();
+    try {
+      final db = await _dbHelper.database;
+
+      print("===============================================");
+      print("📥 MENGAMBIL SEMUA DATA SETORAN KRU DARI TABEL");
+      print("===============================================");
+
+      final maps = await db.query('t_setoran_kru');
+
+      print("🔢 Total data ditemukan: ${maps.length}");
+
+      if (maps.isEmpty) {
+        print("⚠️ Tabel t_setoran_kru masih kosong.");
+        return [];
+      }
+
+      print("-----------------------------------------------");
+      print("📄 DATA TABEL t_setoran_kru:");
+      print("-----------------------------------------------");
+
+      int index = 0;
+      for (var row in maps) {
+        print("Row #$index:");
+        print(const JsonEncoder.withIndent('  ').convert(row));
+        print("-----------------------------------------------");
+        index++;
+      }
+
+      // Convert to model
+      return maps.map((e) => SetoranKru.fromMap(e)).toList();
+
+    } catch (e) {
+      print("🔥 ERROR saat mengambil data dari t_setoran_kru: $e");
+      return [];
+    }
   }
+
 
   // Get by id
   Future<SetoranKru?> getSetoranById(int id) async {

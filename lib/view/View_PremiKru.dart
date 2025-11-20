@@ -228,9 +228,32 @@ class _PremiKruState extends State<PremiKru> {
       // Kirim id_transaksi
       request.fields['id_transaksi'] = idTransaksi;
 
-      // Kirim rows sebagai JSON string - pastikan format benar
-      List<Map<String, dynamic>> cleanedRows = [];
+      print('📋 Data sebelum cleaning:');
+      print('Jumlah rows asli: ${rows.length}');
+
+      // FILTER: Hanya kirim data dengan status 'N' (belum dikirim)
+      List<Map<String, dynamic>> unsentRows = [];
       for (var row in rows) {
+        if (row['status'] == 'N') {
+          unsentRows.add(row);
+        }
+      }
+
+      print('✅ Data setelah filter (hanya status N): ${unsentRows.length} rows');
+
+      // Jika tidak ada data yang perlu dikirim
+      if (unsentRows.isEmpty) {
+        print('ℹ️ Tidak ada data dengan status "N" untuk dikirim');
+        return {
+          'success': true,
+          'message': 'Tidak ada data baru untuk dikirim',
+          'skipped': true
+        };
+      }
+
+      // Kirim rows sebagai JSON string - TAMBAHKAN id_transaksi ke setiap row
+      List<Map<String, dynamic>> cleanedRows = [];
+      for (var row in unsentRows) {
         // Bersihkan data dari nilai null atau format yang tidak diinginkan
         Map<String, dynamic> cleanedRow = {};
         row.forEach((key, value) {
@@ -238,6 +261,10 @@ class _PremiKruState extends State<PremiKru> {
             cleanedRow[key] = value;
           }
         });
+
+        // PASTIKAN id_transaksi ada di setiap row
+        cleanedRow['id_transaksi'] = idTransaksi;
+
         cleanedRows.add(cleanedRow);
       }
 
@@ -247,29 +274,36 @@ class _PremiKruState extends State<PremiKru> {
       print('📤 Data yang dikirim ke API:');
       print('ID Transaksi: $idTransaksi');
       print('Jumlah rows: ${cleanedRows.length}');
-      print('Rows JSON: ${jsonEncode(cleanedRows)}');
 
-      // Kirim file jika ada - PERBAIKI BAGIAN INI
+      // PROSES FILE (sama seperti sebelumnya)
+      print('\n📎 PROSES FILE ATTACHMENT:');
+      int fileCounter = 0;
       for (int i = 0; i < files.length; i++) {
         final d = files[i];
-        if (d.fupload != null && d.fupload!.isNotEmpty && File(d.fupload!).existsSync()) {
+
+        if (d.fupload != null && d.fupload!.isNotEmpty) {
           try {
-            var multipartFile = await http.MultipartFile.fromPath(
-              'file_name[$i]',
-              d.fupload!,
-            );
-            request.files.add(multipartFile);
-            print('📎 File $i dilampirkan: ${d.fupload}');
+            File file = File(d.fupload!);
+            if (await file.exists()) {
+              var multipartFile = await http.MultipartFile.fromPath(
+                'file_name[$i][]',
+                d.fupload!,
+              );
+              request.files.add(multipartFile);
+              fileCounter++;
+              print('✅ File $i-1 dilampirkan: ${d.fupload}');
+            } else {
+              print('⚠️  File tidak ditemukan: ${d.fupload}');
+            }
           } catch (e) {
-            print('⚠️  Gagal melampirkan file $i: ${d.fupload} - Error: $e');
+            print('❌ Gagal melampirkan file $i-1: ${d.fupload} - Error: $e');
           }
         }
       }
+      print('📎 Total files dilampirkan: $fileCounter');
 
+      print('\n🚀 Mengirim ${cleanedRows.length} data ke API...');
 
-      print('🚀 Mengirim ${cleanedRows.length} data ke API...');
-
-      // Tambahkan timeout
       var streamedResponse = await request.send().timeout(
         Duration(seconds: 30),
         onTimeout: () {
@@ -289,35 +323,45 @@ class _PremiKruState extends State<PremiKru> {
         throw Exception('Gagal parsing response JSON: ${response.body}');
       }
 
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (responseData['success'] == true) {
           print('✅ Berhasil mengirim data setoran kru');
 
-          // Panggil callback untuk update status = 'Y'
+          // Panggil callback untuk update status = 'Y' hanya untuk data yang berhasil dikirim
           try {
             await onSuccessCallback(idTransaksi);
             print('✅ Status berhasil diupdate ke Y untuk id_transaksi: $idTransaksi');
           } catch (e) {
             print('⚠️  Berhasil kirim data tapi gagal update status: $e');
-            // Tidak rethrow error update status, karena data sudah berhasil dikirim ke server
           }
 
           return responseData;
         } else {
-          // Handle case where status code 200 but success: false
           String errorMessage = responseData['message'] ?? 'Unknown error from API';
           throw Exception('API response success: false - $errorMessage');
         }
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized - Token mungkin expired atau tidak valid');
       } else if (response.statusCode == 422) {
-        // Validasi error - berikan informasi lebih detail
         String validationError = responseData['message'] ?? 'Data validation failed';
         String errorDetails = responseData['errors'] != null
             ? ' - Details: ${responseData['errors']}'
             : '';
         throw Exception('Validasi gagal: $validationError$errorDetails');
       } else if (response.statusCode == 500) {
+        // Handle duplicate entry error specifically
+        if (responseData['error'] != null && responseData['error'].toString().contains('Duplicate entry')) {
+          print('❌ Duplicate entry error - Data sudah ada di server');
+          print('🔧 Mencoba update data yang sudah ada...');
+
+          // Coba update data yang sudah ada
+          return await _handleDuplicateEntry(
+            idTransaksi: idTransaksi,
+            token: token,
+            rows: cleanedRows,
+            originalResponse: responseData,
+          );
+        }
         throw Exception('Server error (500) - Silakan coba lagi nanti');
       } else {
         throw Exception('HTTP Error ${response.statusCode}: ${response.body}');
@@ -332,6 +376,27 @@ class _PremiKruState extends State<PremiKru> {
       print('❌ Error dalam kirimSetoranKruMobile: $e');
       rethrow;
     }
+  }
+
+// Fungsi untuk handle duplicate entry
+  Future<Map<String, dynamic>> _handleDuplicateEntry({
+    required String idTransaksi,
+    required String token,
+    required List<Map<String, dynamic>> rows,
+    required Map<String, dynamic> originalResponse,
+  }) async {
+    print('🔄 Mencoba strategi alternatif untuk duplicate entry...');
+
+    // Option 1: Skip data yang duplicate dan lanjutkan dengan yang lain
+    // Option 2: Update data yang sudah ada
+    // Untuk sekarang, kita return response yang mengindikasikan duplicate
+    return {
+      'success': false,
+      'message': 'Data sudah ada di server (Duplicate Entry)',
+      'duplicate': true,
+      'original_error': originalResponse,
+      'suggestion': 'Data mungkin sudah dikirim sebelumnya. Cek status data di server.'
+    };
   }
 
   Future<void> updateStatusSetoranKru(String idTransaksi) async {

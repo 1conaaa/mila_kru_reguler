@@ -580,53 +580,88 @@ class _PenjualanFormState extends State<PenjualanForm> {
     return bytes;
   }
 
+  // TAMBAHKAN VARIABEL GLOBAL di atas class
+  double _hargaKantorCalculated = 0.0;
+  double _hargaTarikanCalculated = 0.0;
+
   void _calculateTagihan(
       String? selectedKategoriTiket,
       String? kelasBus,
       int jumlahTiket,
       String? selectedKotaBerangkat,
-      String? selectedKotaTujuan) async {
-
-    double jarakAwal = double.tryParse(selectedKotaBerangkat!.split(' - ')[1]) ?? 0;
-    double jarakAkhir = double.tryParse(selectedKotaTujuan!.split(' - ')[1]) ?? 0;
-
-    double selisihJarak = (jarakAwal - jarakAkhir).abs();
-
-    // ----------------------------
-    // HITUNG HARGA KANTOR
-    // ----------------------------
-    double hargaKantor = ((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket;
-
-    // ----------------------------
-    // HITUNG HARGA TARIKAN (BEDA!)
-    // ----------------------------
-    double hargaTarikan = ((biayaPerkursi + marginTarikan) / jarakPP) * selisihJarak * jumlahTiket;
-
-    // Kasus khusus gratis
-    if (selectedKategoriTiket == 'gratis') {
-      hargaKantor = 0;
-      hargaTarikan = 0;
+      String? selectedKotaTujuan,
+      ) async {
+    // VALIDASI INPUT
+    if (selectedKotaBerangkat == null || selectedKotaTujuan == null) {
+      print('❌ Error: Kota berangkat atau tujuan tidak boleh null');
+      return;
     }
 
-    print("Hitung harga kantor: $hargaKantor");
-    print("Hitung harga tarikan: $hargaTarikan");
+    try {
+      double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
+      double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
 
-    setState(() {
-      // bulatkan nilai
-      int hargaKantorBulat   = pembulatanRibuan(hargaKantor);
-      int hargaTarikanBulat  = pembulatanRibuan(hargaTarikan);
+      // Validasi jarak
+      if (jarakAwal <= 0 || jarakAkhir <= 0) {
+        print('❌ Error: Jarak tidak valid - Awal: $jarakAwal, Akhir: $jarakAkhir');
+        return;
+      }
 
-      // tampilkan ke controller (tanpa desimal)
-      hargaKantorController.text = formatter.format(hargaKantorBulat);
-      tagihanController.text     = formatter.format(hargaTarikanBulat);
+      double selisihJarak = (jarakAwal - jarakAkhir).abs();
 
-      jumlahTagihan = hargaTarikanBulat.toDouble();
-    });
+      print('📍 DEBUG _calculateTagihan:');
+      print('   jarakAwal: $jarakAwal, jarakAkhir: $jarakAkhir');
+      print('   selisihJarak: $selisihJarak');
+      print('   biayaPerkursi: $biayaPerkursi, marginKantor: $marginKantor, jarakPP: $jarakPP');
 
+      // ----------------------------
+      // HITUNG HARGA KANTOR
+      // ----------------------------
+      double hargaKantor = ((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket;
+
+      // ----------------------------
+      // HITUNG HARGA TARIKAN
+      // ----------------------------
+      double hargaTarikan = ((biayaPerkursi + marginTarikan) / jarakPP) * selisihJarak * jumlahTiket;
+
+      // Kasus khusus gratis
+      if (selectedKategoriTiket == 'gratis') {
+        hargaKantor = 0;
+        hargaTarikan = 0;
+      }
+
+      print("💰 HASIL PERHITUNGAN:");
+      print("   Hitung harga kantor: $hargaKantor");
+      print("   Hitung harga tarikan: $hargaTarikan");
+
+      setState(() {
+        // bulatkan nilai
+        int hargaKantorBulat = pembulatanRibuan(hargaKantor);
+        int hargaTarikanBulat = pembulatanRibuan(hargaTarikan);
+
+        // SIMPAN KE VARIABEL GLOBAL
+        _hargaKantorCalculated = hargaKantorBulat.toDouble();
+        _hargaTarikanCalculated = hargaTarikanBulat.toDouble();
+
+        // tampilkan ke controller (tanpa desimal)
+        hargaKantorController.text = formatter.format(hargaKantorBulat);
+        tagihanController.text = formatter.format(hargaTarikanBulat);
+
+        jumlahTagihan = hargaTarikanBulat.toDouble();
+
+        // Debug print
+        print('✅ Variabel global disimpan:');
+        print('   _hargaKantorCalculated: $_hargaKantorCalculated');
+        print('   _hargaTarikanCalculated: $_hargaTarikanCalculated');
+      });
+
+    } catch (e) {
+      print('❌ Error dalam _calculateTagihan: $e');
+    }
   }
 
   Future<void> _kirimKeBackendAPI(
-      double hargaKantor,
+      double hargaKantorBulat,
       double totalTagihan,
       int jumlahTiket,
       String selectedPilihRit,
@@ -652,7 +687,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
     double selisihJarak = (jarakAwal - jarakAkhir).abs();
 
-    print('saya disini: $hargaKantor ');
+    print('saya disini: $hargaKantorBulat ');
 
     List<Map<String, dynamic>> hargaKantorData = await databaseHelper.getCariHargaKantor(idkotaAwal, idkotaAkhir);
 
@@ -667,20 +702,6 @@ class _PenjualanFormState extends State<PenjualanForm> {
       print('2. value cariHargaKantor $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $hargaKantor');
     }
 
-    if (hargaKantor == 0) {
-      // Hitung jumlahTagihan
-      // setState(() {
-      //   hargaKantor = (hargaKantor * jumlahTiket).toDouble();
-      // });
-      if (kelasBus == 'Non Ekonomi') {
-        hargaKantor = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-        print('1.0 value calculate $kelasBus : $biayaPerkursi , $marginKantor , $jarakPP , $selisihJarak , $jumlahTiket , $jumlahTagihan');
-      } else if (kelasBus == 'Ekonomi') {
-        hargaKantor = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-        print('2.0 value calculate $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $biayaPerkursi $marginKantor $marginTarikan $jarakPP $selisihJarak $jumlahTagihan');
-      }
-      print('2.1 value calculate $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $hargaKantor $marginTarikan');
-      print("object : $hargaKantor , $jumlahTagihan , $jumlahBayar , $jumlahTiket , $selectedKotaBerangkat , $selectedKotaTujuan");
 
       if(selectedKategoriTiket=='gratis'){
         jumlahBayar = 0;
@@ -776,7 +797,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
           'id_kota_berangkat': idkotaAwal.toString(),
           'id_kota_tujuan': idkotaAkhir.toString(),
           'jml_naik': jumlahTiket,
-          'harga_kantor': hargaKantor,
+          'harga_kantor': hargaKantorBulat,
           'pendapatan': jumlahTagihan,
           'nama_pelanggan': namaPembeli,
           'no_telepon': noTelepon,
@@ -833,7 +854,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
               idkotaAkhir: idkotaAkhir,
               namaPembeli: namaPembeli,
               noTelepon: noTelepon,
-              hargaKantor: hargaKantor,
+              hargaKantor: hargaKantorBulat,
               jumlahTagihan: jumlahTagihan,
               jumlahBayar: jumlahBayar,
               jumlahKembalian: jumlahKembalian,
@@ -878,201 +899,6 @@ class _PenjualanFormState extends State<PenjualanForm> {
         );
       }
 
-    } else {
-      print('Data harga_kantor tidak ditemukan untuk kota asal: $idkotaAwal dan kota tujuan: $idkotaAkhir');
-      if(selectedKategoriTiket=='gratis'){
-        jumlahBayar = 0;
-      } else {
-        jumlahBayar = jumlahTagihan.toDouble();
-      }
-
-      // jumlahKembalian = (jumlahTagihan - jumlahBayar).toDouble().toInt();
-      jumlahKembalian = (jumlahTagihan - jumlahBayar).abs();
-
-      print("object : $jumlahKembalian ,$selectedKategoriTiket");
-
-      DateTime now = DateTime.now();
-      String formattedDate = DateFormat('yyyy-MM-dd').format(now);
-
-      print('══════════════════════════════════════════════════');
-      print('║ DEBUG _kirimKeBackendAPI - PARAMETER YANG DIKIRIM');
-      print('╠══════════════════════════════════════════════════');
-      print('║ tanggalTransaksi: $formattedDate');
-      print('║ hargaKantor: $hargaKantor');
-      print('║ totalTagihan: $totalTagihan');
-      print('║ jumlahTiket: $jumlahTiket');
-      print('║ selectedPilihRit: $selectedPilihRit');
-      print('║ selectedKategoriTiket: $selectedKategoriTiket');
-      print('║ selectedKotaBerangkat: $selectedKotaBerangkat');
-      print('║ selectedKotaTujuan: $selectedKotaTujuan');
-      print('║ namaPembeli: $namaPembeli');
-      print('║ noTelepon: $noTelepon');
-      print('║ keteranganTagihan: $keteranganTagihan');
-      print('║ metodePembayaran: $metodePembayaran');
-      print('║ paymentChannel: $paymentChannel');
-      print('║ biayaAdmin: $biayaAdmin');
-      print('╚══════════════════════════════════════════════════');
-
-      // Debug print nilai yang dihitung
-      print('══════════════════════════════════════════════════');
-      print('║ DEBUG _kirimKeBackendAPI - NILAI YANG DIHITUNG');
-      print('╠══════════════════════════════════════════════════');
-      print('║ jarakAwal: $jarakAwal');
-      print('║ idkotaAwal: $idkotaAwal');
-      print('║ jarakAkhir: $jarakAkhir');
-      print('║ idkotaAkhir: $idkotaAkhir');
-      print('║ selisihJarak: $selisihJarak');
-      print('╚══════════════════════════════════════════════════');
-
-      // Debug print sebelum menyimpan ke database
-      print('══════════════════════════════════════════════════');
-      print('║ DEBUG _kirimKeBackendAPI - DATA YANG AKAN DISIMPAN');
-      print('╠══════════════════════════════════════════════════');
-      print('║ no_pol: $noPol');
-      print('║ id_bus: $idBus');
-      print('║ id_user: $idUser');
-      print('║ id_group: $idGroup');
-      print('║ id_garasi: $idGarasi');
-      print('║ id_company: $idCompany');
-      print('║ jumlah_tiket: $jumlahTiket');
-      print('║ kategori_tiket: $selectedKategoriTiket');
-      print('║ rit: $selectedPilihRit');
-      print('║ kota_berangkat: $idkotaAwal');
-      print('║ kota_tujuan: $idkotaAkhir');
-      print('║ nama_pembeli: $namaPembeli');
-      print('║ no_telepon: $noTelepon');
-      print('║ harga_kantor: $hargaKantor');
-      print('║ jumlah_tagihan: $jumlahTagihan');
-      print('║ nominal_bayar: $jumlahBayar');
-      print('║ jumlah_kembalian: $jumlahKembalian');
-      print('║ kode_trayek: $kodeTrayek');
-      print('║ keterangan: $keteranganTagihan');
-      print('╚══════════════════════════════════════════════════');
-
-      try {
-        double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
-        int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
-
-        double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
-        int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
-
-        double selisihJarak = (jarakAwal - jarakAkhir).abs();
-
-        // Prepare request data
-        Map<String, dynamic> requestData = {
-          'tgl_transaksi': formattedDate,
-          'kategori': selectedKategoriTiket,
-          'rit': selectedPilihRit,
-          'no_pol': noPol,
-          'id_bus': idBus,
-          'kode_trayek': kodeTrayek,
-          'id_personil': idUser,
-          'id_group': idGroup,
-          'id_kota_berangkat': idkotaAwal.toString(),
-          'id_kota_tujuan': idkotaAkhir.toString(),
-          'jml_naik': jumlahTiket,
-          'harga_kantor': hargaKantor,
-          'pendapatan': jumlahTagihan,
-          'nama_pelanggan': namaPembeli,
-          'no_telepon': noTelepon,
-          'keterangan': keteranganTagihan,
-          'id_metode_bayar': paymentChannel,
-          'payment_channel': paymentChannel,
-          'biaya_admin': biayaAdmin,
-        };
-
-        // Debug print
-        print('══════════════════════════════════════════════════');
-        print('║ DATA YANG AKAN DIKIRIM KE API');
-        print('╠══════════════════════════════════════════════════');
-        requestData.forEach((key, value) {
-          print('║ $key: $value');
-        });
-        print('╚══════════════════════════════════════════════════');
-
-        // Get token from storage
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? token = prefs.getString('token');
-
-        // Make API request
-        final response = await http.post(
-          Uri.parse('https://apimila.sysconix.id/api/storeregulerfaspay'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(requestData),
-        );
-
-        print("📦 Raw response body: '${response.body}'");
-        print("📦 Response headers: ${response.headers}");
-
-        if (response.statusCode == 200) {
-          final responseData = jsonDecode(response.body);
-          if (responseData['status'] == 'SUCCESS') {
-            print('✅ Data berhasil dikirim: ${response.body}');
-
-            // TAMBAHKAN KODE INI UNTUK SIMPAN KE DATABASE LOKAL
-            await _simpanKeDatabaseLokal(
-              responseData: responseData,
-              noPol: noPol,
-              idBus: idBus,
-              idUser: idUser,
-              idGroup: idGroup,
-              idGarasi: idGarasi,
-              idCompany: idCompany,
-              jumlahTiket: jumlahTiket,
-              selectedKategoriTiket: selectedKategoriTiket,
-              selectedPilihRit: selectedPilihRit,
-              idkotaAwal: idkotaAwal,
-              idkotaAkhir: idkotaAkhir,
-              namaPembeli: namaPembeli,
-              noTelepon: noTelepon,
-              hargaKantor: hargaKantor,
-              jumlahTagihan: jumlahTagihan,
-              jumlahBayar: jumlahBayar,
-              jumlahKembalian: jumlahKembalian,
-              formattedDate: formattedDate,
-              kodeTrayek: kodeTrayek,
-              keteranganTagihan: keteranganTagihan,
-              paymentChannel: paymentChannel,
-            );
-
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Penjualan tiket berhasil disimpan. No Invoice: ${responseData['data']['invoice_id']}'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else {
-            print('❌ Gagal menyimpan data: ${response.body}');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Gagal menyimpan data: ${responseData['message']}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        } else {
-          print('❌ Error response: ${response.statusCode} - ${response.body}');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Terjadi kesalahan (${response.statusCode})'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } catch (e) {
-        print('❌ Exception: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Terjadi kesalahan: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
 
   }
 
@@ -1233,159 +1059,89 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
   }
 
-  Future<void> _kirimValue(double hargaKantor, double jumlahTagihan, int jumlahTiket, String selectedPilihRit, String selectedKategoriTiket, String selectedKotaBerangkat, String selectedKotaTujuan, String namaPembeli, String noTelepon, String keteranganTagihan) async {
+  Future<void> _kirimValue(
+      double hargaKantorParam, // Parameter dari panggilan fungsi
+      double jumlahTagihanParam,
+      int jumlahTiket,
+      String selectedPilihRit,
+      String selectedKategoriTiket,
+      String selectedKotaBerangkat,
+      String selectedKotaTujuan,
+      String namaPembeli,
+      String noTelepon,
+      String keteranganTagihan,
+      ) async {
+    try {
+      print('🚀 MEMULAI _kirimValue');
 
-    double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
-    int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
+      // DEBUG: CEK SEMUA SUMBER HARGA KANTOR
+      print('🔍 DEBUG HARGA KANTOR:');
+      print('   hargaKantorParam (parameter): $hargaKantorParam');
+      print('   _hargaKantorCalculated (global): $_hargaKantorCalculated');
+      print('   hargaKantorController.text: ${hargaKantorController.text}');
 
-    double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
-    int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
+      // TENTUKAN HARGA KANTOR YANG AKAN DIGUNAKAN
+      double hargaKantorFinal = 0.0;
 
-    double jumlahBayar = 0;
-    double jumlahKembalian = 0;
-
-    double selisihJarak = (jarakAwal - jarakAkhir).abs();
-
-    print('saya disini: $hargaKantor ');
-
-    List<Map<String, dynamic>> hargaKantorData = await databaseHelper.getCariHargaKantor(idkotaAwal, idkotaAkhir);
-
-    if (hargaKantorData.isNotEmpty) {
-      double hargaKantor = hargaKantorData[0]['harga_kantor'];
-      double marginTarikan = hargaKantorData[0]['margin_tarikan'];
-      print('1. value cariHargaKantor $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $hargaKantor $marginTarikan');
-    } else {
-      // Jika hargaKantorData kosong, tetapkan hargaKantor ke nilai default atau tangani kasus kosong
-      double hargaKantor = 0; // atau nilai default yang sesuai
-      print('Data Harga Kantor tidak ditemukan, menggunakan nilai default 0');
-      print('2. value cariHargaKantor $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $hargaKantor');
-    }
-
-    if (hargaKantor == 0) {
-      // Hitung jumlahTagihan
-      // setState(() {
-      //   hargaKantor = (hargaKantor * jumlahTiket).toDouble();
-      // });
-      if (kelasBus == 'Non Ekonomi') {
-        hargaKantor = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-        print('1. value calculate $kelasBus : $biayaPerkursi , $marginKantor , $jarakPP , $selisihJarak , $jumlahTiket , $jumlahTagihan');
-      } else if (kelasBus == 'Ekonomi') {
-        hargaKantor = (((biayaPerkursi + marginKantor) / jarakPP) * selisihJarak * jumlahTiket);
-        print('2.0 value calculate $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $biayaPerkursi $marginKantor $marginTarikan $jarakPP $selisihJarak $jumlahTagihan');
+      if (_hargaKantorCalculated > 0) {
+        hargaKantorFinal = _hargaKantorCalculated;
+        print('✅ Menggunakan _hargaKantorCalculated: $hargaKantorFinal');
+      } else if (hargaKantorParam > 0) {
+        hargaKantorFinal = hargaKantorParam;
+        print('✅ Menggunakan hargaKantorParam: $hargaKantorFinal');
+      } else {
+        // Coba parse dari controller
+        String cleanedText = hargaKantorController.text.replaceAll('.', '');
+        hargaKantorFinal = double.tryParse(cleanedText) ?? 0.0;
+        print('✅ Menggunakan harga dari controller: $hargaKantorFinal');
       }
-      print('2.1 value calculate $kelasBus $jumlahTiket $idkotaAwal $idkotaAkhir : $hargaKantor $marginTarikan');
-      print("object : $hargaKantor , $jumlahTagihan , $jumlahBayar , $jumlahTiket , $selectedKotaBerangkat , $selectedKotaTujuan");
 
-      if(selectedKategoriTiket=='gratis'){
+      // VALIDASI HARGA KANTOR
+      if (hargaKantorFinal <= 0) {
+        print('❌ ERROR: hargaKantorFinal masih 0 atau negatif: $hargaKantorFinal');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: Harga kantor tidak valid ($hargaKantorFinal)'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // EKSTRAK DATA DARI STRING KOTA
+      double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
+      int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
+
+      double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
+      int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
+
+      double jumlahBayar = 0;
+      double jumlahKembalian = 0;
+
+      if (selectedKategoriTiket == 'gratis') {
         jumlahBayar = 0;
       } else {
-        jumlahBayar = jumlahTagihan.toDouble();
+        jumlahBayar = jumlahTagihanParam;
       }
 
-      // jumlahKembalian = (jumlahTagihan - jumlahBayar).toDouble().toInt();
-      jumlahKembalian = (jumlahTagihan - jumlahBayar).abs();
+      jumlahKembalian = (jumlahTagihanParam - jumlahBayar).abs();
 
-      print("object : $jumlahKembalian ,$selectedKategoriTiket");
+      print("💰 PEMBAYARAN:");
+      print("   jumlahTagihan: $jumlahTagihanParam");
+      print("   jumlahBayar: $jumlahBayar");
+      print("   jumlahKembalian: $jumlahKembalian");
+      print("   kategoriTiket: $selectedKategoriTiket");
 
       DateTime now = DateTime.now();
-      // Format tanggal dengan waktu
       String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+      print('📅 Tanggal Transaksi: $formattedDate');
 
-      print('Formatted Date with Time: $formattedDate');
-
+      // SIMPAN KE DATABASE
       Database database = await databaseHelper.database;
       bool tableExists = await isTableExists(database, 'penjualan_tiket');
 
-      if (tableExists) {
-        print("Tabel penjualan_tiket ada dalam database");
-      } else {
-        print("Tabel penjualan_tiket tidak ditemukan dalam database");
-        await database.execute('''
-        CREATE TABLE IF NOT EXISTS penjualan_tiket (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          no_pol TEXT,
-          id_bus INTEGER,
-          id_user INTEGER,
-          id_group INTEGER,
-          id_garasi INTEGER,
-          id_company INTEGER,
-          jumlah_tiket INTEGER,
-          kategori_tiket TEXT,
-          rit TEXT,
-          kota_berangkat TEXT,
-          kota_tujuan TEXT,
-          nama_pembeli TEXT,
-          no_telepon TEXT,
-          harga_kantor REAL,
-          jumlah_tagihan REAL,
-          nominal_bayar REAL,
-          jumlah_kembalian REAL,
-          tanggal_transaksi TEXT,
-          status TEXT,
-          kode_trayek TEXT,
-          keterangan TEXT
-          fupload TEXT,
-          file_name TEXT
-        )
-      ''');
-        print("Tabel penjualan_tiket berhasil dibuat");
-      }
-      print("DEBUG FOTO LOCAL PATH: $fotoLocalPath");
-      print("DEBUG FOTO FILE NAME: $fotoFileName");
-
-      await database.insert(
-        'penjualan_tiket',{
-        'no_pol': noPol,
-        'id_bus': idBus,
-        'id_user': idUser,
-        'id_group': idGroup,
-        'id_garasi': idGarasi,
-        'id_company': idCompany,
-        'jumlah_tiket': jumlahTiket,
-        'kategori_tiket': selectedKategoriTiket,
-        'rit': selectedPilihRit,
-        'kota_berangkat': idkotaAwal.toString(),
-        'kota_tujuan': idkotaAkhir.toString(),
-        'nama_pembeli': namaPembeli,
-        'no_telepon': noTelepon,
-        'harga_kantor': hargaKantor,
-        'jumlah_tagihan': jumlahTagihan,
-        'nominal_bayar': jumlahBayar,
-        'jumlah_kembalian': jumlahKembalian,
-        'tanggal_transaksi': formattedDate,
-        'status': 'N',
-        'kode_trayek': kodeTrayek,
-        'keterangan': keteranganTagihan,
-        'fupload': fotoLocalPath ?? '',   // path file disimpan
-        'file_name': fotoFileName ?? '',  // nama file
-      },
-      );
-      print('Data penjualan tiket berhasil disimpan:');
-      printTableContents(database, 'penjualan_tiket');
-      await databaseHelper.closeDatabase();
-    } else {
-      print('Data harga_kantor tidak ditemukan untuk kota asal: $idkotaAwal dan kota tujuan: $idkotaAkhir');
-      if(selectedKategoriTiket=='gratis'){
-        jumlahBayar = 0;
-      } else {
-        jumlahBayar = jumlahTagihan.toDouble();
-      }
-
-      // jumlahKembalian = (jumlahTagihan - jumlahBayar).toDouble().toInt();
-      jumlahKembalian = (jumlahTagihan - jumlahBayar).abs();
-
-      print("object : $jumlahKembalian ,$selectedKategoriTiket");
-
-      DateTime now = DateTime.now();
-      String formattedDate = DateFormat('yyyy-MM-dd').format(now);
-
-      Database database = await databaseHelper.database;
-      bool tableExists = await isTableExists(database, 'penjualan_tiket');
-
-      if (tableExists) {
-        print("Tabel penjualan_tiket ada dalam database");
-      } else {
-        print("Tabel penjualan_tiket tidak ditemukan dalam database");
+      if (!tableExists) {
+        print("ℹ️ Tabel penjualan_tiket tidak ditemukan, membuat baru...");
         await database.execute('''
         CREATE TABLE IF NOT EXISTS penjualan_tiket (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1414,39 +1170,62 @@ class _PenjualanFormState extends State<PenjualanForm> {
           file_name TEXT
         )
       ''');
-        print("Tabel penjualan_tiket berhasil dibuat");
+        print("✅ Tabel penjualan_tiket berhasil dibuat");
       }
 
-      await database.insert(
-        'penjualan_tiket',{
-        'no_pol': noPol,
-        'id_bus': idBus,
-        'id_user': idUser,
-        'id_group': idGroup,
-        'id_garasi': idGarasi,
-        'id_company': idCompany,
-        'jumlah_tiket': jumlahTiket,
-        'kategori_tiket': selectedKategoriTiket,
-        'rit': selectedPilihRit,
-        'kota_berangkat': idkotaAwal.toString(),
-        'kota_tujuan': idkotaAkhir.toString(),
-        'nama_pembeli': namaPembeli,
-        'no_telepon': noTelepon,
-        'harga_kantor': hargaKantor,
-        'jumlah_tagihan': jumlahTagihan,
-        'nominal_bayar': jumlahBayar,
-        'jumlah_kembalian': jumlahKembalian,
-        'tanggal_transaksi': formattedDate,
-        'status': 'N',
-        'kode_trayek': kodeTrayek,
-        'keterangan': keteranganTagihan,
-      },
-      );
-      print('Data penjualan tiket berhasil disimpan:');
-      printTableContents(database, 'penjualan_tiket');
-      await databaseHelper.closeDatabase();
-    }
+      print("📷 DEBUG FOTO:");
+      print("   fotoLocalPath: $fotoLocalPath");
+      print("   fotoFileName: $fotoFileName");
 
+      // DEBUG SEBELUM INSERT
+      print('📦 DATA YANG AKAN DISIMPAN:');
+      print('   harga_kantor: $hargaKantorFinal');
+      print('   jumlah_tagihan: $jumlahTagihanParam');
+      print('   jumlah_tiket: $jumlahTiket');
+
+      // INSERT KE DATABASE
+      int insertedId = await database.insert(
+        'penjualan_tiket',
+        {
+          'no_pol': noPol,
+          'id_bus': idBus,
+          'id_user': idUser,
+          'id_group': idGroup,
+          'id_garasi': idGarasi,
+          'id_company': idCompany,
+          'jumlah_tiket': jumlahTiket,
+          'kategori_tiket': selectedKategoriTiket,
+          'rit': selectedPilihRit,
+          'kota_berangkat': idkotaAwal.toString(),
+          'kota_tujuan': idkotaAkhir.toString(),
+          'nama_pembeli': namaPembeli,
+          'no_telepon': noTelepon,
+          'harga_kantor': hargaKantorFinal, // GUNAKAN hargaKantorFinal
+          'jumlah_tagihan': jumlahTagihanParam,
+          'nominal_bayar': jumlahBayar,
+          'jumlah_kembalian': jumlahKembalian,
+          'tanggal_transaksi': formattedDate,
+          'status': 'N',
+          'kode_trayek': kodeTrayek,
+          'keterangan': keteranganTagihan,
+          'fupload': fotoLocalPath ?? '',
+          'file_name': fotoFileName ?? '',
+        },
+      );
+
+      print('✅ Data penjualan tiket berhasil disimpan dengan ID: $insertedId');
+      // await printTableContents(database, 'penjualan_tiket');
+      await databaseHelper.closeDatabase();
+
+    } catch (e) {
+      print('❌ Error dalam _kirimValue: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal menyimpan data: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
 
@@ -1843,8 +1622,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           onChanged: (value) {
                             setState(() {
                               jumlahTagihan = double.tryParse(value) ?? 0.0;
-                              _calculateKembalian(
-                                  jumlahBayar.toDouble(), jumlahTagihan);
+                              _calculateKembalian(jumlahBayar.toDouble(), jumlahTagihan);
                             });
                           },
                           inputFormatters: <TextInputFormatter>[

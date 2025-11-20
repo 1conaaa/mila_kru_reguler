@@ -192,21 +192,6 @@ class _HomeState extends State<Home> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Nama Lengkap: ${namaLengkap ?? "Tidak tersedia"}',
-                                    style: const TextStyle(fontSize: 16.0),
-                                  ),
-                                  const SizedBox(height: 8.0),
-                                  Text(
-                                    'ID User: ${user.idUser}',
-                                    style: const TextStyle(fontSize: 16.0),
-                                  ),
-                                  const SizedBox(height: 8.0),
-                                  Text(
-                                    'ID Bus: ${user.idBus}',
-                                    style: const TextStyle(fontSize: 16.0),
-                                  ),
-                                  const SizedBox(height: 8.0),
-                                  Text(
                                     'Nomor Polisi: ${user.noPol}',
                                     style: const TextStyle(fontSize: 16.0),
                                   ),
@@ -225,14 +210,9 @@ class _HomeState extends State<Home> {
                                     'Kelas Bus: ${user.kelasBus}',
                                     style: const TextStyle(fontSize: 16.0),
                                   ),
-                                  const SizedBox(height: 8.0),
+                                  const SizedBox(height: 16.0),
                                   Text(
-                                    'Premi Extra: ${user.premiExtra}',
-                                    style: const TextStyle(fontSize: 16.0),
-                                  ),
-                                  const SizedBox(height: 8.0),
-                                  Text(
-                                    'Persen Premi Kru: ${user.persenPremikru}%',
+                                    'No.Whatsapp Bus: ${user.noKontak}',
                                     style: const TextStyle(fontSize: 16.0),
                                   ),
                                   const SizedBox(height: 16.0),

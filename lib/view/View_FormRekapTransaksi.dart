@@ -42,6 +42,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   int? idGarasi;
   int idBus = 0;
   String? noPol;
+  String? kodeTrayek;
   String? namaTrayek;
   String? jenisTrayek;
   String? kelasBus;
@@ -252,6 +253,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           idBus = firstUser['id_bus'];
           noPol = firstUser['no_pol'];
           namaTrayek = firstUser['nama_trayek'];
+          kodeTrayek = firstUser['kode_trayek'];
           jenisTrayek = firstUser['jenis_trayek'];
           kelasBus = firstUser['kelas_bus'];
           keydataPremiextra = firstUser['keydataPremiextra']; // CAMEL CASE
@@ -880,6 +882,18 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     );
   }
 
+  String _getKelasLayanan() {
+    if (keydataPremiextra == null || keydataPremiextra!.isEmpty) {
+      return '';
+    }
+
+    List<String> parts = keydataPremiextra!.split('_');
+    if (parts.length >= 2) {
+      return '${parts[0]}${parts[1]}'.toLowerCase();
+    }
+    return '';
+  }
+
   Future<void> _simpanValueRekap() async {
     final setoranService = SetoranKruService();
     final premiService = PremiPosisiKruService();
@@ -888,6 +902,13 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
 
     try {
+      String kelasLayanan = _getKelasLayanan();
+
+      print('=== [DEBUG] KELAS LAYANAN ===');
+      print('keydataPremiextra: $keydataPremiextra');
+      print('kelasLayanan: $kelasLayanan');
+      print('=============================');
+
       List<Map<String, dynamic>> users = await _userService.getUsers();
       if (users.isEmpty) {
         print('Tidak ada data user');
@@ -914,7 +935,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
       print('Rit: $ritValue');
       print('No. Pol: $noPol');
-      print('Id Bus: $idBus, Kode Trayek: $namaTrayek');
+      print('Id Bus: $idBus, Kode Trayek: $kodeTrayek, Nama Trayek: $namaTrayek');
       print('Id Personil: $idUser, Id Group: $idGroup');
 
       // 1. GENERATE ID TRANSAKSI dengan format: BUS.MMYYYY.milisecond.idUser
@@ -944,10 +965,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             rit: ritValue,
             noPol: noPol ?? '',
             idBus: idBus,
-            kodeTrayek: namaTrayek ?? '',
+            kodeTrayek: kodeTrayek ?? '',
             idPersonil: idUser,
             idGroup: idGroup,
-            jumlah: 1,
+            jumlah: 0,
             idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
             coa: coaPendapatan ?? '',
             nilai: nilai,
@@ -991,7 +1012,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         } else { // Biaya Lainnya
           final valueText = _controllers[tag.id]?.text ?? '0';
           nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
-          jumlah = 1;
+          jumlah = 0;
 
           print('--- Biaya Lainnya ---');
           print('coa Pengeluaran: ${coaPengeluaran}');
@@ -1006,7 +1027,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             rit: ritValue,
             noPol: noPol ?? '',
             idBus: idBus,
-            kodeTrayek: namaTrayek ?? '',
+            kodeTrayek: kodeTrayek ?? '',
             idPersonil: idUser,
             idGroup: idGroup,
             jumlah: jumlah,
@@ -1053,10 +1074,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             rit: ritValue,
             noPol: noPol ?? '',
             idBus: idBus,
-            kodeTrayek: namaTrayek ?? '',
+            kodeTrayek: kodeTrayek ?? '',
             idPersonil: idUser,
             idGroup: idGroup,
-            jumlah: 1,
+            jumlah: 0,
             idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
             coa: coaUtangPremi,
             nilai: nilai,
@@ -1093,10 +1114,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             rit: ritValue,
             noPol: noPol ?? '',
             idBus: idBus,
-            kodeTrayek: namaTrayek ?? '',
+            kodeTrayek: kodeTrayek ?? '',
             idPersonil: idUser,
             idGroup: idGroup,
-            jumlah: 1,
+            jumlah: 0,
             idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
             coa: null,
             nilai: nilai,
@@ -1292,12 +1313,17 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
       // Hitung biaya tol berdasarkan kondisi
       double biayaTol = 0;
-      final double sisaPendapatanTol = pendapatanBersih - nominalPremiExtra;
+      // Kondisi khusus hanya untuk kelasLayanan: akapekonomi
+      if (kelasLayanan.toLowerCase() == 'akapekonomi') {
+        final double sisaPendapatanTol = pendapatanBersih - nominalPremiExtra;
+        if (sisaPendapatanTol > 2500000) {
+          biayaTol = 270000;
+        } else if (sisaPendapatanTol < 2500000 && sisaPendapatanTol > 0) {
+          biayaTol = 140000;
+        }
+        // Jika sisaPendapatanTol <= 0, biayaTol tetap 0
+      } else {
 
-      if (sisaPendapatanTol > 2500000) {
-        biayaTol = 270000;
-      } else if (sisaPendapatanTol < 2500000 && sisaPendapatanTol > 0) {
-        biayaTol = 140000;
       }
 
 // Cari dan update setoran biaya tol (ID 15) jika ada
@@ -1318,10 +1344,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           rit: ritValue,
           noPol: noPol ?? '',
           idBus: idBus,
-          kodeTrayek: namaTrayek ?? '',
+          kodeTrayek: kodeTrayek ?? '',
           idPersonil: idUser,
           idGroup: idGroup,
-          jumlah: 1,
+          jumlah: 0,
           idTransaksi: idTransaksi,
           coa: coaPengeluaranBusController.text,
           nilai: biayaTol,
@@ -1355,7 +1381,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         rit: ritValue,
         noPol: noPol ?? '',
         idBus: idBus,
-        kodeTrayek: namaTrayek ?? '',
+        kodeTrayek: kodeTrayek ?? '',
       );
 
       print('=== SELESAI SIMPAN REKAP ===');
