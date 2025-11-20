@@ -234,88 +234,149 @@ class DataPusherService {
         request.headers['Authorization'] = 'Bearer $token';
       }
 
-      // ID transaksi dikirim satu kali (top-level)
+      print("==========================================");
+      print("🚀 MEMULAI PENGIRIMAN DATA SETORAN KRU");
+      print("==========================================");
+      print("ID Transaksi: $idTransaksiGenerated");
+      print("Jumlah data: ${setoranKruToSend.length} rows");
+      print("Endpoint: $endpoint");
+
+      // ID transaksi dikirim satu kali (top-level) - INI YANG DIPERLUKAN BACKEND
       request.fields['id_transaksi'] = idTransaksiGenerated;
+      print("✅ Field id_transaksi: $idTransaksiGenerated");
 
-      print("ID Transaksi dikirim: $idTransaksiGenerated");
+      // Siapkan data rows untuk dikirim sebagai JSON
+      List<Map<String, dynamic>> rowsData = [];
 
-      // Loop setiap row → HARUS $i[field] (bukan rows[$i][$field])
+      // Loop setiap row untuk menyiapkan data
       for (int i = 0; i < setoranKruToSend.length; i++) {
         final d = setoranKruToSend[i];
 
-        // Convert and guard values
-        request.fields['$i[id_transaksi]'] = idTransaksiGenerated;
-        request.fields['$i[tgl_transaksi]'] = d.tglTransaksi ?? "";
-        request.fields['$i[km_pulang]'] = (d.kmPulang ?? '').toString();
-        request.fields['$i[rit]'] = d.rit ?? "1";
-        request.fields['$i[no_pol]'] = d.noPol ?? "";
-        request.fields['$i[id_bus]'] = (d.idBus ?? 0).toString();
-        request.fields['$i[kode_trayek]'] = d.kodeTrayek ?? "";
-        request.fields['$i[id_personil]'] = (d.idPersonil ?? 0).toString();
-        request.fields['$i[id_group]'] = (d.idGroup ?? 0).toString();
-        request.fields['$i[jumlah]'] = (d.jumlah ?? '').toString();
-        request.fields['$i[coa]'] = d.coa ?? "";
-        request.fields['$i[nilai]'] = (d.nilai ?? 0).toString();
-        request.fields['$i[id_tag_transaksi]'] = (d.idTagTransaksi ?? 0).toString();
-        request.fields['$i[status]'] = d.status ?? "N";
-        request.fields['$i[keterangan]'] = d.keterangan ?? "";
+        // Debug detail setiap row
+        print("\n--- DATA ROW $i ---");
+        print("id_transaksi: ${idTransaksiGenerated}");
+        print("tgl_transaksi: ${d.tglTransaksi ?? ""}");
+        print("km_pulang: ${(d.kmPulang ?? '').toString()}");
+        print("rit: ${d.rit ?? "1"}");
+        print("no_pol: ${d.noPol ?? ""}");
+        print("id_bus: ${(d.idBus ?? 0).toString()}");
+        print("kode_trayek: ${d.kodeTrayek ?? ""}");
+        print("id_personil: ${(d.idPersonil ?? 0).toString()}");
+        print("id_group: ${(d.idGroup ?? 0).toString()}");
+        print("jumlah: ${(d.jumlah ?? '').toString()}");
+        print("coa: ${d.coa ?? ""}");
+        print("nilai: ${(d.nilai ?? 0).toString()}");
+        print("id_tag_transaksi: ${(d.idTagTransaksi ?? 0).toString()}");
+        print("status: ${d.status ?? "N"}");
+        print("keterangan: ${d.keterangan ?? ""}");
 
-        // Safe debug print (if model has toJson)
-        try {
-          final dynamic maybe = (d as dynamic);
-          if (maybe != null && maybe.toJson != null) {
-            print("➡ Mengirim row $i = ${maybe.toJson()}");
-          } else {
-            print("➡ Mengirim row $i (id personil: ${d.idPersonil})");
-          }
-        } catch (_) {
-          print("➡ Mengirim row $i (id personil: ${d.idPersonil})");
-        }
+        // Siapkan data untuk JSON
+        Map<String, dynamic> rowData = {
+          'id_transaksi': idTransaksiGenerated,
+          'tgl_transaksi': d.tglTransaksi ?? "",
+          'km_pulang': d.kmPulang ?? "",
+          'rit': d.rit ?? "1",
+          'no_pol': d.noPol ?? "",
+          'id_bus': d.idBus ?? 0,
+          'kode_trayek': d.kodeTrayek ?? "",
+          'id_personil': d.idPersonil ?? 0,
+          'id_group': d.idGroup ?? 0,
+          'jumlah': d.jumlah ?? "",
+          'coa': d.coa ?? "",
+          'nilai': d.nilai ?? 0,
+          'id_tag_transaksi': d.idTagTransaksi ?? 0,
+          'status': d.status ?? "N",
+          'keterangan': d.keterangan ?? "",
+        };
 
-        // ==== FILES: support up to 2 files per row ====
+        rowsData.add(rowData);
+        print("✅ Row $i disiapkan untuk JSON (id personil: ${d.idPersonil})");
+      }
+
+      // Kirim rows sebagai JSON string - INI YANG DIHARAPKAN BACKEND
+      String rowsJson = json.encode(rowsData);
+      request.fields['rows'] = rowsJson;
+      print("\n📦 Data rows sebagai JSON:");
+      print(rowsJson);
+
+      // ==== FILES: support up to 2 files per row ====
+      print("\n--- PROSES FILE ---");
+      for (int i = 0; i < setoranKruToSend.length; i++) {
+        final d = setoranKruToSend[i];
+
         // Expecting model fields: file1 (String?), file2 (String?)
-        final String? f1 = (d as dynamic).file1 as String?;
-        final String? f2 = (d as dynamic).file2 as String?;
+        final String? f1 = (d as dynamic).fupload as String?;
+        final String? f2 = (d as dynamic).fileName as String?;
+
+        print("\n🔍 Cek file untuk row $i:");
+        print("File1 path: $f1");
+        print("File2 path: $f2");
 
         if (f1 != null && f1.isNotEmpty) {
           try {
             final File fileObj = File(f1);
-            if (fileObj.existsSync()) {
-              final multipart = await http.MultipartFile.fromPath("file_name[$i][]", f1,
-                  filename: f1.split(Platform.pathSeparator).last);
+            if (await fileObj.exists()) {
+              final multipart = await http.MultipartFile.fromPath(
+                  "file_name[$i][]",
+                  f1,
+                  filename: f1.split('/').last
+              );
               request.files.add(multipart);
-              print("✓ File1 row $i attached: $f1");
+              print("✅ File1 row $i attached: ${f1.split('/').last}");
             } else {
               print("⚠ File1 not found for row $i: $f1");
             }
           } catch (e) {
-            print("⚠ Error attaching file1 row $i: $e");
+            print("❌ Error attaching file1 row $i: $e");
           }
         }
 
         if (f2 != null && f2.isNotEmpty) {
           try {
             final File fileObj = File(f2);
-            if (fileObj.existsSync()) {
-              final multipart = await http.MultipartFile.fromPath("file_name[$i][]", f2,
-                  filename: f2.split(Platform.pathSeparator).last);
+            if (await fileObj.exists()) {
+              final multipart = await http.MultipartFile.fromPath(
+                  "file_name[$i][]",
+                  f2,
+                  filename: f2.split('/').last
+              );
               request.files.add(multipart);
-              print("✓ File2 row $i attached: $f2");
+              print("✅ File2 row $i attached: ${f2.split('/').last}");
             } else {
               print("⚠ File2 not found for row $i: $f2");
             }
           } catch (e) {
-            print("⚠ Error attaching file2 row $i: $e");
+            print("❌ Error attaching file2 row $i: $e");
           }
         }
       }
 
-      print("🚀 Mengirim multipart ke $endpoint (rows: ${setoranKruToSend.length}) ...");
+      print("\n==========================================");
+      print("📤 MENGIRIM REQUEST KE SERVER");
+      print("==========================================");
+      print("Total files: ${request.files.length}");
+      print("Total fields: ${request.fields.length}");
 
+      // Debug: print semua fields yang akan dikirim
+      print("\n📋 SEMUA FIELDS YANG DIKIRIM:");
+      request.fields.forEach((key, value) {
+        if (key == 'rows') {
+          print("$key: [JSON DATA - length: ${value.length}]");
+        } else {
+          print("$key: $value");
+        }
+      });
+
+      final stopwatch = Stopwatch()..start();
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
+      stopwatch.stop();
 
-      print("Response Status: ${response.statusCode}");
+      print("\n==========================================");
+      print("📥 RESPONSE DARI SERVER");
+      print("==========================================");
+      print("Waktu request: ${stopwatch.elapsedMilliseconds}ms");
+      print("Status Code: ${response.statusCode}");
       print("Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -323,12 +384,17 @@ class DataPusherService {
           final Map<String, dynamic> responseData = json.decode(response.body);
           if (responseData['success'] == true) {
             print('✅ Berhasil mengirim data setoran kru');
+            print('📝 Pesan: ${responseData['message']}');
+            print('🔑 ID Transaksi: ${responseData['id_transaksi']}');
+            print('📊 Data inserted: ${responseData['data_id_dimasukkan']}');
+
             await _updateSetoranKruStatus(setoranKruToSend);
             return true;
           } else {
-            print('❌ Server returned success=false: ${responseData['message'] ?? responseData}');
-            if (responseData['errors'] != null) print('Errors: ${responseData['errors']}');
-            if (responseData['data_yang_error'] != null) print('Data yang error: ${responseData['data_yang_error']}');
+            print('❌ Server returned success=false');
+            print('📝 Pesan: ${responseData['message'] ?? responseData}');
+            if (responseData['errors'] != null) print('❌ Errors: ${responseData['errors']}');
+            if (responseData['data_yang_error'] != null) print('❌ Data yang error: ${responseData['data_yang_error']}');
             return false;
           }
         } catch (e) {
@@ -340,13 +406,19 @@ class DataPusherService {
         if (response.statusCode == 422) {
           try {
             final Map<String, dynamic> responseData = json.decode(response.body);
-            print('Validation errors: ${responseData['errors'] ?? responseData}');
-          } catch (_) {}
+            print('❌ Validation errors: ${responseData['errors'] ?? responseData}');
+          } catch (_) {
+            print('❌ Response error (non-JSON): ${response.body}');
+          }
+        } else if (response.statusCode == 500) {
+          print('❌ Server error 500');
+          print('Response: ${response.body}');
         }
         return false;
       }
     } catch (e) {
       print('❌ Error building/sending multipart: $e');
+      print('❌ Stack trace: ${e.toString()}');
       return false;
     }
   }

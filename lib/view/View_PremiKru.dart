@@ -255,18 +255,17 @@ class _PremiKruState extends State<PremiKru> {
         if (d.fupload != null && d.fupload!.isNotEmpty && File(d.fupload!).existsSync()) {
           try {
             var multipartFile = await http.MultipartFile.fromPath(
-                'file_name[$i]',
-                d.fupload!
+              'file_name[$i]',
+              d.fupload!,
             );
             request.files.add(multipartFile);
             print('📎 File $i dilampirkan: ${d.fupload}');
           } catch (e) {
             print('⚠️  Gagal melampirkan file $i: ${d.fupload} - Error: $e');
           }
-        } else {
-          print('⚠️  File $i tidak valid atau tidak ditemukan: ${d.fupload}');
         }
       }
+
 
       print('🚀 Mengirim ${cleanedRows.length} data ke API...');
 

@@ -23,6 +23,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
   final bool Function(TagTransaksi) requiresJumlah;
   final bool Function(TagTransaksi) requiresLiterSolar;
   final Function() onCalculatePremiBersih;
+  final String? keydataPremiextra; // Tambahkan parameter ini
 
   ViewFormRekapTransaksi({
     Key? key,
@@ -44,6 +45,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
     required this.requiresJumlah,
     required this.requiresLiterSolar,
     required this.onCalculatePremiBersih,
+    this.keydataPremiextra, // Tambahkan di constructor
   }) : super(key: key) {
     _debugConstructor();
   }
@@ -51,6 +53,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
   void _debugConstructor() {
     print('=== DEBUG ViewFormRekapTransaksi Constructor ===');
     print('tagPendapatan: ${tagPendapatan.map((e) => '${e.id}-${e.nama}').toList()}');
+    print('keydataPremiextra: $keydataPremiextra'); // Debug keydataPremiextra
 
     print('controllers content:');
     controllers.forEach((key, controller) {
@@ -69,8 +72,28 @@ class ViewFormRekapTransaksi extends StatelessWidget {
     }
   }
 
+  // Tambahkan fungsi helper di class
+  String _getKelasLayanan() {
+    if (keydataPremiextra == null || keydataPremiextra!.isEmpty) {
+      return '';
+    }
+
+    List<String> parts = keydataPremiextra!.split('_');
+    if (parts.length >= 2) {
+      return '${parts[0]}${parts[1]}'.toLowerCase();
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
+    String kelasLayanan = _getKelasLayanan();
+
+    print('=== [DEBUG] KELAS LAYANAN ===');
+    print('keydataPremiextra: $keydataPremiextra');
+    print('kelasLayanan: $kelasLayanan');
+    print('=============================');
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.only(
@@ -118,15 +141,22 @@ class ViewFormRekapTransaksi extends StatelessWidget {
                         onImageUpload: onImageUpload,
                         uploadedImages: uploadedImages,
                         onRemoveImage: onRemoveImage,
-                        onFieldChanged: onCalculatePremiBersih, // Parameter yang benar
+                        onFieldChanged: onCalculatePremiBersih,
                       ),
 
-// KATEGORI 2: PENGELUARAN
+                    // KATEGORI 2: PENGELUARAN
                     if (tagPengeluaran.isNotEmpty)
                       KategoriSection(
                         title: 'Pengeluaran',
                         color: Colors.red,
-                        tags: tagPengeluaran,
+                        tags: tagPengeluaran.where((tag) {
+                          // Kondisi: jika kelasLayanan = 'akapekonomi', sembunyikan idTag 15
+                          if (kelasLayanan.toLowerCase() == 'akapekonomi' && tag.id == 15) {
+                            print('🚫 Menyembunyikan tag ID 15 (Biaya Tol) untuk kelasLayanan: $kelasLayanan');
+                            return false;
+                          }
+                          return true;
+                        }).toList(),
                         showJumlah: false,
                         showLiterSolar: true,
                         controllers: controllers,
@@ -138,10 +168,10 @@ class ViewFormRekapTransaksi extends StatelessWidget {
                         onImageUpload: onImageUpload,
                         uploadedImages: uploadedImages,
                         onRemoveImage: onRemoveImage,
-                        onFieldChanged: onCalculatePremiBersih, // Parameter yang benar
+                        onFieldChanged: onCalculatePremiBersih,
                       ),
 
-// KATEGORI 3: PREMI
+                    // KATEGORI 3: PREMI
                     if (tagPremi.isNotEmpty)
                       KategoriSection(
                         title: 'Premi',
@@ -158,10 +188,10 @@ class ViewFormRekapTransaksi extends StatelessWidget {
                         onImageUpload: onImageUpload,
                         uploadedImages: uploadedImages,
                         onRemoveImage: onRemoveImage,
-                        onFieldChanged: onCalculatePremiBersih, // Parameter yang benar
+                        onFieldChanged: onCalculatePremiBersih,
                       ),
 
-// KATEGORI 4: BERSIH DAN SETORAN
+                    // KATEGORI 4: BERSIH DAN SETORAN
                     if (tagBersihSetoran.isNotEmpty)
                       KategoriSection(
                         title: 'Bersih dan Setoran',
@@ -178,11 +208,25 @@ class ViewFormRekapTransaksi extends StatelessWidget {
                         onImageUpload: onImageUpload,
                         uploadedImages: uploadedImages,
                         onRemoveImage: onRemoveImage,
-                        onFieldChanged: onCalculatePremiBersih, // Parameter yang benar
+                        onFieldChanged: onCalculatePremiBersih,
                       ),
 
                     // Tombol Simpan
                     SimpanButton(onSimpan: onSimpan),
+
+                    // Debug info (opsional, bisa dihapus di production)
+                    if (kelasLayanan.isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text(
+                          'Kelas Layanan: $kelasLayanan',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
