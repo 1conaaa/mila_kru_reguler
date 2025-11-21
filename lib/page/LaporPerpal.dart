@@ -169,7 +169,8 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Laporan Armada'),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.blue[700],
+        foregroundColor: Colors.white,
       ),
       drawer: idUser != null ? buildDrawer(context, idUser!) : null,
       body: SingleChildScrollView(

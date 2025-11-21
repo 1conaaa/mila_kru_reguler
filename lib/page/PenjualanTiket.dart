@@ -43,21 +43,22 @@ class _PenjualanTiketState extends State<PenjualanTiket> with SingleTickerProvid
           return Scaffold(
             appBar: AppBar(
               title: Text('Penjualan Tiket'),
+              backgroundColor: Colors.blue[700],
+              foregroundColor: Colors.white,
               automaticallyImplyLeading: true,
               bottom: TabBar(
                 controller: _tabController,
-                tabs: [
-                  Tab(
-                    child: Text('Penjualan',style: TextStyle(fontSize: 18)),
-                  ),
-                  Tab(
-                    child: Text('Non-Tunai',style: TextStyle(fontSize: 18)),
-                  ),
-                  Tab(
-                    child: Text('Transaksi',style: TextStyle(fontSize: 18)),
-                  ),
+                labelColor: Colors.yellowAccent,               // ← warna teks tab aktif
+                unselectedLabelColor: Colors.black,       // ← warna teks tab tidak aktif
+                labelStyle: TextStyle(fontSize: 18),      // ← style tab aktif
+                unselectedLabelStyle: TextStyle(fontSize: 18),
+                tabs: const [
+                  Tab(text: 'Penjualan'),
+                  Tab(text: 'Non-Tunai'),
+                  Tab(text: 'Transaksi'),
                 ],
               ),
+
             ),
             drawer: buildDrawer(context, idUser),
             body: TabBarView(

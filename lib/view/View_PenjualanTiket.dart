@@ -1624,12 +1624,12 @@ class _PenjualanFormState extends State<PenjualanForm> {
                               noTelepon = value;
                             });
                           },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Nomor Telepon harus diisi';
-                            }
-                            return null;
-                          },
+                          // validator: (value) {
+                          //   if (value == null || value.isEmpty) {
+                          //     return 'Nomor Telepon harus diisi';
+                          //   }
+                          //   return null;
+                          // },
                           style: TextStyle(fontSize: 18),
                         ),
                       ),
@@ -1818,7 +1818,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Konten utama
+                              // Konten utama: Tombol Ambil Foto & Preview
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1891,108 +1891,113 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                   // Preview Foto
                                   Expanded(
                                     flex: 1,
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 300),
-                                      height: 150,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: fotoPenumpang == null
-                                              ? Colors.grey.shade300
-                                              : Colors.green.shade300,
-                                          width: 1.5,
-                                        ),
-                                        color: fotoPenumpang == null
-                                            ? Colors.grey.shade50
-                                            : Colors.green.shade50,
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.05),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: fotoPenumpang == null
-                                          ? Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.photo,
-                                            size: 40,
-                                            color: Colors.grey.shade400,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            "Belum ada foto",
-                                            textAlign: TextAlign.center,
-                                            style: TextStyle(
-                                              color: Colors.grey.shade500,
-                                              fontSize: 12,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 300),
+                                          height: 150,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: fotoPenumpang == null
+                                                  ? Colors.grey.shade300
+                                                  : Colors.green.shade300,
+                                              width: 1.5,
                                             ),
+                                            color: fotoPenumpang == null
+                                                ? Colors.grey.shade50
+                                                : Colors.green.shade50,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(0.05),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      )
-                                          : ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Stack(
-                                          children: [
-                                            Image.file(
-                                              File(fotoPenumpang!.path),
-                                              fit: BoxFit.cover,
-                                              width: double.infinity,
-                                              height: double.infinity,
-                                            ),
-                                            // Overlay dengan efek gradien
-                                            Container(
-                                              decoration: BoxDecoration(
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topCenter,
-                                                  end: Alignment.bottomCenter,
-                                                  colors: [
-                                                    Colors.transparent,
-                                                    Colors.black.withOpacity(0.1),
-                                                  ],
+                                          child: fotoPenumpang == null
+                                              ? Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.photo,
+                                                size: 40,
+                                                color: Colors.grey.shade400,
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                "Belum ada foto",
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: Colors.grey.shade500,
+                                                  fontSize: 12,
                                                 ),
                                               ),
-                                            ),
-                                            // Badge konfirmasi di sudut
-                                            Positioned(
-                                              top: 8,
-                                              right: 8,
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(
-                                                  horizontal: 6,
-                                                  vertical: 2,
+                                            ],
+                                          )
+                                              : ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Stack(
+                                              children: [
+                                                Image.file(
+                                                  File(fotoPenumpang!.path),
+                                                  fit: BoxFit.cover,
+                                                  width: double.infinity,
+                                                  height: double.infinity,
                                                 ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.green.shade500,
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons.check,
-                                                      color: Colors.white,
-                                                      size: 12,
+                                                // Overlay gradien
+                                                Container(
+                                                  decoration: BoxDecoration(
+                                                    gradient: LinearGradient(
+                                                      begin: Alignment.topCenter,
+                                                      end: Alignment.bottomCenter,
+                                                      colors: [
+                                                        Colors.transparent,
+                                                        Colors.black.withOpacity(0.1),
+                                                      ],
                                                     ),
-                                                    const SizedBox(width: 2),
-                                                    Text(
-                                                      "OK",
-                                                      style: TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 10,
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                  ],
+                                                  ),
                                                 ),
-                                              ),
+                                                // Badge OK
+                                                Positioned(
+                                                  top: 8,
+                                                  right: 8,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.green.shade500,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: const [
+                                                        Icon(
+                                                          Icons.check,
+                                                          color: Colors.white,
+                                                          size: 12,
+                                                        ),
+                                                        SizedBox(width: 2),
+                                                        Text(
+                                                          "OK",
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ],
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 ],
@@ -2035,7 +2040,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           ),
                         ),
                       ),
-                  SizedBox(height: 16),
+                      SizedBox(height: 16),
                       Visibility(
                         visible: isMetodePembayaranVisible,
                         child: DropdownButtonFormField<String>(
@@ -2231,11 +2236,23 @@ class _PenjualanFormState extends State<PenjualanForm> {
                               child: ElevatedButton(
                                 onPressed: () async {
                                   if (_formKey.currentState!.validate()) {
-                                    // Jika metode pembayaran bukan 1 (tunai), kirim ke API
+
+                                    // === VALIDASI FOTO HANYA JIKA WAJIB FOTO ===
+                                    if (isFotoVisible == true && fotoPenumpang == null) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text("Silakan ambil foto penumpang terlebih dahulu."),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                      return;
+                                    }
+
+                                    // Proses pembayaran
                                     if (selectedMetodePembayaran != '1') {
                                       await _kirimKeBackendAPI(
                                         hargaKantor,
-                                        totalTagihanPlusBiayaAdmin, // Menggunakan total dengan biaya admin
+                                        totalTagihanPlusBiayaAdmin,
                                         jumlahTiket,
                                         selectedPilihRit,
                                         selectedKategoriTiket,
@@ -2244,12 +2261,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                         namaPembeli,
                                         noTelepon,
                                         keteranganTagihan,
-                                        selectedMetodePembayaran ?? '', // Tambahkan parameter metode pembayaran
-                                        paymentChannel, // Tambahkan parameter payment channel
-                                        biayaAdmin, // Tambahkan parameter biaya admin
+                                        selectedMetodePembayaran ?? '',
+                                        paymentChannel,
+                                        biayaAdmin,
                                       );
                                     } else {
-                                      // Jika metode pembayaran adalah tunai (1), lakukan proses biasa
                                       await _kirimValue(
                                         hargaKantor,
                                         jumlahTagihan,
@@ -2267,25 +2283,19 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                     }
                                   }
                                 },
-                                child: Text('Simpan'),
+                                child: const Text('Simpan'),
                                 style: ButtonStyle(
-                                  minimumSize: WidgetStateProperty.all(
-                                      Size(double.infinity, 48.0)),
-                                  backgroundColor:
-                                  WidgetStateProperty.resolveWith<Color>(
-                                        (Set<WidgetState> states) {
-                                      if (states.contains(WidgetState.pressed)) {
+                                  minimumSize: MaterialStateProperty.all(Size(double.infinity, 48.0)),
+                                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                                        (Set<MaterialState> states) {
+                                      if (states.contains(MaterialState.pressed)) {
                                         return Colors.grey; // Warna abu-abu saat tombol ditekan
                                       } else {
                                         return Colors.green; // Warna hijau saat tombol tidak ditekan
                                       }
                                     },
                                   ),
-                                  foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                                        (Set<WidgetState> states) {
-                                      return Colors.white; // Warna teks putih
-                                    },
-                                  ),
+                                  foregroundColor: MaterialStateProperty.all(Colors.white), // Warna teks putih
                                 ),
                               ),
                             ),
@@ -2346,7 +2356,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isTombolVisible = true;
         isKotaBerangkatVisible = true;
         isKotaTujuanVisible = true;
-        isSarantagihanVisible = false;
+        isSarantagihanVisible = true;
         isTagihanVisible = true;
         isJumlahBayarVisible = false;
         isJumlahKembalianVisible = false;
@@ -2385,7 +2395,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isTombolVisible = true;
         isKotaBerangkatVisible = true;
         isKotaTujuanVisible = true;
-        isSarantagihanVisible = false;
+        isSarantagihanVisible = true;
         isTagihanVisible = true;
         isJumlahBayarVisible = false;
         isJumlahKembalianVisible = false;
@@ -2417,7 +2427,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isTombolVisible = true;
       isKotaBerangkatVisible = true;
       isKotaTujuanVisible = true;
-      isSarantagihanVisible = true;
+      isSarantagihanVisible = false;
       isTagihanVisible = false;
       isJumlahBayarVisible = false;
       isJumlahKembalianVisible = false;

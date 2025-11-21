@@ -1050,52 +1050,72 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         }
       }
 
-      // 4. Kumpulkan setoran premi (TIDAK termasuk PremiPosisiKru - id_tag_transaksi 32)
+      // 4. Kumpulkan setoran premi (dengan perbaikan COA 32 dan 27)
       for (var tag in tagPremi) {
-        // Skip jika ini adalah tag untuk Premi Posisi Kru (id_tag_transaksi = 32)
-        if (tag.id == 32) {
-          print('⏭️ Skip Premi Posisi Kru (id_tag_transaksi: 32) - akan disimpan di table premi_harian_kru');
+        String coaPremi = '';
+
+        final valueText = _controllers[tag.id]?.text ?? '0';
+        final nilai = double.tryParse(
+            valueText.replaceAll('.', '').replaceAll(',00', '')
+        ) ?? 0;
+
+        if (nilai <= 0) {
+          print('⚠️ Skip premi ${tag.nama} - nilai 0');
           continue;
         }
 
-        final valueText = _controllers[tag.id]?.text ?? '0';
-        final nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
-        final coaUtangPremi = coaUtangPremiController.text;
+        print('--- PREMI ---');
+        print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
 
-        // Hanya simpan jika nilai > 0
-        if (nilai > 0) {
-          print('--- PREMI ---');
-          print('coa Utang Premi: ${coaUtangPremi}');
-          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
-
-          final setoran = SetoranKru(
-            tglTransaksi: formattedDate,
-            kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-            rit: ritValue,
-            noPol: noPol ?? '',
-            idBus: idBus,
-            kodeTrayek: kodeTrayek ?? '',
-            idPersonil: idUser,
-            idGroup: idGroup,
-            jumlah: 0,
-            idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
-            coa: coaUtangPremi,
-            nilai: nilai,
-            idTagTransaksi: tag.id,
-            status: 'N',
-            keterangan: null,
-            fupload: null,
-            fileName: null,
-            updatedAt: formattedDate,
-            createdAt: formattedDate,
-          );
-
-          semuaSetoran.add(setoran);
-          print('✅ Premi ditambahkan: ${tag.nama}');
-        } else {
-          print('⚠️ Skip premi ${tag.nama} - nilai 0');
+        // === PERBAIKAN UTAMA ===
+        if (tag.id == 32) {
+          coaPremi = (coaUtangPremiController.text).trim();
+          print('[PREMI 32] COA Utang Premi: "$coaPremi"');
         }
+        else if (tag.id == 27) {
+          coaPremi = (coaPengeluaranBusController.text).trim();
+          print('[PREMI 27] COA Pengeluaran Bus: "$coaPremi"');
+        }
+
+        // Validasi COA
+        if (coaPremi.isEmpty) {
+          print('❌ ERROR: COA untuk tag premi ${tag.id} tidak boleh kosong!');
+          print('   Pastikan controller di UI sudah terisi sebelum simpan.');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('COA premi ${tag.id} belum terisi!')),
+          );
+          continue; // mencegah data premi invalid masuk DB
+        }
+
+        print('COA FINAL yang dikirim ke SetoranKru: $coaPremi');
+        // ========================
+
+        final setoran = SetoranKru(
+          tglTransaksi: formattedDate,
+          kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+          rit: ritValue,
+          noPol: noPol ?? '',
+          idBus: idBus,
+          kodeTrayek: kodeTrayek ?? '',
+          idPersonil: idUser,
+          idGroup: idGroup,
+          jumlah: 0,
+          idTransaksi: idTransaksi,
+          coa: coaPremi,
+          nilai: nilai,
+          idTagTransaksi: tag.id,
+          status: 'N',
+          keterangan: null,
+          fupload: null,
+          fileName: null,
+          updatedAt: formattedDate,
+          createdAt: formattedDate,
+        );
+
+        semuaSetoran.add(setoran);
+        print('✅ Premi ditambahkan: ${tag.nama}');
       }
+
 
       // 5. Kumpulkan setoran bersih setoran
       for (var tag in tagBersihSetoran) {

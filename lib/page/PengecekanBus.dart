@@ -42,16 +42,18 @@ class _PengecekanBusState extends State<PengecekanBus> with SingleTickerProvider
           return Scaffold(
             appBar: AppBar(
               title: Text('Pengecekan Bus'),
+              backgroundColor: Colors.blue[700],
+              foregroundColor: Colors.white,
               automaticallyImplyLeading: true,
               bottom: TabBar(
                 controller: _tabController,
-                tabs: [
-                  Tab(
-                    child: Text('Form Pengecekan',style: TextStyle(fontSize: 18)),
-                  ),
-                  Tab(
-                    child: Text('Hasil Pengecekan',style: TextStyle(fontSize: 18)),
-                  ),
+                labelColor: Colors.yellowAccent,                       // warna teks tab aktif
+                unselectedLabelColor: Colors.black,              // warna teks tab tidak aktif
+                labelStyle: const TextStyle(fontSize: 18),       // style tab aktif
+                unselectedLabelStyle: const TextStyle(fontSize: 18), // style tab tidak aktif
+                tabs: const [
+                  Tab(text: 'Form Pengecekan'),
+                  Tab(text: 'Hasil Pengecekan'),
                 ],
               ),
             ),

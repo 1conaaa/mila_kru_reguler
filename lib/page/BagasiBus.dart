@@ -41,17 +41,19 @@ class _BagasiBusState extends State<BagasiBus> with SingleTickerProviderStateMix
           final int idUser = prefs.getInt('idUser') ?? 0;
           return Scaffold(
             appBar: AppBar(
+              backgroundColor: Colors.blue[700],
+              foregroundColor: Colors.white,
               title: Text('Bagasi Bus'),
               automaticallyImplyLeading: true,
               bottom: TabBar(
                 controller: _tabController,
-                tabs: [
-                  Tab(
-                    child: Text('Form Bagasi',style: TextStyle(fontSize: 18)),
-                  ),
-                  Tab(
-                    child: Text('History Bagasi',style: TextStyle(fontSize: 18)),
-                  ),
+                labelColor: Colors.yellowAccent,                     // Warna teks tab aktif
+                unselectedLabelColor: Colors.black,            // Warna teks tab tidak aktif
+                labelStyle: const TextStyle(fontSize: 18),     // Style untuk tab aktif
+                unselectedLabelStyle: const TextStyle(fontSize: 18), // Style untuk tab tidak aktif
+                tabs: const [
+                  Tab(text: 'Form Bagasi'),
+                  Tab(text: 'History Bagasi'),
                 ],
               ),
             ),

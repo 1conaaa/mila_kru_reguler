@@ -4,7 +4,7 @@ class LogoutSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue, // ✅ Tambahkan warna background di sini
+      backgroundColor: Colors.blue[700], // ✅ Tambahkan warna background di sini
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

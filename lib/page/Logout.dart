@@ -61,7 +61,7 @@ class Logout extends StatelessWidget {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const CircularProgressIndicator(
-                color: Colors.blue,
+                color: Colors.blueAccent,
               );
             } else if (snapshot.hasError) {
               return Text(

@@ -42,26 +42,21 @@ class _RekapTransaksiState extends State<RekapTransaksi> with SingleTickerProvid
           final int idUser = prefs.getInt('idUser') ?? 0;
           return Scaffold(
             appBar: AppBar(
+              backgroundColor: Colors.blue[700],
+              foregroundColor: Colors.white,
               title: Text('Rekap Transaksi - $connectivityInfo'),
               automaticallyImplyLeading: true,
               bottom: TabBar(
                 controller: _tabController,
-                tabs: [
-                  Tab(
-                    child: Text(
-                      'Form.Rekap',
-                      style: TextStyle(fontSize: 18), // Tambahkan ukuran font pada Tab
-                    ),
-                  ),
-                  Tab(
-                    child: Text(
-                      'Premi Kru',
-                      style: TextStyle(fontSize: 18), // Tambahkan ukuran font pada Tab
-                    ),
-                  ),
+                labelColor: Colors.yellowAccent,               // warna teks tab aktif
+                unselectedLabelColor: Colors.black,       // warna teks tab tidak aktif
+                labelStyle: TextStyle(fontSize: 18),      // style tab aktif
+                unselectedLabelStyle: TextStyle(fontSize: 18), // style tab tidak aktif
+                tabs: const [
+                  Tab(text: 'Form.Rekap'),
+                  Tab(text: 'Premi Kru'),
                 ],
               ),
-
             ),
             drawer: buildDrawer(context, idUser),
             body: TabBarView(
