@@ -30,10 +30,21 @@ class ApiHelperKruBis {
         // Simpan data ke database
         try {
           for (var krubis in krubisData) {
-            await databaseHelper.insertKruBis(krubis.toMap()); // Panggil fungsi insertKruBis dari DatabaseHelperKruBis
+            try {
+              print("➡️ INSERT: ${krubis.toMap()}");
+              await databaseHelper.insertKruBis(krubis.toMap());
+              print("✅ INSERT OK: ${krubis.namaLengkap}");
+            } catch (e) {
+              // Tangani error UNIQUE constraint tapi lanjut ke data berikutnya
+              if (e.toString().contains('UNIQUE constraint failed')) {
+                print("⚠️ Data duplikat, dilewati: ${krubis.namaLengkap}");
+              } else {
+                print("❌ Error insert: $e");
+              }
+            }
           }
           print('Data Kru Bis berhasil disimpan');
-          await databaseHelper.closeDatabase(); // Panggil fungsi closeDatabase dari DatabaseHelperKruBis
+          // await databaseHelper.closeDatabase(); // Panggil fungsi closeDatabase dari DatabaseHelperKruBis
         } catch (e) {
           print('Error: $e');
         }

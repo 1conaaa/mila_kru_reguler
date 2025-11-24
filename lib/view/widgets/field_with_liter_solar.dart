@@ -9,6 +9,9 @@ class FieldWithLiterSolar extends StatelessWidget {
   final bool Function(TagTransaksi) requiresLiterSolar;
   final Function(TagTransaksi, String) onChanged;
 
+  /// Tambahkan opsi readOnly agar konsisten dengan aturan non-editable
+  final bool readOnly;
+
   const FieldWithLiterSolar({
     Key? key,
     required this.tag,
@@ -16,30 +19,41 @@ class FieldWithLiterSolar extends StatelessWidget {
     required this.literSolarControllers,
     required this.requiresLiterSolar,
     required this.onChanged,
+    this.readOnly = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final literController = literSolarControllers[tag.id];
+    final nominalController = controllers[tag.id];
+
     return Column(
       children: [
         Row(
           children: [
-            // Liter Solar
+            // ======= LITER SOLAR (SELALU EDITABLE JIKA DIBUTUHKAN) =======
             Expanded(
               flex: 2,
               child: TextFormField(
-                controller: literSolarControllers[tag.id],
+                controller: literController,
+                readOnly: readOnly, // Ikut readOnly kalau tag termasuk non-editable
                 decoration: InputDecoration(
                   labelText: 'Liter Solar',
                   border: OutlineInputBorder(),
                   suffixText: 'L',
+                  filled: readOnly,
+                  fillColor: readOnly ? Colors.grey[100] : null,
                 ),
                 textAlign: TextAlign.right,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (value) => onChanged(tag, value),
+                onChanged: (value) {
+                  if (!readOnly) onChanged(tag, value);
+                },
                 validator: (value) {
-                  if (value!.isEmpty && requiresLiterSolar(tag)) {
+                  if (value != null &&
+                      value.isEmpty &&
+                      requiresLiterSolar(tag)) {
                     return 'Liter Solar harus diisi';
                   }
                   return null;
@@ -47,31 +61,38 @@ class FieldWithLiterSolar extends StatelessWidget {
               ),
             ),
 
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
 
-            // Nominal
+            // ======= NOMINAL =======
             Expanded(
               flex: 3,
               child: TextFormField(
-                controller: controllers[tag.id],
+                controller: nominalController,
+                readOnly: readOnly,
                 decoration: InputDecoration(
                   labelText: tag.nama ?? 'Nominal',
                   border: OutlineInputBorder(),
                   prefixText: 'Rp ',
+                  filled: readOnly,
+                  fillColor: readOnly ? Colors.grey[100] : null,
                 ),
                 textAlign: TextAlign.right,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (value) => onChanged(tag, value),
+                onChanged: (value) {
+                  if (!readOnly) onChanged(tag, value);
+                },
                 validator: (value) {
-                  if (value!.isEmpty) return 'Nominal harus diisi';
+                  if (value != null && value.isEmpty) {
+                    return 'Nominal harus diisi';
+                  }
                   return null;
                 },
               ),
             ),
           ],
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
       ],
     );
   }

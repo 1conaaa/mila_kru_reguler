@@ -231,35 +231,42 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
             tooltip: 'Kirim Data',
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(80.0), // Tinggi PreferredSize agar muat Dropdown
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: // Perbaiki bagian build untuk DropdownButtonFormField
-            DropdownButtonFormField<String>(
-              value: selectedKotaTujuan,
-              decoration: InputDecoration(
-                labelText: 'Pilih Kota Tujuan',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_city),
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(90),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.all(10),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true, // ⬅️ mencegah overflow
+                    value: selectedKotaTujuan,
+                    decoration: InputDecoration(
+                      labelText: 'Pilih Kota Tujuan',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.location_city),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                    ),
+                    items: kotaTujuanList.map((String kota) {
+                      return DropdownMenuItem<String>(
+                        value: kota,
+                        child: Text(
+                          kota,
+                          overflow: TextOverflow.ellipsis,  // ⬅️ mencegah text panjang overflow
+                          maxLines: 1,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() => selectedKotaTujuan = value);
+                      if (value != null) _searchRuteKota(value);
+                    },
+                  ),
+                ),
               ),
-              items: kotaTujuanList.map((String kota) {
-                return DropdownMenuItem<String>(
-                  value: kota, // Pastikan 'value' adalah String
-                  child: Text(kota), // Gunakan 'kota' sebagai teks
-                );
-              }).toList(),
-              onChanged: (String? value) {
-                setState(() {
-                  selectedKotaTujuan = value;
-                });
-                if (selectedKotaTujuan != null) {
-                  _searchRuteKota(selectedKotaTujuan!);
-                }
-              },
             ),
           ),
-        ),
       ),
       body: Stack(
         children: [

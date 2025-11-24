@@ -95,15 +95,17 @@ class JenisPaket {
   final int id;
   final String jenis_paket;
   final String deskripsi;
+  final double harga_paket;
   final double persen;
 
-  JenisPaket({required this.id, required this.jenis_paket, required this.deskripsi, required this.persen});
+  JenisPaket({required this.id, required this.jenis_paket, required this.deskripsi, required this.persen, required this.harga_paket});
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'jenis_paket': jenis_paket,
       'deskripsi': deskripsi,
+      'harga_paket': harga_paket,
       'persen': persen,
     };
   }
@@ -113,6 +115,7 @@ class JenisPaket {
       id: json['id'],
       jenis_paket: json['jenis_paket'] ?? '',
       deskripsi: json['deskripsi'] ?? '',
+      harga_paket: double.parse(json['harga_paket']),  // Mengubah string menjadi double
       persen: double.parse(json['persen']),  // Mengubah string menjadi double
     );
   }

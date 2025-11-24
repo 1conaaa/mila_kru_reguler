@@ -197,8 +197,8 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     final dbHelper = DatabaseHelper.instance;
     Database db = await dbHelper.database;
 
-    // Hitung jumlahTagihan
-    double jumlahTagihan = tagihan * qtyBarang;
+    // Hitung jumlahTagihan dari controller
+    double jumlahTagihan = double.tryParse(_hargaKmController.text) ?? 0.0;
 
     // Jika gambar diambil, kompres gambar terlebih dahulu
     if (_image != null) {
@@ -230,17 +230,18 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         'id_kota_berangkat': idkotaAwal,
         'id_kota_tujuan': idkotaAkhir,
         'qty_barang': _qtyBarangController.text,
-        'harga_km': tagihan,
-        'jml_harga': _hargaKmController.text,
+        'harga_km': jumlahTagihan, // Gunakan jumlahTagihan yang sudah dihitung
+        'jml_harga': jumlahTagihan.toString(), // Simpan sebagai string
         'nama_pengirim': _namaPengirimController.text,
         'no_tlp_pengirim': _noTlpPengirimController.text,
         'nama_penerima': _namaPenerimaController.text,
         'no_tlp_penerima': _noTlpPenerimaController.text,
         'keterangan': _keteranganController.text,
-        'fupload': _base64Image, // Simpan gambar dalam base64
-        'file_name': _fileName,   // Simpan nama file gambar
+        'fupload': _base64Image,
+        'file_name': _fileName,
         'status': 'N',
       });
+
 
       String toastMessage = "Data berhasil disimpan:\n"
           "Nama Pengirim: ${_namaPengirimController.text}\n"
@@ -354,6 +355,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     await databaseHelper.closeDatabase();
     setState(() {
       jenisPaket = items;
+      // Optional: Set default value jika ada data
+      if (items.isNotEmpty) {
+        selectedJenisPaket = '${items[0]['id']} - ${items[0]['persen']} - ${items[0]['harga_paket']}';
+      }
     });
   }
 
@@ -553,60 +558,38 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     return bytes;
   }
 
-  void _calculateTagihan(int qtyBarang, String? selectedKotaBerangkat, String? selectedKotaTujuan, String? selectedJenisPaket) async {
-    if (selectedKotaBerangkat != null && selectedKotaTujuan != null && selectedJenisPaket != null) {
-      // Parsing jarak dan ID kota awal
-      double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
-      int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
-
-      // Parsing jarak dan ID kota akhir
-      double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
-      int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
-
-      // Parsing persen dan ID jenis paket
-      double persenJenisPaket = double.tryParse(selectedJenisPaket.split(' - ')[1]) ?? 0;
-      int idJenisPaket = int.tryParse(selectedJenisPaket.split(' - ')[0]) ?? 1;
-
-      // Menghitung selisih jarak
-      double selisihJarak = (jarakAwal - jarakAkhir).abs();
-
-      print('Jarak Awal: $jarakAwal');
-      print('ID Kota Awal: $idkotaAwal');
-      print('Jarak Akhir: $jarakAkhir');
-      print('ID Kota Akhir: $idkotaAkhir');
-      print('Persen Jenis Paket: $persenJenisPaket');
-      print('ID Jenis Paket: $idJenisPaket');
-      print('Selisih Jarak: $selisihJarak');
-      print('Qty Produk: $qtyBarang');
-
+  void _calculateTagihan(int qtyBarang, String? selectedJenisPaket) {
+    if (selectedJenisPaket != null) {
       try {
-        Map<String, dynamic> kotaTerakhir = await databaseHelper.getLastKotaTerakhir();
-        if (kotaTerakhir.isNotEmpty) {
-          setState(() {
-            jarakPP = kotaTerakhir['jarak'] != null ? (kotaTerakhir['jarak'] as num).toDouble() : 0.0;
-            namaKotaTerakhir = kotaTerakhir['nama_kota'] ?? '';
-            biayaPerkursi = kotaTerakhir['biaya_perkursi'] != null ? (kotaTerakhir['biaya_perkursi'] as num).toDouble() : 0.0;
-            marginKantor = kotaTerakhir['margin_kantor'] != null ? (kotaTerakhir['margin_kantor'] as num).toDouble() : 0.0;
-            marginTarikan = kotaTerakhir['margin_tarikan'] != null ? (kotaTerakhir['margin_tarikan'] as num).toDouble() : 0.0;
-          });
+        // Parsing ID jenis paket dan harga paket
+        List<String> parts = selectedJenisPaket.split(' - ');
+        int idJenisPaket = int.tryParse(parts[0]) ?? 1;
+        double hargaPaket = double.tryParse(parts[2]) ?? 0.0; // harga_paket ada di index 2
 
-          biayakm = (biayaPerkursi + marginTarikan) / jarakPP;
-          biayaperjalanan = biayakm * selisihJarak;
-          qtyPersen = (persenJenisPaket / 100);
-          jumlahTagihan = (biayaperjalanan * qtyPersen) * qtyBarang;
+        print('ID Jenis Paket: $idJenisPaket');
+        print('Harga Paket: $hargaPaket');
+        print('Qty Barang: $qtyBarang');
 
-          setState(() {
-            _hargaKmController.text = jumlahTagihan.toStringAsFixed(0); // Mengubah ke format string dengan 2 desimal
-          });
+        // Hitung jumlah tagihan langsung dari harga paket × quantity
+        double jumlahTagihan = hargaPaket * qtyBarang;
 
-          print('Jumlah Tagihan: $biayakm , $biayaperjalanan , $qtyPersen , $jumlahTagihan');
+        setState(() {
+          _hargaKmController.text = jumlahTagihan.toStringAsFixed(0);
+        });
 
-        }
+        print('Jumlah Tagihan: $jumlahTagihan');
+
       } catch (e) {
-        print('Error retrieving kota terakhir: $e');
+        print('Error calculating tagihan: $e');
+        setState(() {
+          _hargaKmController.text = '0';
+        });
       }
     } else {
-      print('Salah satu parameter null');
+      print('Jenis paket belum dipilih');
+      setState(() {
+        _hargaKmController.text = '0';
+      });
     }
   }
 
@@ -681,28 +664,42 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                   setState(() {
                     qtyBarang = int.tryParse(value) ?? 0;
                   });
+
+                  // Hitung tagihan saat quantity berubah
+                  if (qtyBarang > 0 && selectedJenisPaket != null) {
+                    _calculateTagihan(qtyBarang, selectedJenisPaket!);
+                  }
                 }
               },
             ),
             SizedBox(height: 20),
 
             // Dropdown untuk memilih jenis paket
+            // Dalam build method - ubah DropdownButtonFormField untuk jenis paket
             DropdownButtonFormField<String>(
               decoration: InputDecoration(
                 labelText: 'Pilih Jenis Paket',
               ),
               value: selectedJenisPaket,
               items: jenisPaket.map((item) {
-                String combinedValue = '${item['id']} - ${item['persen']}';
+                // Format: "id - persen - harga_paket"
+                String combinedValue = '${item['id']} - ${item['persen']} - ${item['harga_paket']}';
+                String displayText = '${item['jenis_paket']} - Rp ${NumberFormat('#,###').format(item['harga_paket'])}';
+
                 return DropdownMenuItem<String>(
                   value: combinedValue,
-                  child: Text('${item['jenis_paket']}'),
+                  child: Text(displayText),
                 );
               }).toList(),
               onChanged: (String? newValue) {
                 setState(() {
                   selectedJenisPaket = newValue;
                 });
+
+                // Hitung tagihan saat jenis paket berubah
+                if (qtyBarang > 0 && newValue != null) {
+                  _calculateTagihan(qtyBarang, newValue);
+                }
               },
               validator: (value) {
                 if (value == null) {
@@ -729,12 +726,12 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                   selectedKotaBerangkat = value;
                 });
                 if (qtyBarang > 0 && selectedKotaBerangkat != null && selectedKotaTujuan != null && selectedJenisPaket != null) {
-                  _calculateTagihan(
-                    qtyBarang,
-                    selectedKotaBerangkat!,
-                    selectedKotaTujuan!,
-                    selectedJenisPaket!,
-                  );
+                  // _calculateTagihan(
+                  //   qtyBarang,
+                  //   selectedKotaBerangkat!,
+                  //   selectedKotaTujuan!,
+                  //   selectedJenisPaket!,
+                  // );
                 }
               },
               validator: (value) {
@@ -763,12 +760,12 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                   selectedKotaTujuan = value;
                 });
                 if (qtyBarang > 0 && selectedKotaBerangkat != null && selectedKotaTujuan != null && selectedJenisPaket != null) {
-                  _calculateTagihan(
-                    qtyBarang,
-                    selectedKotaBerangkat!,
-                    selectedKotaTujuan!,
-                    selectedJenisPaket!,
-                  );
+                  // _calculateTagihan(
+                  //   qtyBarang,
+                  //   selectedKotaBerangkat!,
+                  //   selectedKotaTujuan!,
+                  //   selectedJenisPaket!,
+                  // );
                 }
               },
               validator: (value) {

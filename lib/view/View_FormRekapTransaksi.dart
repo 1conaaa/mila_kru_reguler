@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/premi_harian_kru_model.dart';
 import 'package:mila_kru_reguler/models/premi_posisi_kru_model.dart';
@@ -16,8 +18,6 @@ import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 import 'package:mila_kru_reguler/view/View_FormSetoran.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:io';
-
 import 'package:mila_kru_reguler/utils/premi_bersih_calculator.dart';
 
 class FormRekapTransaksi extends StatefulWidget {
@@ -126,6 +126,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   // Variabel untuk menyimpan path gambar per tag
   Map<int, String> _uploadedImages = {};
   Map<int, File?> _imageFiles = {};
+
 
   // Kelompokkan tag berdasarkan kategori
   List<TagTransaksi> tagPendapatan = [];
@@ -426,47 +427,46 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   }
 
   // Fungsi untuk handle upload gambar
-  Future<void> _onImageUpload(TagTransaksi tag, bool fromCamera) async {
+  Future<void> _onImageUpload(TagTransaksi tag, XFile image) async {
     try {
-      // Cek dan minta izin
-      if (fromCamera) {
-        await _requestCameraPermission();
-      } else {
-        await _requestGalleryPermission();
+      File imageFile = File(image.path);
+
+      // Validasi ukuran file (max 5MB)
+      if (await imageFile.length() > 5 * 1024 * 1024) {
+        _showErrorDialog('Ukuran gambar terlalu besar. Maksimal 5MB.');
+        return;
       }
 
-      final ImagePicker picker = ImagePicker();
-      final XFile? image = await picker.pickImage(
-        source: fromCamera ? ImageSource.camera : ImageSource.gallery,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
+      setState(() {
+        _imageFiles[tag.id] = imageFile;
+        _uploadedImages[tag.id] = image.path;
+      });
+
+      // 🔍 Tambahkan debug untuk memastikan file masuk lokal
+      print('=== DEBUG IMAGE UPLOAD ===');
+      print('Tag ID        : ${tag.id}');
+      print('Nama Tag      : ${tag.nama}');
+      print('Image Path    : ${image.path}');
+      print('File Exists   : ${imageFile.existsSync()}');
+      print('File Size     : ${(imageFile.lengthSync() / 1024).toStringAsFixed(2)} KB');
+      print('===========================');
+
+      // Simpan ke database lokal / API
+      await SetoranKruService().updateFilePath(
+        tag.id,        // idTagTransaksis
+        image.path,    // foto path
       );
 
-      if (image != null) {
-        File imageFile = File(image.path);
+      // Tampilkan preview
+      _showImagePreview(tag, imageFile);
 
-        // Validasi ukuran file (max 5MB)
-        if (await imageFile.length() > 5 * 1024 * 1024) {
-          _showErrorDialog('Ukuran gambar terlalu besar. Maksimal 5MB.');
-          return;
-        }
-
-        setState(() {
-          _imageFiles[tag.id] = imageFile;
-          _uploadedImages[tag.id] = image.path;
-        });
-
-        // Tampilkan preview gambar
-        _showImagePreview(tag, imageFile);
-
-        print('Gambar berhasil diupload untuk ${tag.nama}: ${image.path}');
-      }
+      print('Gambar berhasil diupload untuk ${tag.nama}: ${image.path}');
     } catch (e) {
       print('Error upload gambar: $e');
       _showErrorDialog('Gagal mengupload gambar: $e');
     }
   }
+
 
   // Fungsi untuk meminta izin kamera
   Future<void> _requestCameraPermission() async {
@@ -950,14 +950,21 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       // 2. Kumpulkan setoran pendapatan
       for (var tag in tagPendapatan) {
         final valueText = _controllers[tag.id]?.text ?? '0';
-        final nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
-        final coaPendapatan = coaPendapatanBusController.text;
+        final jumlahText = _jumlahControllers[tag.id]?.text ?? '0';
 
-        // Hanya simpan jika nilai > 0
-        if (nilai > 0) {
+        final cleanValue = valueText.replaceAll('.', '').replaceAll(',00', '');
+        final nilai = double.tryParse(cleanValue) ?? 0;
+
+        final jumlah = int.tryParse(jumlahText.replaceAll('.', '')) ?? 0;
+
+        final coaPendapatan = coaPendapatanBusController.text.trim();
+
+        // Hanya simpan jika nilai > 0 atau jumlah > 0
+        if (nilai > 0 || jumlah > 0) {
           print('--- Pendapatan ---');
-          print('coa Pendapatan: ${coaPendapatan}');
-          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
+          print('COA: $coaPendapatan');
+          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}');
+          print('Nilai: $nilai, Jumlah: $jumlah');
 
           final setoran = SetoranKru(
             tglTransaksi: formattedDate,
@@ -968,10 +975,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             kodeTrayek: kodeTrayek ?? '',
             idPersonil: idUser,
             idGroup: idGroup,
-            jumlah: 0,
-            idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
-            coa: coaPendapatan ?? '',
-            nilai: nilai,
+            jumlah: jumlah,               // ⬅️ DIISI dari jumlahControllers
+            idTransaksi: idTransaksi,
+            coa: coaPendapatan,
+            nilai: nilai,                 // ⬅️ pendapatan
             idTagTransaksi: tag.id,
             status: 'N',
             keterangan: null,
@@ -982,7 +989,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           );
 
           semuaSetoran.add(setoran);
-          print('✅ Pendapatan ditambahkan: ${tag.nama}');
+          print('✅ Ditambahkan: ${tag.nama}');
         }
       }
 
@@ -993,34 +1000,64 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         String? keterangan = null;
         final coaPengeluaran = coaPengeluaranBusController.text;
 
-        if (tag.id == 16) { // Biaya Solar
+        final fotoPath = _uploadedImages[tag.id];
+        final fotoName = fotoPath != null ? fotoPath.split('/').last : null;
+
+        print('--------------------------------------------------');
+        print('🔍 CEK DATA TAG: ${tag.nama} (ID: ${tag.id})');
+        print('📸 Foto Path: $fotoPath');
+        print('📄 Foto Name: $fotoName');
+        print('--------------------------------------------------');
+
+        if (tag.id == 16) {
+          // ---------------------------------------------
+          //           BIAYA SOLAR
+          // ---------------------------------------------
           final nominalSolarText = _controllers[tag.id]?.text ?? '0';
           final nominalSolar = double.tryParse(
-              nominalSolarText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
+              nominalSolarText.replaceAll('.', '').replaceAll(',00', '')) ??
+              0;
 
           final literSolarText = _literSolarControllers[tag.id]?.text ?? '0';
           final literSolar = double.tryParse(literSolarText) ?? 0;
 
-          print('--- Biaya Solar ---');
+          print('--- BIAYA SOLAR (TAG 16) ---');
+          print('Nominal Text: $nominalSolarText');
+          print('Nominal Solar: $nominalSolar');
+          print('Liter Solar Text: $literSolarText');
+          print('Liter Solar Parsed: $literSolar');
+
           nilai = nominalSolar;
-          jumlah = literSolar.toInt(); // Convert to int
+          jumlah = literSolar.toInt();
           keterangan = literSolar > 0 ? 'Solar: $literSolar liter' : null;
 
-          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}');
-          print('Nominal Solar: $nilai, Liter Solar: $jumlah');
+          print('HASIL → Nilai: $nilai | Jumlah: $jumlah | Ket: $keterangan');
 
-        } else { // Biaya Lainnya
+        } else {
+          // ---------------------------------------------
+          //           BIAYA LAINNYA
+          // ---------------------------------------------
           final valueText = _controllers[tag.id]?.text ?? '0';
           nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
-          jumlah = 0;
 
-          print('--- Biaya Lainnya ---');
-          print('coa Pengeluaran: ${coaPengeluaran}');
-          print('Tag ID: ${tag.id}, Nama Tag: ${tag.nama}, Nilai: $nilai');
+          print('--- BIAYA LAINNYA ---');
+          print('coa Pengeluaran: $coaPengeluaran');
+          print('Value Text: $valueText');
+          print('Nilai Parsed: $nilai');
         }
 
-        // Hanya simpan jika nilai > 0
+        // ---------------------------------------------
+        //           FILTER: hanya nilai > 0
+        // ---------------------------------------------
         if (nilai > 0) {
+
+          print('📌 AKAN DISIMPAN → ${tag.nama}');
+          print('  • Nilai: $nilai');
+          print('  • Jumlah: $jumlah');
+          print('  • Keterangan: $keterangan');
+          print('  • Foto Path: $fotoPath');
+          print('  • Foto Name: $fotoName');
+
           final setoran = SetoranKru(
             tglTransaksi: formattedDate,
             kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
@@ -1031,22 +1068,25 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             idPersonil: idUser,
             idGroup: idGroup,
             jumlah: jumlah,
-            idTransaksi: idTransaksi, // Gunakan ID transaksi yang digenerate
+            idTransaksi: idTransaksi,
             coa: coaPengeluaran ?? '',
             nilai: nilai,
             idTagTransaksi: tag.id,
             status: 'N',
             keterangan: keterangan,
-            fupload: null,
-            fileName: null,
+            fupload: fotoPath,
+            fileName: fotoName,
             updatedAt: formattedDate,
             createdAt: formattedDate,
           );
 
           semuaSetoran.add(setoran);
-          print('✅ Pengeluaran ditambahkan: ${tag.nama}');
+          print('✅ Pengeluaran disimpan: ${tag.nama}');
+          print('--------------------------------------------------\n');
+
         } else {
-          print('⚠️ Skip pengeluaran ${tag.nama} - nilai 0');
+          print('⚠️ SKIP → ${tag.nama} (nilai = 0)');
+          print('--------------------------------------------------\n');
         }
       }
 

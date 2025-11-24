@@ -1,16 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
+
 import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 import 'package:mila_kru_reguler/services/data_pusher_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:mila_kru_reguler/database/database_helper.dart';
 
 class PremiKru extends StatefulWidget {
@@ -19,20 +24,21 @@ class PremiKru extends StatefulWidget {
 }
 
 class _PremiKruState extends State<PremiKru> {
-  DatabaseHelper databaseHelper = DatabaseHelper();
+  // Services
   final PremiHarianKruService premiHarianKruService = PremiHarianKruService();
   final SetoranKruService setoranKruService = SetoranKruService();
   final TagTransaksiService tagTransaksiService = TagTransaksiService();
   final DataPusherService dataPusherService = DataPusherService();
 
+  final DatabaseHelper databaseHelper = DatabaseHelper();
+
   List<Map<String, dynamic>> listPremiHarianKru = [];
   late Future<List<SetoranKru>> setoranKruData;
+
   bool _isPushingData = false;
-  double _pushDataProgress = 0.0;
   double _uploadProgress = 0.0;
 
   NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp');
-
   DateTime? _selectedDate;
 
   @override
@@ -43,37 +49,9 @@ class _PremiKruState extends State<PremiKru> {
     _loadLastPremiKru();
   }
 
-  // Method untuk mendapatkan semua data tag transaksi
-  Future<List<TagTransaksi>> _getAllTagTransaksi() async {
-    try {
-      return await tagTransaksiService.getAllTagTransaksi();
-    } catch (e) {
-      print('Error getting tag transaksi: $e');
-      return [];
-    }
-  }
-
-  // Method untuk mendapatkan nama tag dari list berdasarkan idTagTransaksi
-  String _getNamaTagFromList(int? idTagTransaksi, List<TagTransaksi> tagList) {
-    if (idTagTransaksi == null) return '-';
-
-    try {
-      final tag = tagList.firstWhere(
-            (tag) => tag.id == idTagTransaksi,
-        orElse: () => TagTransaksi(id: 0, kategoriTransaksi: '', nama: 'Tag Tidak Ditemukan'),
-      );
-
-      return tag.nama ?? 'Tag $idTagTransaksi';
-    } catch (e) {
-      return 'Tag $idTagTransaksi';
-    }
-  }
-
-  void _updateUploadProgress(double progress) {
-    setState(() {
-      _uploadProgress = progress;
-    });
-  }
+  //----------------------------------------------------------------------
+  // LOAD DATA
+  //----------------------------------------------------------------------
 
   Future<void> _loadLastPremiKru() async {
     await databaseHelper.initDatabase();
@@ -82,27 +60,64 @@ class _PremiKruState extends State<PremiKru> {
   }
 
   Future<void> _getListPremiKru() async {
-    List<Map<String, dynamic>> premiKruData = await premiHarianKruService.getPremiHarianKruWithKruBis();
+    List<Map<String, dynamic>> premiKruData =
+    await premiHarianKruService.getPremiHarianKruWithKruBis();
+
     setState(() {
       listPremiHarianKru = premiKruData;
     });
-    if (listPremiHarianKru.isEmpty) {
-      print('Tidak ada data dalam tabel Premi Harian Kru.');
+
+    if (premiKruData.isEmpty) {
+      print("Tidak ada data premi harian kru.");
     } else {
-      print('Data ditemukan dalam tabel Premi Harian Kru.');
+      print("Data premi harian kru ditemukan.");
     }
   }
 
-  // Method untuk refresh data setoran kru
   Future<void> _refreshSetoranKruData() async {
     setState(() {
       setoranKruData = setoranKruService.getAllSetoran();
     });
   }
 
+  //----------------------------------------------------------------------
+  // TAG TRANSAKSI
+  //----------------------------------------------------------------------
+
+  Future<List<TagTransaksi>> _getAllTagTransaksi() async {
+    try {
+      return await tagTransaksiService.getAllTagTransaksi();
+    } catch (e) {
+      print("Error load tag transaksi: $e");
+      return [];
+    }
+  }
+
+  String _getNamaTagFromList(int? idTagTransaksi, List<TagTransaksi> tags) {
+    if (idTagTransaksi == null) return "-";
+
+    try {
+      final tag = tags.firstWhere(
+            (tag) => tag.id == idTagTransaksi,
+        orElse: () => TagTransaksi(id: 0, nama: "Tag Tidak Ditemukan", kategoriTransaksi: ""),
+      );
+
+      return tag.nama ?? "Tag $idTagTransaksi";
+    } catch (_) {
+      return "Tag $idTagTransaksi";
+    }
+  }
+
+  void _updateUploadProgress(double progress) {
+    setState(() => _uploadProgress = progress);
+  }
+
+  //----------------------------------------------------------------------
+  // PUSH DATA
+  //----------------------------------------------------------------------
+
   Future<void> _pushDataPremiHarianKru() async {
     if (_selectedDate == null) {
-      print("Silakan pilih tanggal terlebih dahulu.");
       _showAlertDialog(context, "Silakan pilih tanggal terlebih dahulu.");
       return;
     }
@@ -113,7 +128,7 @@ class _PremiKruState extends State<PremiKru> {
     });
 
     try {
-      // 1️⃣ Kirim premi harian kru
+      // 1. Push premi harian kru
       await dataPusherService.pushDataPremiHarianKru(
         selectedDate: _selectedDate!,
         onProgress: _updateUploadProgress,
@@ -123,81 +138,68 @@ class _PremiKruState extends State<PremiKru> {
         },
       );
 
-      // 2️⃣ Ambil token dan idTransaksi dari SharedPreferences
+      // 2. Load token & idTransaksi
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
       String? idTransaksi = prefs.getString('idTransaksi');
 
       if (idTransaksi == null) {
-        // fallback generate
         idTransaksi = "KEUBIS${DateTime.now().millisecondsSinceEpoch}";
         prefs.setString('idTransaksi', idTransaksi);
-        print("Using fallback transaction ID: $idTransaksi");
       }
 
-      // 3️⃣ Ambil data setoran kru lokal yang status 'N'
-      final List<SetoranKru> setoranKruToSend =
-      await SetoranKruService().getAllSetoran();
-      final List<SetoranKru> filteredSetoran =
-      setoranKruToSend.where((e) => e.status == 'N').toList();
+      // 3. Ambil setoran kru yang status N
+      final allSetoran = await setoranKruService.getAllSetoran();
+      final filtered = allSetoran.where((e) => e.status == "N").toList();
 
-      if (filteredSetoran.isEmpty) {
-        print('Tidak ada data setoran kru untuk dikirim.');
+      if (filtered.isEmpty) {
+        print("Tidak ada data setoran kru untuk dikirim.");
         return;
       }
 
-      // 4️⃣ Persiapkan rows JSON
-      final List<Map<String, dynamic>> rowsList = filteredSetoran.map((d) {
+      // 4. Siapkan rows
+      final rowsList = filtered.map((d) {
         return {
-          'tgl_transaksi': d.tglTransaksi,
-          'km_pulang': d.kmPulang ?? '',
-          'rit': d.rit,
-          'no_pol': d.noPol,
-          'id_bus': d.idBus,
-          'kode_trayek': d.kodeTrayek,
-          'id_personil': d.idPersonil,
-          'id_group': d.idGroup,
-          'jumlah': d.jumlah ?? '',
-          'coa': d.coa ?? '',
-          'nilai': d.nilai,
-          'id_tag_transaksi': d.idTagTransaksi,
-          'status': d.status,
-          'keterangan': d.keterangan ?? '',
-          // jika mau file diikutkan bisa ditambahkan url/file path
+          "tgl_transaksi": d.tglTransaksi,
+          "km_pulang": d.kmPulang ?? "",
+          "rit": d.rit,
+          "no_pol": d.noPol,
+          "id_bus": d.idBus,
+          "kode_trayek": d.kodeTrayek,
+          "id_personil": d.idPersonil,
+          "id_group": d.idGroup,
+          "jumlah": d.jumlah ?? "",
+          "coa": d.coa ?? "",
+          "nilai": d.nilai,
+          "id_tag_transaksi": d.idTagTransaksi,
+          "status": d.status,
+          "keterangan": d.keterangan ?? "",
         };
       }).toList();
 
-      // 5️⃣ Definisikan callback untuk update status
+      // 5. Callback update status
       Future<void> updateStatusCallback(String idTransaksi) async {
-        print('🔄 Memulai update status untuk id_transaksi: $idTransaksi');
-        for (var s in filteredSetoran) {
+        for (var s in filtered) {
           try {
-            await SetoranKruService().updateSetoran(s.copyWith(status: 'Y'));
-            print('✅ Status updated untuk setoran ID: ${s.id}');
+            await setoranKruService.updateSetoran(s.copyWith(status: "Y"));
           } catch (e) {
-            print('❌ Gagal update status untuk setoran ID: ${s.id} - Error: $e');
+            print("Gagal update status: $e");
           }
         }
-        print('✅ Semua status berhasil diupdate ke Y');
       }
 
-      // 6️⃣ Kirim data ke API dengan callback
+      // 6. Kirim API
       final response = await kirimSetoranKruMobile(
         idTransaksi: idTransaksi,
         token: token!,
         rows: rowsList,
-        files: filteredSetoran,
-        onSuccessCallback: updateStatusCallback, // Tambahkan callback di sini
+        files: filtered,
+        onSuccessCallback: updateStatusCallback,
       );
 
-      print('Setoran kru berhasil dikirim: $response');
-
-      // 7️⃣ Tidak perlu update status lagi di sini karena sudah dilakukan di callback
-      print('✅ Data berhasil dikirim dan status sudah diupdate via callback');
-
+      print("Setoran kru berhasil dikirim: $response");
     } catch (e) {
-      print('Error pushing data: $e');
-      _showAlertDialog(context, "Terjadi kesalahan saat mengirim data: $e");
+      _showAlertDialog(context, "Gagal push data: $e");
     } finally {
       setState(() {
         _isPushingData = false;
@@ -206,9 +208,10 @@ class _PremiKruState extends State<PremiKru> {
     }
   }
 
-// ===========================================
-// Fungsi kirim data ke API Lumen
-// ===========================================
+  //----------------------------------------------------------------------
+  // MULTIPART API KIRIM SETORAN
+  //----------------------------------------------------------------------
+
   Future<Map<String, dynamic>> kirimSetoranKruMobile({
     required String idTransaksi,
     required String token,
@@ -216,261 +219,113 @@ class _PremiKruState extends State<PremiKru> {
     required List<SetoranKru> files,
     required Function(String) onSuccessCallback,
   }) async {
-    const String apiUrl = 'https://apimila.sysconix.id/api/simpansetorankrumobile';
+    const String apiUrl = "https://apimila.sysconix.id/api/simpansetorankrumobile";
 
     try {
-      var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+      var request = http.MultipartRequest("POST", Uri.parse(apiUrl));
+      request.headers["Authorization"] = "Bearer $token";
+      request.fields["id_transaksi"] = idTransaksi;
 
-      // Add Authorization
-      request.headers['Authorization'] = 'Bearer $token';
-      request.headers['Content-Type'] = 'multipart/form-data';
+      // Filter hanya status N
+      final unsentRows = rows.where((r) => r["status"] == "N").toList();
 
-      // Kirim id_transaksi
-      request.fields['id_transaksi'] = idTransaksi;
-
-      print('📋 Data sebelum cleaning:');
-      print('Jumlah rows asli: ${rows.length}');
-
-      // FILTER: Hanya kirim data dengan status 'N' (belum dikirim)
-      List<Map<String, dynamic>> unsentRows = [];
-      for (var row in rows) {
-        if (row['status'] == 'N') {
-          unsentRows.add(row);
-        }
-      }
-
-      print('✅ Data setelah filter (hanya status N): ${unsentRows.length} rows');
-
-      // Jika tidak ada data yang perlu dikirim
       if (unsentRows.isEmpty) {
-        print('ℹ️ Tidak ada data dengan status "N" untuk dikirim');
-        return {
-          'success': true,
-          'message': 'Tidak ada data baru untuk dikirim',
-          'skipped': true
-        };
+        return {"success": true, "message": "Tidak ada data baru", "skipped": true};
       }
 
-      // Kirim rows sebagai JSON string - TAMBAHKAN id_transaksi ke setiap row
+      // Tambahkan id transaksi & cleaning null
       List<Map<String, dynamic>> cleanedRows = [];
+
       for (var row in unsentRows) {
-        // Bersihkan data dari nilai null atau format yang tidak diinginkan
-        Map<String, dynamic> cleanedRow = {};
-        row.forEach((key, value) {
-          if (value != null) {
-            cleanedRow[key] = value;
-          }
+        Map<String, dynamic> clean = {};
+        row.forEach((k, v) {
+          if (v != null) clean[k] = v;
         });
-
-        // PASTIKAN id_transaksi ada di setiap row
-        cleanedRow['id_transaksi'] = idTransaksi;
-
-        cleanedRows.add(cleanedRow);
+        clean["id_transaksi"] = idTransaksi;
+        cleanedRows.add(clean);
       }
 
-      request.fields['rows'] = jsonEncode(cleanedRows);
+      request.fields["rows"] = jsonEncode(cleanedRows);
 
-      // Debug: Print data yang dikirim
-      print('📤 Data yang dikirim ke API:');
-      print('ID Transaksi: $idTransaksi');
-      print('Jumlah rows: ${cleanedRows.length}');
-
-      // PROSES FILE (sama seperti sebelumnya)
-      print('\n📎 PROSES FILE ATTACHMENT:');
+      // FILE ATTACH
       int fileCounter = 0;
+
       for (int i = 0; i < files.length; i++) {
         final d = files[i];
 
         if (d.fupload != null && d.fupload!.isNotEmpty) {
-          try {
-            File file = File(d.fupload!);
-            if (await file.exists()) {
-              var multipartFile = await http.MultipartFile.fromPath(
-                'file_name[$i][]',
-                d.fupload!,
-              );
-              request.files.add(multipartFile);
-              fileCounter++;
-              print('✅ File $i-1 dilampirkan: ${d.fupload}');
-            } else {
-              print('⚠️  File tidak ditemukan: ${d.fupload}');
-            }
-          } catch (e) {
-            print('❌ Gagal melampirkan file $i-1: ${d.fupload} - Error: $e');
+          final file = File(d.fupload!);
+
+          if (await file.exists()) {
+            final multipartFile = await http.MultipartFile.fromPath(
+              "file_name_$i",
+              d.fupload!,
+            );
+            request.files.add(multipartFile);
+            fileCounter++;
           }
         }
       }
-      print('📎 Total files dilampirkan: $fileCounter');
-
-      print('\n🚀 Mengirim ${cleanedRows.length} data ke API...');
 
       var streamedResponse = await request.send().timeout(
         Duration(seconds: 30),
-        onTimeout: () {
-          throw TimeoutException('Request timeout setelah 30 detik');
-        },
       );
 
       var response = await http.Response.fromStream(streamedResponse);
+      final responseData = jsonDecode(response.body);
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
-
-      Map<String, dynamic> responseData;
-      try {
-        responseData = jsonDecode(response.body);
-      } catch (e) {
-        throw Exception('Gagal parsing response JSON: ${response.body}');
+      if (response.statusCode == 200 && responseData["success"] == true) {
+        await onSuccessCallback(idTransaksi);
+        return responseData;
       }
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (responseData['success'] == true) {
-          print('✅ Berhasil mengirim data setoran kru');
-
-          // Panggil callback untuk update status = 'Y' hanya untuk data yang berhasil dikirim
-          try {
-            await onSuccessCallback(idTransaksi);
-            print('✅ Status berhasil diupdate ke Y untuk id_transaksi: $idTransaksi');
-          } catch (e) {
-            print('⚠️  Berhasil kirim data tapi gagal update status: $e');
-          }
-
-          return responseData;
-        } else {
-          String errorMessage = responseData['message'] ?? 'Unknown error from API';
-          throw Exception('API response success: false - $errorMessage');
-        }
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized - Token mungkin expired atau tidak valid');
-      } else if (response.statusCode == 422) {
-        String validationError = responseData['message'] ?? 'Data validation failed';
-        String errorDetails = responseData['errors'] != null
-            ? ' - Details: ${responseData['errors']}'
-            : '';
-        throw Exception('Validasi gagal: $validationError$errorDetails');
-      } else if (response.statusCode == 500) {
-        // Handle duplicate entry error specifically
-        if (responseData['error'] != null && responseData['error'].toString().contains('Duplicate entry')) {
-          print('❌ Duplicate entry error - Data sudah ada di server');
-          print('🔧 Mencoba update data yang sudah ada...');
-
-          // Coba update data yang sudah ada
-          return await _handleDuplicateEntry(
-            idTransaksi: idTransaksi,
-            token: token,
-            rows: cleanedRows,
-            originalResponse: responseData,
-          );
-        }
-        throw Exception('Server error (500) - Silakan coba lagi nanti');
-      } else {
-        throw Exception('HTTP Error ${response.statusCode}: ${response.body}');
-      }
-    } on TimeoutException catch (e) {
-      print('❌ Timeout: $e');
-      throw Exception('Timeout - Koneksi terlalu lama, periksa koneksi internet Anda');
-    } on SocketException catch (e) {
-      print('❌ Socket Error: $e');
-      throw Exception('Koneksi jaringan terputus - Periksa koneksi internet Anda');
+      throw Exception("Error API: ${response.body}");
     } catch (e) {
-      print('❌ Error dalam kirimSetoranKruMobile: $e');
+      print("Error kirimSetoranKruMobile: $e");
       rethrow;
     }
   }
 
-// Fungsi untuk handle duplicate entry
-  Future<Map<String, dynamic>> _handleDuplicateEntry({
-    required String idTransaksi,
-    required String token,
-    required List<Map<String, dynamic>> rows,
-    required Map<String, dynamic> originalResponse,
-  }) async {
-    print('🔄 Mencoba strategi alternatif untuk duplicate entry...');
+  //----------------------------------------------------------------------
+  // PILIH TANGGAL
+  //----------------------------------------------------------------------
 
-    // Option 1: Skip data yang duplicate dan lanjutkan dengan yang lain
-    // Option 2: Update data yang sudah ada
-    // Untuk sekarang, kita return response yang mengindikasikan duplicate
-    return {
-      'success': false,
-      'message': 'Data sudah ada di server (Duplicate Entry)',
-      'duplicate': true,
-      'original_error': originalResponse,
-      'suggestion': 'Data mungkin sudah dikirim sebelumnya. Cek status data di server.'
-    };
-  }
+  Future<void> _selectDate(BuildContext context) async {
+    final picked = await showDatePicker(
+      context: context,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+      initialDate: _selectedDate ?? DateTime.now(),
+    );
 
-  Future<void> updateStatusSetoranKru(String idTransaksi) async {
-    final db = await DatabaseHelper().database;
-
-    try {
-      // Update status menjadi 'Y' hanya untuk field yang ada di database
-      int updatedRows = await db.update(
-        't_setoran_kru',
-        {
-          'status': 'Y',
-          'updated_at': DateTime.now().toIso8601String(),
-        },
-        where: 'id_transaksi = ? AND status = ?',
-        whereArgs: [idTransaksi, 'N'], // Hanya update yang belum terkirim
-      );
-
-      print('✅ Updated $updatedRows rows dengan status Y untuk id_transaksi: $idTransaksi');
-
-      if (updatedRows == 0) {
-        print('⚠️  Tidak ada data yang diupdate - mungkin sudah berstatus Y');
-      }
-    } catch (e) {
-      print('❌ Gagal update status di database: $e');
-
-      // Fallback: coba update tanpa field yang problematic
-      try {
-        int updatedRows = await db.update(
-          't_setoran_kru',
-          {'status': 'Y'},
-          where: 'id_transaksi = ?',
-          whereArgs: [idTransaksi],
-        );
-        print('✅ Fallback update berhasil: $updatedRows rows');
-      } catch (e2) {
-        print('❌ Fallback update juga gagal: $e2');
-        throw e; // Tetap throw error original
-      }
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
     }
   }
 
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-    if (pickedDate != null && pickedDate != _selectedDate)
-      setState(() {
-        _selectedDate = pickedDate;
-      });
-  }
+  //----------------------------------------------------------------------
+  // ALERT DIALOG
+  //----------------------------------------------------------------------
 
   void _showAlertDialog(BuildContext context, String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Pemberitahuan"),
-          content: Text(message),
-          actions: [
-            TextButton(
-              child: Text("OK"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: Text("Pemberitahuan"),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK"),
+          )
+        ],
+      ),
     );
   }
+
+  //----------------------------------------------------------------------
+  // BUILD UI
+  //----------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -478,7 +333,7 @@ class _PremiKruState extends State<PremiKru> {
       return Stack(
         children: [
           Container(
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.black.withOpacity(0.4),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -492,184 +347,128 @@ class _PremiKruState extends State<PremiKru> {
           ),
         ],
       );
-    } else {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Data Premi Disetor Harian Kru'),
-          automaticallyImplyLeading: false,
-          actions: [
-            IconButton(
-              icon: Icon(Icons.calendar_today),
-              onPressed: () {
-                _selectDate(context);
-              },
-              tooltip: 'Pilih Tanggal',
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Data Premi Disetor Harian Kru"),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.calendar_today),
+            tooltip: "Pilih Tanggal",
+            onPressed: () => _selectDate(context),
+          ),
+          IconButton(
+            icon: Icon(Icons.send),
+            tooltip: "Kirim Data",
+            onPressed: _pushDataPremiHarianKru,
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh),
+            tooltip: "Refresh",
+            onPressed: _refreshSetoranKruData,
+          ),
+        ],
+      ),
+
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // ------------------- TABLE PREMI KRU -------------------
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text("Kru")),
+                  DataColumn(label: Text("%")),
+                  DataColumn(label: Text("Nominal"), numeric: true),
+                  DataColumn(label: Text("Status")),
+                ],
+                rows: listPremiHarianKru.map((item) {
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(item["nama_kru"].toString())),
+                      DataCell(Text(item["persen_premi"].toString())),
+                      DataCell(Text(formatter.format(item["nominal_premi_disetor"]))),
+                      DataCell(Text(item["status"].toString())),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
-            IconButton(
-              icon: Icon(Icons.send),
-              onPressed: () {
-                _pushDataPremiHarianKru();
-              },
-              tooltip: 'Kirim Data',
-            ),
-            IconButton(
-              icon: Icon(Icons.refresh),
-              onPressed: () {
-                _refreshSetoranKruData();
-              },
-              tooltip: 'Refresh Data Setoran',
+
+            SizedBox(height: 30),
+
+            // ------------------- SETORAN KRU -------------------
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(
+                    "Data Setoran Kru",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 12),
+
+                  FutureBuilder(
+                    future: setoranKruData,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
+
+                      if (snapshot.hasError) {
+                        return Text("Error: ${snapshot.error}");
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return Text("Tidak ada data setoran kru");
+                      }
+
+                      List<SetoranKru> setoranList = snapshot.data!;
+
+                      return FutureBuilder<List<TagTransaksi>>(
+                        future: _getAllTagTransaksi(),
+                        builder: (context, tagSnap) {
+                          if (!tagSnap.hasData) {
+                            return Center(child: CircularProgressIndicator());
+                          }
+
+                          final tagList = tagSnap.data!;
+
+                          return SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              columns: const [
+                                DataColumn(label: Text("ID")),
+                                DataColumn(label: Text("Nama Tag")),
+                                DataColumn(label: Text("Nilai"), numeric: true),
+                                DataColumn(label: Text("Keterangan")),
+                                DataColumn(label: Text("Status")),
+                              ],
+                              rows: setoranList.map((s) {
+                                return DataRow(
+                                  cells: [
+                                    DataCell(Text(s.id?.toString() ?? "-")),
+                                    DataCell(Text(_getNamaTagFromList(s.idTagTransaksi, tagList))),
+                                    DataCell(Text(s.nilai != null ? formatter.format(s.nilai!) : "-")),
+                                    DataCell(Text(s.keterangan ?? "-")),
+                                    DataCell(Text(s.status ?? "-")),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Tabel Data Premi Harian Kru
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: [
-                    DataColumn(
-                      label: Expanded(
-                        child: Center(
-                          child: Text('Kru', style: TextStyle(fontSize: 18)),
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Expanded(
-                        child: Center(
-                          child: Text('%', style: TextStyle(fontSize: 18)),
-                        ),
-                      ),
-                    ),
-                    DataColumn(
-                      label: Center(
-                        child: Text('Nominal', style: TextStyle(fontSize: 18)),
-                      ),
-                      numeric: true,
-                    ),
-                    DataColumn(
-                      label: Center(
-                        child: Text('Status', style: TextStyle(fontSize: 18)),
-                      ),
-                    ),
-                  ],
-                  rows: listPremiHarianKru.map(
-                        (item) => DataRow(
-                      cells: [
-                        DataCell(
-                          Text(
-                            item['nama_kru'].toString(),
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            item['persen_premi'].toString(),
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            formatter.format(item['nominal_premi_disetor']),
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                        DataCell(
-                          Text(
-                            item['status'].toString(),
-                            style: TextStyle(fontSize: 16),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ).toList(),
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Data Setoran Kru dari Service
-              Container(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Data Setoran Kru',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 10),
-                    FutureBuilder<List<SetoranKru>>(
-                      future: setoranKruData,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        } else if (snapshot.hasError) {
-                          return Center(
-                            child: Text('Error: ${snapshot.error}'),
-                          );
-                        } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                          List<SetoranKru> setoranData = snapshot.data!;
-
-                          return FutureBuilder<List<TagTransaksi>>(
-                            future: _getAllTagTransaksi(),
-                            builder: (context, tagSnapshot) {
-                              if (tagSnapshot.connectionState == ConnectionState.waiting) {
-                                return Center(child: CircularProgressIndicator());
-                              } else if (tagSnapshot.hasError) {
-                                return Center(child: Text('Error loading tags'));
-                              } else {
-                                List<TagTransaksi> tagList = tagSnapshot.data ?? [];
-
-                                return SingleChildScrollView(
-                                  scrollDirection: Axis.horizontal,
-                                  child: DataTable(
-                                    columns: [
-                                      DataColumn(label: Text('ID')),
-                                      DataColumn(label: Text('Nama Tag')),
-                                      DataColumn(label: Text('Nilai'), numeric: true),
-                                      DataColumn(label: Text('Keterangan')),
-                                      DataColumn(label: Text('Status')),
-                                    ],
-                                    rows: setoranData.map(
-                                          (setoran) => DataRow(
-                                        cells: [
-                                          DataCell(Text(setoran.id?.toString() ?? '-')),
-                                          DataCell(Text(
-                                              _getNamaTagFromList(setoran.idTagTransaksi, tagList)
-                                          )),
-                                          DataCell(Text(
-                                              setoran.nilai != null
-                                                  ? formatter.format(setoran.nilai)
-                                                  : '-'
-                                          )),
-                                          DataCell(Text(setoran.keterangan ?? '-')),
-                                          DataCell(Text(setoran.status ?? '-')),
-                                        ],
-                                      ),
-                                    ).toList(),
-                                  ),
-                                );
-                              }
-                            },
-                          );
-                        } else {
-                          return Center(
-                            child: Text('Tidak ada data setoran kru'),
-                          );
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+      ),
+    );
   }
 }

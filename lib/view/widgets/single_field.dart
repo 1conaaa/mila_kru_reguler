@@ -6,12 +6,14 @@ class SingleField extends StatelessWidget {
   final TagTransaksi tag;
   final Map<int, TextEditingController> controllers;
   final Function(TagTransaksi, String) onChanged;
+  final bool readOnly;
 
   const SingleField({
     Key? key,
     required this.tag,
     required this.controllers,
     required this.onChanged,
+    this.readOnly = false,
   }) : super(key: key);
 
   @override
@@ -24,9 +26,13 @@ class SingleField extends StatelessWidget {
           labelText: tag.nama ?? 'Field ${tag.id}',
           border: OutlineInputBorder(),
           prefixText: 'Rp ',
+          filled: readOnly,
+          fillColor: readOnly ? Colors.grey[200] : null,
         ),
         textAlign: TextAlign.right,
         keyboardType: TextInputType.number,
+        readOnly: readOnly,
+        enabled: !readOnly,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
         ],
@@ -39,3 +45,4 @@ class SingleField extends StatelessWidget {
     );
   }
 }
+

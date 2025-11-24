@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'dynamic_field.dart';
 
@@ -14,7 +15,7 @@ class KategoriSection extends StatelessWidget {
   final bool Function(TagTransaksi) requiresImage;
   final bool Function(TagTransaksi) requiresJumlah;
   final bool Function(TagTransaksi) requiresLiterSolar;
-  final Function(TagTransaksi, bool) onImageUpload;
+  final Function(TagTransaksi, XFile) onImageUpload;
   final Map<int, String> uploadedImages;
   final Function(TagTransaksi) onRemoveImage;
   final Function()? onFieldChanged; // Tambahkan parameter ini

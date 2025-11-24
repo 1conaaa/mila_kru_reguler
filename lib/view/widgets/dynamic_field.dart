@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/view/widgets/single_field.dart';
 import 'package:mila_kru_reguler/view/widgets/field_with_jumlah.dart';
@@ -20,7 +21,7 @@ class DynamicField extends StatelessWidget {
 
   /// CALLBACK WAJIB - Diperbaiki signature-nya
   final Function(TagTransaksi, String) onFieldChanged;
-  final Function(TagTransaksi, bool) onImageUpload;
+  final Function(TagTransaksi, XFile) onImageUpload;
   final Function(TagTransaksi) onRemoveImage;
 
   final Map<int, String> uploadedImages;
@@ -41,6 +42,16 @@ class DynamicField extends StatelessWidget {
     required this.uploadedImages,
     required this.onRemoveImage,
   }) : super(key: key);
+
+  bool isNonEditable(TagTransaksi tag) {
+    final name = tag.nama?.toLowerCase() ?? '';
+
+    return name.contains("premi atas") ||
+        name.contains("premi bawah") ||
+        name.contains("pendapatan bersih") ||
+        name.contains("pendapatan disetor");
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +78,7 @@ class DynamicField extends StatelessWidget {
             controllers: controllers,
             literSolarControllers: literSolarControllers,
             requiresLiterSolar: requiresLiterSolar,
+            readOnly: isNonEditable(tag),    // <<< INI PENTING!
             onChanged: (TagTransaksi changedTag, String value) {
               print("DEBUG: FieldWithLiterSolar changed → Tag ${changedTag.id}, Value: $value");
               onFieldChanged(changedTag, value);
@@ -79,6 +91,7 @@ class DynamicField extends StatelessWidget {
               tag: tag,
               controllers: controllers,
               jumlahControllers: jumlahControllers,
+              readOnly: isNonEditable(tag),   // <<< PENTING !!!
               onChanged: (TagTransaksi changedTag, String value) {
                 print("DEBUG: Default FieldWithJumlah → Tag ${changedTag.id}, Value: $value");
                 onFieldChanged(changedTag, value);
@@ -90,6 +103,7 @@ class DynamicField extends StatelessWidget {
             SingleField(
               tag: tag,
               controllers: controllers,
+              readOnly: isNonEditable(tag),
               onChanged: (TagTransaksi changedTag, String value) {
                 print("DEBUG: SingleField changed → Tag ${changedTag.id}, Value: $value");
                 onFieldChanged(changedTag, value);
@@ -100,7 +114,7 @@ class DynamicField extends StatelessWidget {
         if (requiresImage(tag))
           ImageUploadSection(
             tag: tag,
-            onImageUpload: (TagTransaksi t, bool isUploaded) {
+            onImageUpload: (TagTransaksi t, XFile isUploaded) {
               print("DEBUG: Image uploaded → Tag ${t.id}");
               onImageUpload(t, isUploaded);
             },

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import '../main.dart';
 import 'package:mila_kru_reguler/page/manifest.dart'; // 🔹 Halaman manifest
+import 'package:mila_kru_reguler/api/ApiHelperKruBis.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -37,6 +38,32 @@ class _HomeState extends State<Home> {
   void initState() {
     super.initState();
     _loadPrefs();
+    loadKruBisData(context);
+  }
+
+  /// Fungsi khusus untuk memanggil ApiHelperKruBis
+  Future<void> loadKruBisData(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Ambil data SharedPreferences dan pastikan tidak null
+    final token = prefs.getString('token') ?? '';
+    final idBus = prefs.getInt('idBus') ?? 0;
+    final noPol = prefs.getString('noPol') ?? '';
+    final idGarasi = prefs.getInt('idGarasi') ?? 0;
+
+    try {
+      // Panggil API
+      await ApiHelperKruBis.requestKruBisAPI(
+        token,
+        idBus,
+        noPol,
+        idGarasi,
+        context,
+      );
+      debugPrint('✅ ApiHelperKruBis berhasil dipanggil');
+    } catch (e) {
+      debugPrint('❌ Error memanggil ApiHelperKruBis: $e');
+    }
   }
 
   /// 🔹 Muat SharedPreferences dan panggil notifikasi
@@ -92,7 +119,7 @@ class _HomeState extends State<Home> {
     try {
       await databaseHelper.initDatabase();
       await databaseHelper.queryKruBis();
-      await databaseHelper.closeDatabase();
+      // await databaseHelper.closeDatabase();
     } catch (e) {
       debugPrint('❌ Error preloading kru bis data: $e');
     }
@@ -184,7 +211,7 @@ class _HomeState extends State<Home> {
   Future<List<Map<String, dynamic>>> _getKruBis() async {
     await databaseHelper.initDatabase();
     final kruBisData = await databaseHelper.queryKruBis();
-    await databaseHelper.closeDatabase();
+    // await databaseHelper.closeDatabase();
     return kruBisData;
   }
 

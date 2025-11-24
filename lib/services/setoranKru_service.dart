@@ -315,4 +315,21 @@ class SetoranKruService {
     final db = await _dbHelper.database;
     return await db.delete('t_setoran_kru');
   }
+
+  Future<void> updateFilePath(int idTagTransaksi, String filePath) async {
+    final db = await DatabaseHelper().database;
+
+    await db.update(
+      't_setoran_kru',
+      {
+        'fupload': filePath,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id_tag_transaksi = ? AND status = ?',
+      whereArgs: [idTagTransaksi, 'N'], // update hanya yang belum dikirim
+    );
+
+    print("🔧 File path updated untuk idTagTransaksi: $idTagTransaksi → $filePath");
+  }
+
 }

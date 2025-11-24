@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/view/widgets/km_pulang_field.dart';
 import 'package:mila_kru_reguler/view/widgets/kategori_section.dart';
@@ -14,7 +15,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
   final Map<int, TextEditingController> controllers;
   final Map<int, TextEditingController> jumlahControllers;
   final Map<int, TextEditingController> literSolarControllers;
-  final Function(TagTransaksi, bool) onImageUpload;
+  final Function(TagTransaksi, XFile) onImageUpload;
   final Map<int, String> uploadedImages;
   final Function(TagTransaksi) onRemoveImage;
   final Function() onSimpan;

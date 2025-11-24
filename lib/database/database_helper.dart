@@ -253,7 +253,8 @@ class DatabaseHelper {
       CREATE TABLE IF NOT EXISTS m_jenis_paket (
         id INTEGER PRIMARY KEY,
         jenis_paket TEXT,
-        deskripsi TEXT, 
+        deskripsi TEXT,
+        harga_paket,
         persen REAL,
         UNIQUE (id)
       )
@@ -494,7 +495,7 @@ class DatabaseHelper {
     // Menggunakan rawQuery untuk menjalankan query JOIN
     return await db.rawQuery('''
       SELECT 
-        a.id,a.jenis_paket,a.deskripsi,a.persen
+        a.id,a.jenis_paket,a.deskripsi,a.persen,a.harga_paket
       FROM
         m_jenis_paket a 
     ''');
@@ -723,6 +724,20 @@ class DatabaseHelper {
       FROM
         m_tag_transaksi a 
     ''');
+  }
+
+  Future<int> updateFotoSetoran(int idTagTransaksi, String? path, String? fileName) async {
+    final db = await database;
+
+    return await db.update(
+      'setoran_kru',
+      {
+        'fupload': path,
+        'file_name': fileName,
+      },
+      where: 'id_tag_transaksi = ?',
+      whereArgs: [idTagTransaksi],
+    );
   }
 
 
