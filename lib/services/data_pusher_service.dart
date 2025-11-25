@@ -23,9 +23,21 @@ class DataPusherService {
 
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
+    final int? idBus = prefs.getInt('idBus');
 
     // Get last transaction ID
-    final String idTransaksiGenerated = await _getLastTransactionId(token);
+    // final String idTransaksiGenerated = await _getLastTransactionId(token);
+
+    // ============================================================
+    // 🔥 LANGSUNG GENERATE ID TRANSAKSI (TANPA API lastidtransaksi)
+    // Format: KEUBIS<timestamp_millisecond>
+    // ============================================================
+    final String idTransaksiGenerated =
+        "KEUBIS${idBus}${DateTime.now().millisecondsSinceEpoch}";
+    print("🔰 ID Transaksi Generate (local): $idTransaksiGenerated");
+
+    // Simpan jika ingin dipakai di halaman lain
+    await prefs.setString('idTransaksi', idTransaksiGenerated);
 
     // Send premi harian kru data (will update progress)
     await _sendPremiHarianKruData(

@@ -28,7 +28,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_19112025-v3.db';
+    String path = '${documentsDirectory.path}/bisapp_25112025-v3.db';
 
     return await openDatabase(
       path,
@@ -337,13 +337,13 @@ class DatabaseHelper {
 
     if (kelasBus == 'Ekonomi') {
       result = await db.rawQuery('''
-      SELECT SUM(jml_harga)*0.6 AS total_tagihan_bagasi, SUM(qty_barang) AS jumlah_barang, rit
+      SELECT SUM(jml_harga)*0.5 AS total_tagihan_bagasi, SUM(qty_barang) AS jumlah_barang, rit
       FROM t_order_bagasi
       WHERE status = 'Y'
     ''');
     } else if (kelasBus == 'Non Ekonomi') {
       result = await db.rawQuery('''
-      SELECT SUM(jml_harga)*0.6 AS total_tagihan_bagasi, SUM(qty_barang) AS jumlah_barang, rit
+      SELECT SUM(jml_harga)*0.5 AS total_tagihan_bagasi, SUM(qty_barang) AS jumlah_barang, rit
       FROM t_order_bagasi
       WHERE status = 'Y'
     ''');

@@ -141,10 +141,11 @@ class _PremiKruState extends State<PremiKru> {
       // 2. Load token & idTransaksi
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
+      final int? idBus = prefs.getInt('idBus');
       String? idTransaksi = prefs.getString('idTransaksi');
 
       if (idTransaksi == null) {
-        idTransaksi = "KEUBIS${DateTime.now().millisecondsSinceEpoch}";
+        idTransaksi = "KEUBIS${idBus}${DateTime.now().millisecondsSinceEpoch}";
         prefs.setString('idTransaksi', idTransaksi);
       }
 

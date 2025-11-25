@@ -479,6 +479,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   }
 
   Future<List<int>> getTicketBagasi() async {
+    // Ambil SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090'; // Default value jika tidak ada
+
     List<Map<String, dynamic>> lastTransaksi = await DatabaseHelper.instance.getDataTransaksiBagasiTerakhir();
     String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ? lastTransaksi[0]['id_order'] : '';
     String kotaBerangkat = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_berangkat'] : '';
@@ -505,13 +509,11 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     final generator = Generator(PaperSize.mm58, profile);
     bytes += generator.reset();
 
-    bytes += generator.text("AKAS AURORA",
-        styles: PosStyles(align: PosAlign.center, height: PosTextSize.size2, width: PosTextSize.size2, bold: true));
-    bytes += generator.text("PT. ANDRY FEBIOLA TRANSPORTASI",
+    bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
         styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
-    bytes += generator.text("Probolinggo - Jatim 67251", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("IG: akas.aaa.official", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("WA: 0853-9991-2500", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("Probolinggo - Jawa Timur 67214", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
+    bytes += generator.text("WA: $noWhatsapp", styles: PosStyles(align: PosAlign.center));
     bytes += generator.hr();
     bytes += generator.row([
       PosColumn(text: "$kotaBerangkat",width: 6,styles: PosStyles(align: PosAlign.right, bold: true)),
@@ -550,7 +552,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
     bytes += generator.hr();
     // bytes += generator.qrcode("$noOrderTransaksiTerakhir");
-    bytes += generator.qrcode("https://www.akasaurora.com/");
+    bytes += generator.qrcode("https://www.milaberkah.com/");
 
     bytes += generator.text('Semoga Allah SWT melindungi kita dalam perjalanan ini.', styles: PosStyles(align: PosAlign.center, bold: false));
     bytes += generator.hr();
@@ -822,16 +824,16 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                       ),
                     ),
                     SizedBox(height: 20), // Memberi jarak antara dua tombol
-                    ElevatedButton(
-                      onPressed: () => _ambilGambar(false), // Ambil gambar dari galeri
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min, // Minimal width based on child content
-                        children: [
-                          Icon(Icons.photo_library), // Ikon galeri
-                          SizedBox(width: 8),
-                        ],
-                      ),
-                    ),
+                    // ElevatedButton(
+                    //   onPressed: () => _ambilGambar(false), // Ambil gambar dari galeri
+                    //   child: Row(
+                    //     mainAxisSize: MainAxisSize.min, // Minimal width based on child content
+                    //     children: [
+                    //       Icon(Icons.photo_library), // Ikon galeri
+                    //       SizedBox(width: 8),
+                    //     ],
+                    //   ),
+                    // ),
                   ],
                 ),
 
