@@ -372,4 +372,24 @@ class PenjualanTiketService {
       return null;
     }
   }
+
+  Future<int> updateIsTurunByRute(String ruteKota, int newValue) async {
+    final db = await database;
+
+    // Pisahkan rute → "reguler - Banyuwangi - Yogyakarta"
+    final parts = ruteKota.split(" - ");
+    final kategori = parts[0];
+    final kotaBerangkat = parts[1];
+    final kotaTujuan = parts[2];
+
+    return await db.update(
+      'penjualan_tiket',
+      {
+        'is_turun': newValue,
+        'status': 'Y',
+      },
+      where: 'kategori_tiket = ? AND kota_berangkat = (SELECT id_kota_tujuan FROM list_kota WHERE nama_kota = ?) AND kota_tujuan = (SELECT id_kota_tujuan FROM list_kota WHERE nama_kota = ?)',
+      whereArgs: [kategori, kotaBerangkat, kotaTujuan],
+    );
+  }
 }

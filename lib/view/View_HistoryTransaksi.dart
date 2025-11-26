@@ -103,6 +103,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
         request.fields['no_telepon'] = penjualan['no_telepon']?.toString() ?? '';
         request.fields['status'] = penjualan['status']?.toString() ?? '';
         request.fields['keterangan'] = penjualan['keterangan']?.toString() ?? '';
+        request.fields['is_turun'] = penjualan['is_turun']?.toString() ?? '0';
 
         // Tangani foto: bisa berupa null / empty / single path / multiple paths (pisah koma atau |)
         String? fotoPathRaw = penjualan['fupload']?.toString();
@@ -202,8 +203,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   }
 
   @override
-  @override
-  @override
   Widget build(BuildContext context) {
     // ❗ PERBAIKAN: Jangan deklarasikan ulang selectedKotaTujuan di sini!
     // String? selectedKotaTujuan;  // Hapus baris ini
@@ -213,10 +212,9 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     // ================================
     Map<String, List<Map<String, dynamic>>> groupedByRuteKota = {};
     for (var item in listPenjualan) {
-      String ruteKota = item['rute_kota'] ?? '-';
-      if (!groupedByRuteKota.containsKey(ruteKota)) {
-        groupedByRuteKota[ruteKota] = [];
-      }
+      final ruteKota = item['rute_kota']?.trim() ?? '-';
+
+      groupedByRuteKota.putIfAbsent(ruteKota, () => []);
       groupedByRuteKota[ruteKota]!.add(item);
     }
 
@@ -229,7 +227,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     // SISA PENUMPANG (contoh logika: subtotal per rute dikurang kapasitas?)
     // Jika yang dimaksud sisa penjualan = semua tiket yg status != 'Y'
     num sisaPenumpang = listPenjualan
-        .where((e) => e['status'] == 'N')
+        .where((e) => (e['is_turun'] ?? 0) == 0) // BELUM TURUN
         .fold(0, (tot, item) => tot + (item['jumlah_tiket'] ?? 0));
 
     return Scaffold(
@@ -243,31 +241,31 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
             tooltip: 'Kirim Data',
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(90),
-          child: Padding(
-            padding: EdgeInsets.all(10),
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              value: selectedKotaTujuan.isEmpty ? null : selectedKotaTujuan,
-              decoration: InputDecoration(
-                labelText: 'Pilih Kota Tujuan',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.location_city),
-              ),
-              items: kotaTujuanList.map((String kota) {
-                return DropdownMenuItem<String>(
-                  value: kota,
-                  child: Text(kota, overflow: TextOverflow.ellipsis),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() => selectedKotaTujuan = value ?? '');
-                if (value != null) _searchRuteKota(value);
-              },
-            ),
-          ),
-        ),
+        // bottom: PreferredSize(
+        //   preferredSize: Size.fromHeight(90),
+        //   child: Padding(
+        //     padding: EdgeInsets.all(10),
+        //     child: DropdownButtonFormField<String>(
+        //       isExpanded: true,
+        //       value: selectedKotaTujuan.isEmpty ? null : selectedKotaTujuan,
+        //       decoration: InputDecoration(
+        //         labelText: 'Pilih Kota Tujuan',
+        //         border: OutlineInputBorder(),
+        //         prefixIcon: Icon(Icons.location_city),
+        //       ),
+        //       items: kotaTujuanList.map((String kota) {
+        //         return DropdownMenuItem<String>(
+        //           value: kota,
+        //           child: Text(kota, overflow: TextOverflow.ellipsis),
+        //         );
+        //       }).toList(),
+        //       onChanged: (value) {
+        //         setState(() => selectedKotaTujuan = value ?? '');
+        //         if (value != null) _searchRuteKota(value);
+        //       },
+        //     ),
+        //   ),
+        // ),
       ),
 
       body: Stack(
@@ -316,45 +314,87 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                         Divider(),
 
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  isCheckedPerRute[ruteKota] =
-                                  !(isCheckedPerRute[ruteKota] ?? false);
-                                });
-                              },
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: (isCheckedPerRute[ruteKota] ?? false)
-                                      ? Colors.red.withOpacity(0.2)
-                                      : Colors.green.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: (isCheckedPerRute[ruteKota] ?? false)
-                                        ? Colors.red
-                                        : Colors.green,
-                                  ),
-                                ),
-                                child: Icon(
-                                  (isCheckedPerRute[ruteKota] ?? false)
-                                      ? Icons.close
-                                      : Icons.check,
-                                  color: (isCheckedPerRute[ruteKota] ?? false)
-                                      ? Colors.red
-                                      : Colors.green,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 10),
-                            Text("Jml. Penumpang: $subtotalJumlahTiket"),
-                            SizedBox(width: 16),
-                          ],
-                        ),
-                      ],
+                        mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                    Builder(
+                    builder: (context) {
+                    // CEK APAKAH SEMUA SUDAH TURUN
+                    final bool allSudahTurun =
+                    penjualanPerRute.every((item) => (item['is_turun'] ?? 0) == 1);
+
+                    return GestureDetector(
+                    onTap: allSudahTurun
+                    ? null
+                        : () async {
+                    bool? confirm = await showDialog(
+                    context: context,
+                    builder: (context) {
+                    return AlertDialog(
+                    title: Text("Konfirmasi"),
+                    content: Text(
+                    "Apakah kamu yakin semua penumpang di rute ini sudah turun?",
+                    ),
+                    actions: [
+                    TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text("Batal"),
+                    ),
+                    ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text("Iya"),
+                    ),
+                    ],
+                    );
+                    },
+                    );
+
+                    // Jika user tekan "Iya"
+                    if (confirm == true) {
+                    setState(() {
+                    isCheckedPerRute[ruteKota] = true;
+                    });
+
+                    await PenjualanTiketService.instance.updateIsTurunByRute(
+                    ruteKota,
+                    1,
+                    );
+
+                    print("UPDATE is_turun -> 1 untuk rute: $ruteKota");
+
+                    // Refresh data dari database biar UI sesuai
+                    await _getListTransaksi();
+                    }
+                    },
+                    child: Opacity(
+                    opacity: allSudahTurun ? 0.4 : 1.0,
+                    child: Container(
+                    padding: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                    color: allSudahTurun
+                    ? Colors.red.withOpacity(0.2)
+                        : Colors.green.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                    color: allSudahTurun ? Colors.red : Colors.green,
+                    ),
+                    ),
+                    child: Icon(
+                    allSudahTurun ? Icons.close : Icons.check,
+                    color: allSudahTurun ? Colors.red : Colors.green,
+                    size: 16,
+                    ),
+                    ),
+                    ),
+                    );
+                    },
+                    ),
+
+                    SizedBox(width: 10),
+                    Text("Jml. Penumpang: $subtotalJumlahTiket"),
+                    SizedBox(width: 16),
+                    ],
+                    ),
+                    ],
                     );
                   }).toList(),
 
