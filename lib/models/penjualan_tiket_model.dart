@@ -1,4 +1,3 @@
-// lib/models/penjualan_tiket_model.dart
 class PenjualanTiket {
   final int? id;
   final String? noPol;
@@ -26,6 +25,7 @@ class PenjualanTiket {
   final int? idMetodeBayar;
   final double? nominalTagihan;
   final int? statusBayar;
+  final int? isTurun; // <--- DITAMBAHKAN
   final String? trxId;
   final String? merchantId;
   final String? redirectUrl;
@@ -57,6 +57,7 @@ class PenjualanTiket {
     this.idMetodeBayar,
     this.nominalTagihan,
     this.statusBayar,
+    this.isTurun, // <--- DITAMBAHKAN
     this.trxId,
     this.merchantId,
     this.redirectUrl,
@@ -90,6 +91,7 @@ class PenjualanTiket {
       idMetodeBayar: map['id_metode_bayar'],
       nominalTagihan: map['nominal_tagihan']?.toDouble(),
       statusBayar: map['status_bayar'],
+      isTurun: map['is_turun'], // <--- DITAMBAHKAN
       trxId: map['trx_id'],
       merchantId: map['merchant_id'],
       redirectUrl: map['redirect_url'],
@@ -124,9 +126,11 @@ class PenjualanTiket {
       'id_metode_bayar': idMetodeBayar,
       'nominal_tagihan': nominalTagihan,
       'status_bayar': statusBayar,
+      'is_turun': isTurun, // <--- DITAMBAHKAN
       'trx_id': trxId,
       'merchant_id': merchantId,
       'redirect_url': redirectUrl,
+
     };
   }
 }

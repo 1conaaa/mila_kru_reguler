@@ -23,6 +23,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   List<String> kotaTujuanList = []; // List untuk kota tujuan unik
   String selectedKotaTujuan = ''; // atau sesuaikan dengan nilai awal yang sesuai dengan aplikasi Anda
 
+  Map<String, bool> isCheckedPerRute = {};
 
   @override
   void initState() {
@@ -201,77 +202,78 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   }
 
   @override
+  @override
+  @override
   Widget build(BuildContext context) {
-    String? selectedKotaTujuan; // Perbarui agar dapat diakses di bawah ini
+    // ❗ PERBAIKAN: Jangan deklarasikan ulang selectedKotaTujuan di sini!
+    // String? selectedKotaTujuan;  // Hapus baris ini
 
+    // ================================
+    // GROUP DATA BERDASARKAN RUTE KOTA
+    // ================================
     Map<String, List<Map<String, dynamic>>> groupedByRuteKota = {};
-    listPenjualan.forEach((item) {
-      String ruteKota = item['rute_kota'];
-      if (groupedByRuteKota.containsKey(ruteKota)) {
-        groupedByRuteKota[ruteKota]!.add(item);
-      } else {
-        groupedByRuteKota[ruteKota] = [item];
+    for (var item in listPenjualan) {
+      String ruteKota = item['rute_kota'] ?? '-';
+      if (!groupedByRuteKota.containsKey(ruteKota)) {
+        groupedByRuteKota[ruteKota] = [];
       }
-    });
+      groupedByRuteKota[ruteKota]!.add(item);
+    }
+
+    // TOTAL SEMUA PENUMPANG
+    num totalSemuaPenumpang = listPenjualan.fold(
+      0,
+          (total, item) => total + (item['jumlah_tiket'] ?? 0),
+    );
+
+    // SISA PENUMPANG (contoh logika: subtotal per rute dikurang kapasitas?)
+    // Jika yang dimaksud sisa penjualan = semua tiket yg status != 'Y'
+    num sisaPenumpang = listPenjualan
+        .where((e) => e['status'] == 'N')
+        .fold(0, (tot, item) => tot + (item['jumlah_tiket'] ?? 0));
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Data Penjualan Tiket'),
-        automaticallyImplyLeading: false, // Menghilangkan icon arrow back
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.cloud_upload,
-              color: Colors.green, // Warna hijau pada ikon
-              size: 30.0, // Ukuran ikon yang diperbesar
-            ),
-            onPressed: () {
-              _pushDataPenjualan();
-            },
+            icon: Icon(Icons.cloud_upload, color: Colors.green, size: 30),
+            onPressed: _pushDataPenjualan,
             tooltip: 'Kirim Data',
           ),
         ],
-          bottom: PreferredSize(
-            preferredSize: Size.fromHeight(90),
-            child: SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.all(10),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true, // ⬅️ mencegah overflow
-                    value: selectedKotaTujuan,
-                    decoration: InputDecoration(
-                      labelText: 'Pilih Kota Tujuan',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.location_city),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                    ),
-                    items: kotaTujuanList.map((String kota) {
-                      return DropdownMenuItem<String>(
-                        value: kota,
-                        child: Text(
-                          kota,
-                          overflow: TextOverflow.ellipsis,  // ⬅️ mencegah text panjang overflow
-                          maxLines: 1,
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() => selectedKotaTujuan = value);
-                      if (value != null) _searchRuteKota(value);
-                    },
-                  ),
-                ),
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(90),
+          child: Padding(
+            padding: EdgeInsets.all(10),
+            child: DropdownButtonFormField<String>(
+              isExpanded: true,
+              value: selectedKotaTujuan.isEmpty ? null : selectedKotaTujuan,
+              decoration: InputDecoration(
+                labelText: 'Pilih Kota Tujuan',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.location_city),
               ),
+              items: kotaTujuanList.map((String kota) {
+                return DropdownMenuItem<String>(
+                  value: kota,
+                  child: Text(kota, overflow: TextOverflow.ellipsis),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() => selectedKotaTujuan = value ?? '');
+                if (value != null) _searchRuteKota(value);
+              },
             ),
           ),
+        ),
       ),
+
       body: Stack(
         children: [
           AbsorbPointer(
-            absorbing: _isPushingData, // Disable interaction when pushing data
+            absorbing: _isPushingData,
             child: SingleChildScrollView(
               child: Column(
                 children: [
@@ -279,11 +281,13 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                     String ruteKota = entry.key;
                     List<Map<String, dynamic>> penjualanPerRute = entry.value;
 
-                    // Calculate subtotal jumlah_tiket for this rute_kota
                     num subtotalJumlahTiket = penjualanPerRute.fold(
-                        0, (total, penjualan) => total + penjualan['jumlah_tiket']);
+                      0,
+                          (total, pj) => total + (pj['jumlah_tiket'] ?? 0),
+                    );
 
                     return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -299,37 +303,143 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                 cells: [
                                   DataCell(Text(item['jumlah_tiket'].toString())),
                                   DataCell(Text(item['rute_kota'].toString())),
-                                  DataCell(Text(
-                                    formatter.format(item['jumlah_tagihan']),
-                                  )),
+                                  DataCell(
+                                    Text(formatter.format(item['jumlah_tagihan'])),
+                                  ),
                                   DataCell(Text(item['status'].toString())),
                                 ],
                               );
                             }).toList(),
                           ),
                         ),
-                        Divider(), // Add separator between each rute_kota table
+
+                        Divider(),
+
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text('Jml.Penumpang: $subtotalJumlahTiket'),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  isCheckedPerRute[ruteKota] =
+                                  !(isCheckedPerRute[ruteKota] ?? false);
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: (isCheckedPerRute[ruteKota] ?? false)
+                                      ? Colors.red.withOpacity(0.2)
+                                      : Colors.green.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: (isCheckedPerRute[ruteKota] ?? false)
+                                        ? Colors.red
+                                        : Colors.green,
+                                  ),
+                                ),
+                                child: Icon(
+                                  (isCheckedPerRute[ruteKota] ?? false)
+                                      ? Icons.close
+                                      : Icons.check,
+                                  color: (isCheckedPerRute[ruteKota] ?? false)
+                                      ? Colors.red
+                                      : Colors.green,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Text("Jml. Penumpang: $subtotalJumlahTiket"),
                             SizedBox(width: 16),
                           ],
                         ),
                       ],
                     );
                   }).toList(),
+
+                  SizedBox(height: 20),
+
+                  // ============================
+                  // TOTAL SEMUA PENUMPANG
+                  // ============================
+                  Container(
+                    margin: EdgeInsets.all(12),
+                    padding: EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.blueAccent),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "TOTAL SEMUA PENUMPANG",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
+                        Text(
+                          totalSemuaPenumpang.toString(),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ============================
+                  // SISA PENUMPANG (BARU)
+                  // ============================
+                  Container(
+                    margin: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    padding: EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "SISA PENUMPANG",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                        Text(
+                          sisaPenumpang.toString(),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 25),
                 ],
               ),
             ),
           ),
+
+          // ❗ Overlay Progress Upload
           if (_isPushingData)
             Container(
-              color: Colors.grey.withOpacity(0.5), // Semi-transparent grey background
+              color: Colors.grey.withOpacity(0.5),
               child: Center(
-                child: CircularProgressIndicator(
-                  value: _pushDataProgress,
-                ),
+                child: CircularProgressIndicator(value: _pushDataProgress),
               ),
             ),
         ],

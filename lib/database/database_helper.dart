@@ -28,11 +28,11 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_25112025-v3.db';
+    String path = '${documentsDirectory.path}/bisapp_25112025-v4.db';
 
     return await openDatabase(
       path,
-      version: 3, // Update the version number
+      version: 4, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -148,6 +148,7 @@ class DatabaseHelper {
         jumlah_kembalian REAL,
         tanggal_transaksi DATETIME,
         status TEXT,
+        is_turun INTEGER,
         kode_trayek TEXT,
         keterangan TEXT,
         id_invoice TEXT,

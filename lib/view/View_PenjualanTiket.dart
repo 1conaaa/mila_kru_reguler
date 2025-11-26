@@ -56,6 +56,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
   int paymentChannel = 0;
   int biayaAdmin = 0;
+  int isTurun = 0;
   double totalTagihanPlusBiayaAdmin = 0.0;
   bool isTotalDenganAdminVisible = false;
   TextEditingController totalDenganAdminController = TextEditingController();
@@ -820,6 +821,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       String metodePembayaran,
       int paymentChannel,
       int biayaAdmin,
+      int isTurun,
       ) async {
 
     double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
@@ -951,6 +953,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
           'id_metode_bayar': paymentChannel,
           'payment_channel': paymentChannel,
           'biaya_admin': biayaAdmin,
+          'is_turun': 0,
         };
 
         // Debug print
@@ -1008,6 +1011,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
               kodeTrayek: kodeTrayek,
               keteranganTagihan: keteranganTagihan,
               paymentChannel: paymentChannel,
+              isTurun: isTurun,
             );
 
             // Show success message
@@ -1072,6 +1076,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     required String? kodeTrayek,
     required String keteranganTagihan,
     required int paymentChannel,
+    required int isTurun,
   }) async {
     try {
       print('🛢️ Memulai proses penyimpanan ke database lokal...');
@@ -1284,40 +1289,6 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
       // SIMPAN KE DATABASE
       Database database = await databaseHelper.database;
-      bool tableExists = await isTableExists(database, 'penjualan_tiket');
-
-      if (!tableExists) {
-        print("ℹ️ Tabel penjualan_tiket tidak ditemukan, membuat baru...");
-        await database.execute('''
-        CREATE TABLE IF NOT EXISTS penjualan_tiket (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          no_pol TEXT,
-          id_bus INTEGER,
-          id_user INTEGER,
-          id_group INTEGER,
-          id_garasi INTEGER,
-          id_company INTEGER,
-          jumlah_tiket INTEGER,
-          kategori_tiket TEXT,
-          rit TEXT,
-          kota_berangkat TEXT,
-          kota_tujuan TEXT,
-          nama_pembeli TEXT,
-          no_telepon TEXT,
-          harga_kantor REAL,
-          jumlah_tagihan REAL,
-          nominal_bayar REAL,
-          jumlah_kembalian REAL,
-          tanggal_transaksi TEXT,
-          status TEXT,
-          kode_trayek TEXT,
-          keterangan TEXT,
-          fupload TEXT,
-          file_name TEXT
-        )
-      ''');
-        print("✅ Tabel penjualan_tiket berhasil dibuat");
-      }
 
       print("📷 DEBUG FOTO:");
       print("   fotoLocalPath: $fotoLocalPath");
@@ -1352,6 +1323,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
           'jumlah_kembalian': jumlahKembalian,
           'tanggal_transaksi': formattedDate,
           'status': 'N',
+          'is_turun': 0,
           'kode_trayek': kodeTrayek,
           'keterangan': keteranganTagihan,
           'fupload': fotoLocalPath ?? '',
@@ -2264,6 +2236,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                         selectedMetodePembayaran ?? '',
                                         paymentChannel,
                                         biayaAdmin,
+                                        isTurun,
                                       );
                                     } else {
                                       await _kirimValue(
