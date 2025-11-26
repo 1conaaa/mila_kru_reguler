@@ -42,6 +42,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
   bool isHargaKantorVisible = false;
   bool isKeteranganVisible = false;
   bool isMetodePembayaranVisible = false;
+  bool isHargaTarikanEditable = true;
   //bagian dari printer
   get hasBluetoothPermission => null;
   bool connected = false;
@@ -729,21 +730,42 @@ class _PenjualanFormState extends State<PenjualanForm> {
       print("   Harga Kantor: Rp $hargaKantor");
       print("   Harga Tarikan: Rp $hargaTarikan");
 
+      // 🔸 Ambil persen susukan kru dari prefs
+      final prefs = await SharedPreferences.getInstance();
+      String? persenStr = prefs.getString('persenSusukanKru');
+
+      // Default 0%
+      double persenKru = 0.0;
+
+      if (persenStr != null && persenStr.contains('%')) {
+        persenKru = double.tryParse(
+          persenStr.replaceAll('%', ''),
+        ) ?? 0.0;
+      }
+
+      // konversi 9% -> 0.09
+      double persen = persenKru / 100;
+
       setState(() {
         try {
-          // bulatkan nilai
-          int hargaKantorBulat = pembulatanRibuan(hargaKantor);
+          // 1. BULATKAN TARIKAN DULU
           int hargaTarikanBulat = pembulatanRibuan(hargaTarikan);
 
-          // PERBAIKAN: Validasi hasil pembulatan
+          // 2. HITUNG HARGA KANTOR BARU (BELUM DIBULATKAN)
+          double hargaKantorHitung = hargaTarikanBulat - (persen * hargaTarikanBulat);
+
+          // 3. BULATKAN HASIL HARGA KANTOR BARU
+          int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
+
+          // 4. VALIDASI
           if (hargaKantorBulat < 0) hargaKantorBulat = 0;
           if (hargaTarikanBulat < 0) hargaTarikanBulat = 0;
 
-          // SIMPAN KE VARIABEL GLOBAL
+          // 5. SIMPAN KE VARIABEL GLOBAL
           _hargaKantorCalculated = hargaKantorBulat.toDouble();
           _hargaTarikanCalculated = hargaTarikanBulat.toDouble();
 
-          // tampilkan ke controller (tanpa desimal)
+          // 6. TAMPILKAN KE CONTROLLER
           hargaKantorController.text = formatter.format(hargaKantorBulat);
           tagihanController.text = formatter.format(hargaTarikanBulat);
 
@@ -757,7 +779,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
         } catch (e) {
           print('❌ Error dalam setState: $e');
-          // Fallback values
+
+          // fallback
           hargaKantorController.text = '0';
           tagihanController.text = '0';
           _hargaKantorCalculated = 0.0;
@@ -1737,6 +1760,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           ),
                           keyboardType: TextInputType.number,
                           style: TextStyle(fontSize: 18),
+                          enabled: isHargaTarikanEditable, // ← aturan baru
                           onChanged: (value) {
                             setState(() {
                               jumlahTagihan = double.tryParse(value) ?? 0.0;
@@ -2301,6 +2325,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isKeteranganVisible = false;
       isMetodePembayaranVisible = false;
       isFotoVisible = false;
+      isHargaTarikanEditable = true;
     }
     // ==============================
     // 1️⃣  KATEGORI TANPA FOTO
@@ -2312,7 +2337,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isFotoVisible = false; // ← WAJIB TIDAK ADA FOTO
 
       if (kelasBus == 'Ekonomi') {
-        isHargaKantorVisible = true;
+        isHargaKantorVisible = false;
         isTombolVisible = true;
         isKotaBerangkatVisible = true;
         isKotaTujuanVisible = true;
@@ -2324,6 +2349,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isNotlpPembeliVisible = true;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
+        isHargaTarikanEditable = false;
       } else if (kelasBus == 'Non Ekonomi') {
         isHargaKantorVisible = false;
         isTombolVisible = true;
@@ -2337,6 +2363,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isNotlpPembeliVisible = true;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
+        isHargaTarikanEditable = false;
       }
     }
     // ==============================
@@ -2351,7 +2378,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isFotoVisible = true; // ← WAJIB ADA FOTO
 
       if (kelasBus == 'Ekonomi') {
-        isHargaKantorVisible = true;
+        isHargaKantorVisible = false;
         isTombolVisible = true;
         isKotaBerangkatVisible = true;
         isKotaTujuanVisible = true;
@@ -2359,10 +2386,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isTagihanVisible = true;
         isJumlahBayarVisible = false;
         isJumlahKembalianVisible = false;
-        isNamaPembeliVisible = true;
-        isNotlpPembeliVisible = true;
+        isNamaPembeliVisible = false;
+        isNotlpPembeliVisible = false;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
+        isHargaTarikanEditable = true;
       } else if (kelasBus == 'Non Ekonomi') {
         isHargaKantorVisible = false;
         isTombolVisible = true;
@@ -2372,10 +2400,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isTagihanVisible = true;
         isJumlahBayarVisible = false;
         isJumlahKembalianVisible = false;
-        isNamaPembeliVisible = true;
-        isNotlpPembeliVisible = true;
+        isNamaPembeliVisible = false;
+        isNotlpPembeliVisible = false;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
+        isHargaTarikanEditable = true;
       }
     }
 
@@ -2383,7 +2412,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     // 3️⃣  KATEGORI REGULER
     // ==============================
     else if (selectedKategoriTiket == 'reguler' && kelasBus == 'Ekonomi') {
-      isHargaKantorVisible = true;
+      isHargaKantorVisible = false;
       isTombolVisible = true;
       isKotaBerangkatVisible = true;
       isKotaTujuanVisible = true;
@@ -2395,6 +2424,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
       isFotoVisible = false;
+      isHargaTarikanEditable = false;
     } else if (selectedKategoriTiket == 'reguler' && kelasBus == 'Non Ekonomi') {
       isHargaKantorVisible = false;
       isTombolVisible = true;
@@ -2408,13 +2438,14 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
       isFotoVisible = false;
+      isHargaTarikanEditable = false;
     }
 
     // ==============================
     // 4️⃣  KATEGORI LANGGANAN
     // ==============================
     else if (selectedKategoriTiket == 'langganan' && kelasBus == 'Ekonomi') {
-      isHargaKantorVisible = true;
+      isHargaKantorVisible = false;
       isTombolVisible = true;
       isKotaBerangkatVisible = true;
       isKotaTujuanVisible = true;
@@ -2426,6 +2457,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
       isFotoVisible = true;
+      isHargaTarikanEditable = true;
     } else if (selectedKategoriTiket == 'langganan' && kelasBus == 'Non Ekonomi') {
       isHargaKantorVisible = false;
       isTombolVisible = true;
@@ -2439,6 +2471,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = true;
       isMetodePembayaranVisible = true;
       isFotoVisible = true;
+      isHargaTarikanEditable = true;
     }
   }
 

@@ -136,6 +136,7 @@ class _LoginState extends State<Login> {
           await prefs.setString('coaPengeluaranBus', user.coaPengeluaranBus);
           await prefs.setString('coaUtangPremi', user.coaUtangPremi);
           await prefs.setString('noKontak', user.noKontak);
+          await prefs.setString('persenSusukanKru', user.persenSusukanKru);
 
           // 🧩 Tambahkan print untuk memeriksa nilainya
           print("=== DATA TAG TRANSAKSI ===");
@@ -145,6 +146,7 @@ class _LoginState extends State<Login> {
           print("COA Pengeluaran: ${user.coaPengeluaranBus}");
           print("COA Utang Premi: ${user.coaUtangPremi}");
           print("No Kontak: ${user.noKontak}");
+          print("Persen Susukan Kru: ${user.persenSusukanKru}");
           print("===========================");
 
           try {

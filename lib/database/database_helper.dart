@@ -28,7 +28,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_25112025-v4.db';
+    String path = '${documentsDirectory.path}/bisapp_26112025-v4.db';
 
     return await openDatabase(
       path,
@@ -222,6 +222,7 @@ class DatabaseHelper {
       coaPengeluaranBus TEXT,
       coaUtangPremi TEXT,
       noKontak TEXT,
+      persenSusukanKru TEXT,
       UNIQUE (id_user, id_group, id_company, id_garasi, id_bus, no_pol, tanggal_simpan)
     )
     ''');

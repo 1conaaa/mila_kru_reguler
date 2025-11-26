@@ -196,7 +196,7 @@ class PenjualanTiketService {
           UNION ALL
           SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
           FROM penjualan_tiket
-          WHERE kategori_tiket IN ('langganan') AND status = 'Y' AND id_metode_bayar = '1'
+          WHERE kategori_tiket IN ('langganan','operan','sepi','tni','pelajar') AND status = 'Y' AND id_metode_bayar = '1'
           GROUP BY rit
         ) x
       ''');

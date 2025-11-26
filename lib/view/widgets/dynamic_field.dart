@@ -46,7 +46,8 @@ class DynamicField extends StatelessWidget {
   bool isNonEditable(TagTransaksi tag) {
     final name = tag.nama?.toLowerCase() ?? '';
 
-    return name.contains("premi atas") ||
+    return
+        name.contains("premi atas") ||
         name.contains("premi bawah") ||
         name.contains("pendapatan bersih") ||
         name.contains("pendapatan disetor");
@@ -65,6 +66,7 @@ class DynamicField extends StatelessWidget {
             tag: tag,
             controllers: controllers,
             jumlahControllers: jumlahControllers,
+            readOnly: true,
             onChanged: (TagTransaksi changedTag, String value) {
               print("DEBUG: FieldWithJumlah changed → Tag ${changedTag.id}, Value: $value");
               onFieldChanged(changedTag, value);
