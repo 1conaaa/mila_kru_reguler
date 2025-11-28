@@ -28,11 +28,11 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_26112025-v4.db';
+    String path = '${documentsDirectory.path}/bisapp_28112025-v8.db';
 
     return await openDatabase(
       path,
-      version: 4, // Update the version number
+      version: 8, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },

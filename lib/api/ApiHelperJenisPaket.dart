@@ -111,12 +111,20 @@ class JenisPaket {
   }
 
   factory JenisPaket.fromJson(Map<String, dynamic> json) {
+    double parseToDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is int) return value.toDouble();
+      if (value is double) return value;
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
     return JenisPaket(
-      id: json['id'],
+      id: json['id'] ?? 0,
       jenis_paket: json['jenis_paket'] ?? '',
       deskripsi: json['deskripsi'] ?? '',
-      harga_paket: double.parse(json['harga_paket']),  // Mengubah string menjadi double
-      persen: double.parse(json['persen']),  // Mengubah string menjadi double
+      harga_paket: parseToDouble(json['harga_paket']),
+      persen: parseToDouble(json['persen']),
     );
   }
 
