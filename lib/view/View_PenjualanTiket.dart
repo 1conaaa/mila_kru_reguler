@@ -466,121 +466,168 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<List<int>> getTicket() async {
-    // Ambil SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090'; // Default value jika tidak ada
-
-    int idkotaAwal = int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
-    int idkotaAkhir = int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
-
-    String namaKotaAwal = await DatabaseHelper.instance.getNamaKota(idkotaAwal);
-    String namaKotaAkhir = await DatabaseHelper.instance.getNamaKota(idkotaAkhir);
-
-    // Mengubah string menjadi uppercase
-    namaKotaAwal = namaKotaAwal.toUpperCase();
-    namaKotaAkhir = namaKotaAkhir.toUpperCase();
-
-    List<Map<String, dynamic>> lastTransaksi = await PenjualanTiketService.instance.getDataPenjualanTerakhir();
-    String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ? lastTransaksi[0]['noOrderTransaksi'] : '';
-    int rit = lastTransaksi.isNotEmpty ? lastTransaksi[0]['rit'] : 0;
-    String kotaBerangkat = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_berangkat'] : '';
-    String kotaTujuan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_tujuan'] : '';
-    String namaPembeli = lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_pembeli'] : '';
-    String noTelepon = lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_telepon'] : '';
-
-    double jumlahTagihan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['jumlah_tagihan'] : 0.0;
-    String jumlahTagihanCetak = formatter.format(jumlahTagihan);
-
-    double nominalBayar = lastTransaksi.isNotEmpty ? lastTransaksi[0]['nominal_bayar'] : 0.0;
-    String jumlahBayarCetak = formatter.format(nominalBayar);
-
-    double jumlahKembalian = lastTransaksi.isNotEmpty ? lastTransaksi[0]['jumlah_kembalian'] : 0.0;
-    String jumlahKembalianCetak = formatter.format(jumlahKembalian);
-
-    String tanggalTransaksi = lastTransaksi.isNotEmpty ? lastTransaksi[0]['tanggal_transaksi'] : '';
-    var dateParts = tanggalTransaksi.split('-');
-    var formattedDate = dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0];
-
-    List<int> bytes = [];
-    CapabilityProfile profile = await CapabilityProfile.load();
-    final generator = Generator(PaperSize.mm58, profile);
-    bytes += generator.reset();
-
-    // 1. TAMBAHKAN LOGO DI SINI (SEBELUM TEKS APAPUN)
     try {
-      final ByteData logoData = await rootBundle.load('assets/images/icon_mila.png');
-      final Uint8List logoBytes = logoData.buffer.asUint8List();
+      // Ambil SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090';
 
-      // Decode gambar
-      final img.Image? image = img.decodeImage(logoBytes);
+      // Handle null values untuk kota
+      int idkotaAwal = 1;
+      int idkotaAkhir = 1;
 
-      if (image != null) {
-        // Resize gambar agar sesuai dengan lebar printer (lebar maksimal 380 pixel untuk printer 58mm)
-        final img.Image resizedImage = img.copyResize(image, width: 380);
-
-        // Konversi ke format yang bisa dicetak
-        bytes += generator.image(resizedImage);
-
+      if (selectedKotaBerangkat != null && selectedKotaBerangkat!.contains(' - ')) {
+        idkotaAwal = int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
       }
-    } catch (e) {
-      print('Gagal memuat logo: $e');
-      // Tetap lanjutkan tanpa logo jika terjadi error
-    }
 
-    // Menambahkan teks dan informasi tiket lainnya
-    bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
-        styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
-    bytes += generator.text("Probolinggo - Jawa Timur 67214", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("WA: $noWhatsapp", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.hr();
+      if (selectedKotaTujuan != null && selectedKotaTujuan!.contains(' - ')) {
+        idkotaAkhir = int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
+      }
 
-    // Menambahkan kota keberangkatan dan tujuan
-    bytes += generator.row([
-      PosColumn(text: "$namaKotaAwal -", width: 6, styles: PosStyles(align: PosAlign.right, bold: true)),
-      PosColumn(text: " $namaKotaAkhir", width: 6, styles: PosStyles(align: PosAlign.left, bold: true)),
-    ]);
-    bytes += generator.text("$jenisTrayek-$kelasBus", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("$formattedDate", styles: PosStyles(align: PosAlign.center, bold: false));
+      String namaKotaAwal = await DatabaseHelper.instance.getNamaKota(idkotaAwal);
+      String namaKotaAkhir = await DatabaseHelper.instance.getNamaKota(idkotaAkhir);
 
-    // Menambahkan informasi rit dan kategori tiket
-    bytes += generator.row([
-      PosColumn(text: "Rit-$selectedPilihRit", width: 3, styles: PosStyles(align: PosAlign.left)),
-      PosColumn(text: "Tiket $selectedKategoriTiket", width: 9, styles: PosStyles(align: PosAlign.right)),
-    ]);
+      // Mengubah string menjadi uppercase dengan null safety
+      namaKotaAwal = namaKotaAwal.toUpperCase();
+      namaKotaAkhir = namaKotaAkhir.toUpperCase();
 
-    // Menambahkan informasi pembeli jika ada
-    if (namaPembeli.isNotEmpty) {
+      List<Map<String, dynamic>> lastTransaksi = await PenjualanTiketService.instance.getDataPenjualanTerakhir();
+
+      // Handle null values untuk data transaksi
+      String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['noOrderTransaksi']?.toString() ?? '') : '';
+
+      int rit = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['rit'] as int? ?? 0) : 0;
+
+      String kotaBerangkat = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['kota_berangkat']?.toString() ?? '') : '';
+
+      String kotaTujuan = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['kota_tujuan']?.toString() ?? '') : '';
+
+      String namaPembeli = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['nama_pembeli']?.toString() ?? '') : '';
+
+      String noTelepon = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['no_telepon']?.toString() ?? '') : '';
+
+      double jumlahTagihan = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['jumlah_tagihan'] as double? ?? 0.0) : 0.0;
+
+      String jumlahTagihanCetak = formatter.format(jumlahTagihan);
+
+      double nominalBayar = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['nominal_bayar'] as double? ?? 0.0) : 0.0;
+
+      String jumlahBayarCetak = formatter.format(nominalBayar);
+
+      double jumlahKembalian = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['jumlah_kembalian'] as double? ?? 0.0) : 0.0;
+
+      String jumlahKembalianCetak = formatter.format(jumlahKembalian);
+
+      String tanggalTransaksi = lastTransaksi.isNotEmpty ?
+      (lastTransaksi[0]['tanggal_transaksi']?.toString() ?? '') : '';
+
+      // Format tanggal dengan null safety
+      String formattedDate = '';
+      if (tanggalTransaksi.isNotEmpty && tanggalTransaksi.contains('-')) {
+        var dateParts = tanggalTransaksi.split('-');
+        if (dateParts.length >= 3) {
+          formattedDate = '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}';
+        } else {
+          formattedDate = tanggalTransaksi;
+        }
+      } else {
+        formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.now());
+      }
+
+      // Handle null values untuk variabel lainnya
+      String jenisTrayekSafe = jenisTrayek ?? 'REGULER';
+      String kelasBusSafe = kelasBus ?? 'EKONOMI';
+      String selectedPilihRitSafe = selectedPilihRit?.toString() ?? '1';
+      String selectedKategoriTiketSafe = selectedKategoriTiket ?? 'REGULER';
+      String jumlahTiketSafe = jumlahTiket?.toString() ?? '1';
+
+      List<int> bytes = [];
+      CapabilityProfile profile = await CapabilityProfile.load();
+      final generator = Generator(PaperSize.mm58, profile);
+      bytes += generator.reset();
+
+      // 1. TAMBAHKAN LOGO
+      try {
+        final ByteData logoData = await rootBundle.load('assets/images/icon_mila.png');
+        final Uint8List logoBytes = logoData.buffer.asUint8List();
+        final img.Image? image = img.decodeImage(logoBytes);
+
+        if (image != null) {
+          final img.Image resizedImage = img.copyResize(image, width: 380);
+          bytes += generator.image(resizedImage);
+        }
+      } catch (e) {
+        print('Gagal memuat logo: $e');
+      }
+
+      // Menambahkan teks dan informasi tiket lainnya
+      bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
+          styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
+      bytes += generator.text("Probolinggo - Jawa Timur 67214", styles: PosStyles(align: PosAlign.center));
+      bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
+      bytes += generator.text("WA: $noWhatsapp", styles: PosStyles(align: PosAlign.center));
+      bytes += generator.hr();
+
+      // Menambahkan kota keberangkatan dan tujuan
       bytes += generator.row([
-        PosColumn(text: "$namaPembeli", width: 6, styles: PosStyles(align: PosAlign.left)),
-        PosColumn(text: "$noTelepon", width: 6, styles: PosStyles(align: PosAlign.right)),
+        PosColumn(text: "$namaKotaAwal -", width: 6, styles: PosStyles(align: PosAlign.right, bold: true)),
+        PosColumn(text: " $namaKotaAkhir", width: 6, styles: PosStyles(align: PosAlign.left, bold: true)),
       ]);
+
+      bytes += generator.text("$jenisTrayekSafe-$kelasBusSafe", styles: PosStyles(align: PosAlign.center));
+      bytes += generator.text("$formattedDate", styles: PosStyles(align: PosAlign.center, bold: false));
+
+      // Menambahkan informasi rit dan kategori tiket
+      bytes += generator.row([
+        PosColumn(text: "Rit-$selectedPilihRitSafe", width: 3, styles: PosStyles(align: PosAlign.left)),
+        PosColumn(text: "Tiket $selectedKategoriTiketSafe", width: 9, styles: PosStyles(align: PosAlign.right)),
+      ]);
+
+      // Menambahkan informasi pembeli jika ada
+      if (namaPembeli.isNotEmpty) {
+        bytes += generator.row([
+          PosColumn(text: "$namaPembeli", width: 6, styles: PosStyles(align: PosAlign.left)),
+          PosColumn(text: "$noTelepon", width: 6, styles: PosStyles(align: PosAlign.right)),
+        ]);
+      }
+
+      // Menambahkan informasi tagihan dan pembayaran
+      bytes += generator.row([
+        PosColumn(text: "$jumlahTiketSafe Tiket", width: 3, styles: PosStyles(align: PosAlign.left)),
+        PosColumn(text: "Tagihan: $jumlahTagihanCetak", width: 9, styles: PosStyles(align: PosAlign.right)),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(text: "Bayar", width: 6, styles: PosStyles(align: PosAlign.left)),
+        PosColumn(text: "$jumlahBayarCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(text: "Kembalian", width: 6, styles: PosStyles(align: PosAlign.left)),
+        PosColumn(text: "$jumlahKembalianCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
+      ]);
+
+      bytes += generator.hr();
+      bytes += generator.qrcode("https://www.milaberkah.com/");
+      bytes += generator.text('Barang hilang atau rusak resiko penumpang sendiri.', styles: PosStyles(align: PosAlign.center, bold: false));
+      bytes += generator.text('Tiket ini, bukti transaksi yang sah dan mohon simpan tiket ini selama perjalanan Anda.', styles: PosStyles(align: PosAlign.center, bold: false));
+      bytes += generator.text('Semoga Allah SWT melindungi kita dalam perjalanan ini.', styles: PosStyles(align: PosAlign.center, bold: false));
+      bytes += generator.hr();
+
+      return bytes;
+    } catch (e) {
+      print('❌ Error dalam getTicket: $e');
+      // Return empty bytes atau handle error sesuai kebutuhan
+      rethrow;
     }
-
-    // Menambahkan informasi tagihan dan pembayaran
-    bytes += generator.row([
-      PosColumn(text: "$jumlahTiket Tiket", width: 3, styles: PosStyles(align: PosAlign.left)),
-      PosColumn(text: "Tagihan: $jumlahTagihanCetak", width: 9, styles: PosStyles(align: PosAlign.right)),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(text: "Bayar", width: 6, styles: PosStyles(align: PosAlign.left)),
-      PosColumn(text: "$jumlahBayarCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(text: "Kembalian", width: 6, styles: PosStyles(align: PosAlign.left)),
-      PosColumn(text: "$jumlahKembalianCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
-    ]);
-
-    bytes += generator.hr();
-    bytes += generator.qrcode("https://www.milaberkah.com/");
-    bytes += generator.text('Barang hilang atau rusak resiko penumpang sendiri.', styles: PosStyles(align: PosAlign.center, bold: false));
-    bytes += generator.text('Tiket ini, bukti transaksi yang sah dan mohon simpan tiket ini selama perjalanan Anda.', styles: PosStyles(align: PosAlign.center, bold: false));
-    bytes += generator.text('Semoga Allah SWT melindungi kita dalam perjalanan ini.', styles: PosStyles(align: PosAlign.center, bold: false));
-    bytes += generator.hr();
-
-    return bytes;
   }
 
   // TAMBAHKAN VARIABEL GLOBAL di atas class
