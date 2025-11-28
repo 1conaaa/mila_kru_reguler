@@ -5,7 +5,7 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 class ApiHelperMetodePembayaran {
   static Future<void> fetchAndStoreMetodePembayaran(String token) async {
     final response = await http.get(
-      Uri.parse('https://apimila.sysconix.id/api/FaspayChannelReguler'),
+      Uri.parse('https://apimila.milaberkah.com/api/FaspayChannelReguler'),
       headers: {'Authorization': 'Bearer $token'},
     );
 

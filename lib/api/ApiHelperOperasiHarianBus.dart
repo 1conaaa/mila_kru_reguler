@@ -11,7 +11,7 @@ class ApiHelperOperasiHarianBus {
     String tanggalWaktuSekarang = now.toString();
 
     final response = await http.post(
-      Uri.parse('https://apimila.sysconix.id/api/operasibusharian'),
+      Uri.parse('https://apimila.milaberkah.com/api/operasibusharian'),
       headers: {
         'Authorization': 'Bearer $token',
       },

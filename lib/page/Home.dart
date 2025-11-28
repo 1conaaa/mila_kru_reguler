@@ -135,7 +135,7 @@ class _HomeState extends State<Home> {
     }
 
     final uri = Uri.parse(
-      'https://apimila.sysconix.id/api/listnotifikasireguler',
+      'https://apimila.milaberkah.com/api/listnotifikasireguler',
     ).replace(queryParameters: {
       'id_jadwal_trip': idJadwalTrip ?? '',
       'id_bus': idBus.toString(),

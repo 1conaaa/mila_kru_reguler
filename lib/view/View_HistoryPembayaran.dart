@@ -93,7 +93,7 @@ class _HistoryPembayaranState extends State<HistoryPembayaran> {
         return null;
       }
 
-      final url = 'https://apimila.sysconix.id/api/InvoiceReguler/$idInvoice';
+      final url = 'https://apimila.milaberkah.com/api/InvoiceReguler/$idInvoice';
       print('🌐 Mengirim request ke: $url');
 
       // 2. Gunakan token dalam header

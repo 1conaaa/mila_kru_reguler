@@ -220,7 +220,7 @@ class _PremiKruState extends State<PremiKru> {
     required List<SetoranKru> files,
     required Function(String) onSuccessCallback,
   }) async {
-    const String apiUrl = "https://apimila.sysconix.id/api/simpansetorankrumobile";
+    const String apiUrl = "https://apimila.milaberkah.com/api/simpansetorankrumobile";
 
     try {
       var request = http.MultipartRequest("POST", Uri.parse(apiUrl));

@@ -6,7 +6,7 @@ import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 class ApiHelperTagTransaksi {
   static Future<void> fetchAndStoreTagTransaksi(String token) async {
     final response = await http.get(
-      Uri.parse('https://apimila.sysconix.id/api/tagtransaksi'),
+      Uri.parse('https://apimila.milaberkah.com/api/tagtransaksi'),
       headers: {'Authorization': 'Bearer $token'},
     );
 

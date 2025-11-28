@@ -60,7 +60,7 @@ class DataPusherService {
   /// Get last transaction ID from API
   Future<String> _getLastTransactionId(String? token) async {
     try {
-      const String apiUrlLastId = 'https://apimila.sysconix.id/api/lastidtransaksi';
+      const String apiUrlLastId = 'https://apimila.milaberkah.com/api/lastidtransaksi';
       const String queryParamsLastId = '?kode_transaksi=KEUBIS';
       final String apiUrlWithParams = apiUrlLastId + queryParamsLastId;
 
@@ -142,7 +142,7 @@ class DataPusherService {
 
     print('Premi kru data: ${premiKruData.length} rows');
     final int idBus = prefs.getInt('idBus') ?? 0;
-    const String apiUrl = 'https://apimila.sysconix.id/api/premihariankru';
+    const String apiUrl = 'https://apimila.milaberkah.com/api/premihariankru';
 
     final int totalDataPremiKru = premiKruData.length;
     int dataSent = 0;
@@ -238,7 +238,7 @@ class DataPusherService {
     required String? token,
   }) async {
     try {
-      const String endpoint = 'https://apimila.sysconix.id/api/simpansetorankrumobile';
+      const String endpoint = 'https://apimila.milaberkah.com/api/simpansetorankrumobile';
       final request = http.MultipartRequest('POST', Uri.parse(endpoint));
 
       // Header token

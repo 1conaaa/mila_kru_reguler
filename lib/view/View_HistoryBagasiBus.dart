@@ -55,7 +55,7 @@ class _HistoryBagasiBusState extends State<HistoryBagasiBus> {
 
   // Fungsi untuk mengirim hasil inspeksi ke API
   Future<void> sendInspectionResult(Map<String, dynamic> inspectionResult) async {
-    String apiUrl = 'https://apimila.sysconix.id/api/orderbagasi';
+    String apiUrl = 'https://apimila.milaberkah.com/api/orderbagasi';
     try {
       final response = await http.post(
         Uri.parse(apiUrl),

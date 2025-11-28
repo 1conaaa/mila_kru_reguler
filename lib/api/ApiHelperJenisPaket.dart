@@ -5,7 +5,7 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 class ApiHelperJenisPaket {
   static Future<void> addListJenisPaketAPI(String token) async {
     final response = await http.get(
-      Uri.parse('https://apimila.sysconix.id/api/jenispaket'),
+      Uri.parse('https://apimila.milaberkah.com/api/jenispaket'),
       headers: {
         'Authorization': 'Bearer $token',
       },

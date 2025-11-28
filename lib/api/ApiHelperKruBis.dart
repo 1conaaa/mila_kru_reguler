@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiHelperKruBis {
   static Future<void> requestKruBisAPI(String token, int idBus, String noPol, int idGarasi, BuildContext context) async {
     final KruBisApiResponse = await http.get(
-      Uri.parse('https://apimila.sysconix.id/api/krubis?id_bus=$idBus&no_pol=$noPol&id_garasi=$idGarasi'),
+      Uri.parse('https://apimila.milaberkah.com/api/krubis?id_bus=$idBus&no_pol=$noPol&id_garasi=$idGarasi'),
       headers: {
         'Authorization': 'Bearer $token',
       },

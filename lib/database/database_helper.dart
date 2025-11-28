@@ -148,7 +148,7 @@ class DatabaseHelper {
         jumlah_kembalian REAL,
         tanggal_transaksi DATETIME,
         status TEXT,
-        is_turun INTEGER,
+        is_turun INTEGER DEFAULT 0,
         kode_trayek TEXT,
         keterangan TEXT,
         id_invoice TEXT,

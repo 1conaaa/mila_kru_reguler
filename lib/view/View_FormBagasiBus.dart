@@ -15,6 +15,7 @@ import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'dart:typed_data'; // Untuk Uint8List
+import 'package:flutter/services.dart';
 
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
@@ -104,6 +105,12 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   final TextEditingController _keteranganController = TextEditingController();
 
   DatabaseHelper databaseHelper = DatabaseHelper.instance;
+  final formatRupiah = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp ',
+    decimalDigits: 0,
+  );
+
 
   @override
   void initState() {
@@ -598,12 +605,15 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: true, // biar layout bergeser saat keyboard muncul
       appBar: AppBar(
         title: Text('Form Bagasi Bus'),
         actions: [
           IconButton(
-            icon: Icon(_isConnected ? Icons.print : Icons.print_disabled,
-                color: _isConnected ? Colors.green : Colors.red),
+            icon: Icon(
+              _isConnected ? Icons.print : Icons.print_disabled,
+              color: _isConnected ? Colors.green : Colors.red,
+            ),
             onPressed: () {
               if (_isConnected) {
                 printTicket();
@@ -614,328 +624,302 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _namaPengirimController,
-                    decoration: InputDecoration(labelText: 'Nama Pengirim'),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          // padding bawah memperhitungkan keyboard (viewInsets) dan system padding (nav bar)
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.of(context).padding.bottom +
+                20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _namaPengirimController,
+                      decoration: InputDecoration(labelText: 'Nama Pengirim'),
+                    ),
                   ),
-                ),
-                SizedBox(width: 20), // Untuk memberi jarak antara dua TextField
-                Expanded(
-                  child: TextField(
-                    controller: _noTlpPengirimController,
-                    decoration: InputDecoration(labelText: 'No. Telp Pengirim'),
-                    keyboardType: TextInputType.phone,
+                  SizedBox(width: 20),
+                  Expanded(
+                    child: TextField(
+                      controller: _noTlpPengirimController,
+                      decoration: InputDecoration(labelText: 'No. Telp Pengirim'),
+                      keyboardType: TextInputType.phone,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _namaPenerimaController,
-                    decoration: InputDecoration(labelText: 'Nama Penerima'),
+                ],
+              ),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _namaPenerimaController,
+                      decoration: InputDecoration(labelText: 'Nama Penerima'),
+                    ),
                   ),
-                ),
-                SizedBox(width: 20), // Memberi jarak horizontal antara kedua TextField
-                Expanded(
-                  child: TextField(
-                    controller: _noTlpPenerimaController,
-                    decoration: InputDecoration(labelText: 'No. Telp Penerima'),
-                    keyboardType: TextInputType.phone,
+                  SizedBox(width: 20),
+                  Expanded(
+                    child: TextField(
+                      controller: _noTlpPenerimaController,
+                      decoration: InputDecoration(labelText: 'No. Telp Penerima'),
+                      keyboardType: TextInputType.phone,
+                    ),
                   ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 20),
-            TextField(
-              controller: _qtyBarangController,
-              decoration: InputDecoration(labelText: 'Qty Barang'),
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                if (value.isNotEmpty) {
-                  setState(() {
-                    qtyBarang = int.tryParse(value) ?? 0;
-                  });
-
-                  // Hitung tagihan saat quantity berubah
-                  if (qtyBarang > 0 && selectedJenisPaket != null) {
-                    _calculateTagihan(qtyBarang, selectedJenisPaket!);
+                ],
+              ),
+              SizedBox(height: 20),
+              TextField(
+                controller: _qtyBarangController,
+                decoration: InputDecoration(labelText: 'Qty Barang'),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  if (value.isNotEmpty) {
+                    setState(() {
+                      qtyBarang = int.tryParse(value) ?? 0;
+                    });
+                    if (qtyBarang > 0 && selectedJenisPaket != null) {
+                      _calculateTagihan(qtyBarang, selectedJenisPaket!);
+                    }
                   }
-                }
-              },
-            ),
-            SizedBox(height: 20),
-
-            // Dropdown untuk memilih jenis paket
-            // Dalam build method - ubah DropdownButtonFormField untuk jenis paket
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Pilih Jenis Paket',
+                },
               ),
-              value: selectedJenisPaket,
-              items: jenisPaket.map((item) {
-                // Format: "id - persen - harga_paket"
-                String combinedValue = '${item['id']} - ${item['persen']} - ${item['harga_paket']}';
-                String displayText = '${item['jenis_paket']} - Rp ${NumberFormat('#,###').format(item['harga_paket'])}';
-
-                return DropdownMenuItem<String>(
-                  value: combinedValue,
-                  child: Text(displayText),
-                );
-              }).toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  selectedJenisPaket = newValue;
-                });
-
-                // Hitung tagihan saat jenis paket berubah
-                if (qtyBarang > 0 && newValue != null) {
-                  _calculateTagihan(qtyBarang, newValue);
-                }
-              },
-              validator: (value) {
-                if (value == null) {
-                  return 'Harap pilih jenis paket';
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Kota Berangkat',
+              SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'Pilih Jenis Paket'),
+                value: selectedJenisPaket,
+                items: jenisPaket.map((item) {
+                  String combinedValue =
+                      '${item['id']} - ${item['persen']} - ${item['harga_paket']}';
+                  String displayText =
+                      '${item['jenis_paket']} - Rp ${NumberFormat('#,###').format(item['harga_paket'])}';
+                  return DropdownMenuItem<String>(
+                    value: combinedValue,
+                    child: Text(displayText),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    selectedJenisPaket = newValue;
+                  });
+                  if (qtyBarang > 0 && newValue != null) {
+                    _calculateTagihan(qtyBarang, newValue);
+                  }
+                },
+                validator: (value) {
+                  if (value == null) {
+                    return 'Harap pilih jenis paket';
+                  }
+                  return null;
+                },
               ),
-              items: listKota.map((kota) {
-                String valueText = '${kota['id_kota_tujuan']} - ${kota['jarak']}';
-                return DropdownMenuItem<String>(
-                  child: Text(kota['nama_kota']),
-                  value: valueText,
-                );
-              }).toList(),
-              onChanged: (String? value) {
-                setState(() {
-                  selectedKotaBerangkat = value;
-                });
-                if (qtyBarang > 0 && selectedKotaBerangkat != null && selectedKotaTujuan != null && selectedJenisPaket != null) {
-                  // _calculateTagihan(
-                  //   qtyBarang,
-                  //   selectedKotaBerangkat!,
-                  //   selectedKotaTujuan!,
-                  //   selectedJenisPaket!,
-                  // );
-                }
-              },
-              validator: (value) {
-                if (value == null) {
-                  return 'Kota Berangkat harus diisi';
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Kota Tujuan',
+              SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'Kota Berangkat'),
+                items: listKota.map((kota) {
+                  String valueText = '${kota['id_kota_tujuan']} - ${kota['jarak']}';
+                  return DropdownMenuItem<String>(
+                    child: Text(kota['nama_kota']),
+                    value: valueText,
+                  );
+                }).toList(),
+                onChanged: (String? value) {
+                  setState(() {
+                    selectedKotaBerangkat = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null) {
+                    return 'Kota Berangkat harus diisi';
+                  }
+                  return null;
+                },
               ),
-              items: listKota.map((kota) {
-                String valueText =
-                    '${kota['id_kota_tujuan']} - ${kota['jarak']}';
-                return DropdownMenuItem<String>(
-                  child: Text(kota['nama_kota']),
-                  value: valueText,
-                );
-              }).toList(),
-              onChanged: (String? value) {
-                setState(() {
-                  selectedKotaTujuan = value;
-                });
-                if (qtyBarang > 0 && selectedKotaBerangkat != null && selectedKotaTujuan != null && selectedJenisPaket != null) {
-                  // _calculateTagihan(
-                  //   qtyBarang,
-                  //   selectedKotaBerangkat!,
-                  //   selectedKotaTujuan!,
-                  //   selectedJenisPaket!,
-                  // );
-                }
-              },
-              validator: (value) {
-                if (value == null) {
-                  return 'Kota Tujuan harus diisi';
-                }
-                return null;
-              },
-            ),
-
-            SizedBox(height: 20),
-            TextField(
-              controller: _keteranganController,
-              onChanged: (value) {
-                setState(() {
-                  keterangan = value;
-                });
-              },
-              decoration: InputDecoration(
-                labelText: 'Keterangan',
+              SizedBox(height: 20),
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(labelText: 'Kota Tujuan'),
+                items: listKota.map((kota) {
+                  String valueText = '${kota['id_kota_tujuan']} - ${kota['jarak']}';
+                  return DropdownMenuItem<String>(
+                    child: Text(kota['nama_kota']),
+                    value: valueText,
+                  );
+                }).toList(),
+                onChanged: (String? value) {
+                  setState(() {
+                    selectedKotaTujuan = value;
+                  });
+                },
+                validator: (value) {
+                  if (value == null) {
+                    return 'Kota Tujuan harus diisi';
+                  }
+                  return null;
+                },
               ),
-              maxLines: 1,
-            ),
-            SizedBox(height: 20),
-            TextField(
-              controller: _hargaKmController,
-              decoration: InputDecoration(
-                labelText: 'Tagihan',
+              SizedBox(height: 20),
+              TextField(
+                controller: _keteranganController,
+                onChanged: (value) {
+                  setState(() {
+                    keterangan = value;
+                  });
+                },
+                decoration: InputDecoration(labelText: 'Keterangan'),
+                maxLines: 1,
               ),
-              onChanged: (value) {
-                setState(() {
-                  tagihan = double.tryParse(_hargaKmController.text) ?? 0.0;
-                });
-
-              },
-              keyboardType: TextInputType.numberWithOptions(decimal: false),
-              textAlign: TextAlign.center, // Menempatkan teks di tengah
-            ),
-
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => _ambilGambar(true), // Ambil gambar dari kamera
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min, // Minimal width based on child content
-                        children: [
-                          Icon(Icons.camera_alt), // Ikon kamera
-                          SizedBox(width: 8),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: 20), // Memberi jarak antara dua tombol
-                    // ElevatedButton(
-                    //   onPressed: () => _ambilGambar(false), // Ambil gambar dari galeri
-                    //   child: Row(
-                    //     mainAxisSize: MainAxisSize.min, // Minimal width based on child content
-                    //     children: [
-                    //       Icon(Icons.photo_library), // Ikon galeri
-                    //       SizedBox(width: 8),
-                    //     ],
-                    //   ),
-                    // ),
-                  ],
+              SizedBox(height: 20),
+              TextField(
+                controller: _hargaKmController,
+                decoration: InputDecoration(
+                  labelText: 'Tagihan',
+                  prefixText: 'Rp ',
                 ),
-
-                SizedBox(width: 20), // Jarak antara tombol dan preview gambar
-
-                // Preview gambar yang diambil
-                if (_image != null)
-                  Image.file(
-                    _image!,
-                    height: 200,
-                    width: 200,
-                    fit: BoxFit.cover,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  RupiahInputFormatter(),
+                ],
+                textAlign: TextAlign.center,
+                onChanged: (value) {
+                  setState(() {
+                    final angka = value.replaceAll(RegExp(r'[^0-9]'), '');
+                    tagihan = double.tryParse(angka) ?? 0.0;
+                  });
+                },
+              ),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: () => _ambilGambar(true),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.camera_alt),
+                            SizedBox(width: 8),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      // (Jika mau, bisa aktifkan tombol gallery lagi)
+                    ],
                   ),
-              ],
-            ),
-
-
-            SizedBox(height: 20),
-            // Baris untuk tombol Set.Printer dan Simpan
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      this.getBluetooth();
-                      // Cek apakah izin diberikan, jika tidak, minta izin.
-                      if (!await _checkBluetoothPermission()) {
-                        await _requestBluetoothPermission();
-                      }
-                    },
-                    child: Text('Set.Printer'),
-                    style: ButtonStyle(
-                      minimumSize: WidgetStateProperty.all(
-                        Size(double.infinity, 48.0),
-                      ),
-                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (Set<WidgetState> states) {
-                          if (states.contains(WidgetState.pressed)) {
-                            return Colors.grey; // Warna abu-abu saat tombol ditekan
-                          } else {
-                            return Colors.blue; // Warna biru saat tombol tidak ditekan
-                          }
-                        },
-                      ),
-                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (Set<WidgetState> states) {
-                          return Colors.white; // Warna teks putih
-                        },
+                  SizedBox(width: 20),
+                  if (_image != null)
+                    Image.file(
+                      _image!,
+                      height: 200,
+                      width: 200,
+                      fit: BoxFit.cover,
+                    ),
+                ],
+              ),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        this.getBluetooth();
+                        if (!await _checkBluetoothPermission()) {
+                          await _requestBluetoothPermission();
+                        }
+                      },
+                      child: Text('Set.Printer'),
+                      style: ButtonStyle(
+                        minimumSize: MaterialStateProperty.all(Size(double.infinity, 48.0)),
+                        backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                              (Set<MaterialState> states) {
+                            if (states.contains(MaterialState.pressed)) {
+                              return Colors.grey;
+                            } else {
+                              return Colors.blue;
+                            }
+                          },
+                        ),
+                        foregroundColor: MaterialStateProperty.all(Colors.white),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(width: 10), // Jarak antar tombol
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (selectedKotaBerangkat != null && selectedKotaTujuan != null && selectedJenisPaket != null) {
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        if (selectedKotaBerangkat != null &&
+                            selectedKotaTujuan != null &&
+                            selectedJenisPaket != null) {
+                          int idkotaAwal =
+                              int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
+                          int idkotaAkhir =
+                              int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
+                          int idjenisPaket =
+                              int.tryParse(selectedJenisPaket!.split(' - ')[0]) ?? 1;
 
-                        int idkotaAwal = int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
-                        int idkotaAkhir = int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
-                        int idjenisPaket = int.tryParse(selectedJenisPaket!.split(' - ')[0]) ?? 1;
+                          print('cek nilai: $idkotaAwal , $idkotaAkhir , $idjenisPaket');
 
-                        print('cek nilai: $idkotaAwal , $idkotaAkhir , $idjenisPaket');
-
-                        _submitForm(
-                          idjenisPaket,
-                          idkotaAwal,
-                          idkotaAkhir,
-                        ).then((_) {
-                          // Pastikan printTicket dipanggil setelah submit form berhasil
-                          printTicket();
-                        }).catchError((error) {
-                          print("Error during submit form: $error");
-                        });
-                      }
-                    },
-                    child: Text('Simpan'),
-                    style: ButtonStyle(
-                      minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
-                      backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (Set<WidgetState> states) {
-                          if (states.contains(WidgetState.pressed)) {
-                            return Colors.grey;
-                          } else {
-                            return Colors.green;
-                          }
-                        },
-                      ),
-                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                            (Set<WidgetState> states) {
-                          return Colors.white;
-                        },
+                          _submitForm(
+                            idjenisPaket,
+                            idkotaAwal,
+                            idkotaAkhir,
+                          ).then((_) {
+                            printTicket();
+                          }).catchError((error) {
+                            print("Error during submit form: $error");
+                          });
+                        }
+                      },
+                      child: Text('Simpan'),
+                      style: ButtonStyle(
+                        minimumSize: MaterialStateProperty.all(Size(double.infinity, 48.0)),
+                        backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                              (Set<MaterialState> states) {
+                            if (states.contains(MaterialState.pressed)) {
+                              return Colors.grey;
+                            } else {
+                              return Colors.green;
+                            }
+                          },
+                        ),
+                        foregroundColor: MaterialStateProperty.all(Colors.white),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
+}
+class RupiahInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+
+    String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+
+    final number = NumberFormat.decimalPattern('id').format(int.parse(digits));
+
+    return TextEditingValue(
+      text: number,
+      selection: TextSelection.collapsed(offset: number.length),
+    );
+  }
 }

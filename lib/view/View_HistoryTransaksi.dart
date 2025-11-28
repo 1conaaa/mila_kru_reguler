@@ -74,7 +74,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
         final penjualanId = penjualan['id'];
         print("\n=== KIRIM DATA ID: $penjualanId ===");
 
-        String apiUrl = "https://apimila.sysconix.id/api/penjualantiket";
+        String apiUrl = "https://apimila.milaberkah.com/api/penjualantiket";
 
         // Buat MultipartRequest baru untuk setiap iterasi (tidak reuse)
         var uri = Uri.parse(apiUrl);
@@ -211,12 +211,14 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     // GROUP DATA BERDASARKAN RUTE KOTA
     // ================================
     Map<String, List<Map<String, dynamic>>> groupedByRuteKota = {};
+
     for (var item in listPenjualan) {
       final ruteKota = item['rute_kota']?.trim() ?? '-';
 
       groupedByRuteKota.putIfAbsent(ruteKota, () => []);
       groupedByRuteKota[ruteKota]!.add(item);
     }
+
 
     // TOTAL SEMUA PENUMPANG
     num totalSemuaPenumpang = listPenjualan.fold(
@@ -268,14 +270,18 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
         // ),
       ),
 
-      body: Stack(
-        children: [
-          AbsorbPointer(
-            absorbing: _isPushingData,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  ...groupedByRuteKota.entries.map((entry) {
+    body: SafeArea(
+    child: Stack(
+    children: [
+    AbsorbPointer(
+    absorbing: _isPushingData,
+    child: SingleChildScrollView(
+    padding: EdgeInsets.only(
+    bottom: MediaQuery.of(context).padding.bottom + 20,
+    ),
+    child: Column(
+    children: [
+    ...groupedByRuteKota.entries.map((entry) {
                     String ruteKota = entry.key;
                     List<Map<String, dynamic>> penjualanPerRute = entry.value;
 
@@ -323,9 +329,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                     penjualanPerRute.every((item) => (item['is_turun'] ?? 0) == 1);
 
                     return GestureDetector(
-                    onTap: allSudahTurun
-                    ? null
-                        : () async {
+                      onTap: allSudahTurun ? null : () async {
                     bool? confirm = await showDialog(
                     context: context,
                     builder: (context) {
@@ -351,7 +355,8 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                     // Jika user tekan "Iya"
                     if (confirm == true) {
                     setState(() {
-                    isCheckedPerRute[ruteKota] = true;
+                      isCheckedPerRute[ruteKota] =
+                          penjualanPerRute.every((item) => item['is_turun'] == 1);
                     });
 
                     await PenjualanTiketService.instance.updateIsTurunByRute(
@@ -484,6 +489,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
             ),
         ],
       ),
+     ),
     );
   }
 

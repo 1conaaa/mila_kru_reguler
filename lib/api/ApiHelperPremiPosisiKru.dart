@@ -11,7 +11,7 @@ class ApiHelperPremiPosisiKru {
     final premiPosisiKruService = PremiPosisiKruService(); // Buat instance service
 
     final premiPosisiKruApiResponse = await http.get(
-      Uri.parse('https://apimila.sysconix.id/api/premiposisikru?jenis_trayek=$jenisTrayek&kelas_bus=$kelasBus'),
+      Uri.parse('https://apimila.milaberkah.com/api/premiposisikru?jenis_trayek=$jenisTrayek&kelas_bus=$kelasBus'),
       headers: {
         'Authorization': 'Bearer $token',
       },

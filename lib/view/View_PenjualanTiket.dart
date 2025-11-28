@@ -19,6 +19,7 @@ import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:mila_kru_reguler/view/widgets/extra_price.dart';
 
 
 final printerService = BluetoothPrinterService();
@@ -592,12 +593,18 @@ class _PenjualanFormState extends State<PenjualanForm> {
       int jumlahTiket,
       String? selectedKotaBerangkat,
       String? selectedKotaTujuan,
+      String? namaTrayek,       // 🆕
+      String? jenisTrayek       // 🆕
       ) async {
     // VALIDASI INPUT DASAR
     if (selectedKotaBerangkat == null || selectedKotaTujuan == null) {
       print('⚠️  Info: Menunggu pemilihan kota lengkap');
       return;
     }
+
+    print('🛣 Trayek: $namaTrayek');
+    print('🚌 Jenis: $jenisTrayek');
+    print('🚌 Kelas: $kelasBus');
 
     if (jumlahTiket <= 0) {
       print('⚠️  Info: Jumlah tiket harus > 0');
@@ -746,30 +753,128 @@ class _PenjualanFormState extends State<PenjualanForm> {
       // konversi 9% -> 0.09
       double persen = persenKru / 100;
 
+      // setState(() {
+      //   try {
+      //     // 1. BULATKAN TARIKAN DULU
+      //     int hargaTarikanBulat = pembulatanRibuan(hargaTarikan);
+      //
+      //     // 2. HITUNG HARGA KANTOR BARU (BELUM DIBULATKAN)
+      //     double hargaKantorHitung = hargaTarikanBulat - (persen * hargaTarikanBulat);
+      //
+      //     // 3. BULATKAN HASIL HARGA KANTOR BARU
+      //     // int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
+      //     int hargaKantorBulat = hargaKantorHitung.toInt();
+      //
+      //     // ---------------------------------------------------
+      //     // 🆕 Tahap 3 — Tambahkan harga KHUSUS setelah kantorBulat didapat
+      //     // ---------------------------------------------------
+      //     double tambahanHarga = hitungPenambahanHarga(
+      //       jarakAwal: jarakAwal,
+      //       selisihJarak: selisihJarak,
+      //       jenisTrayek: jenisTrayek ?? "",
+      //       kelasBus: kelasBus ?? "",
+      //       namaTrayek: namaTrayek ?? "",
+      //     );
+      //
+      //     print("🎁 Tambahan harga khusus: Rp $tambahanHarga");
+      //
+      //     // Tambahan harga hanya untuk TARIKAN
+      //     double hargaTarikanFinal = hargaTarikanBulat + tambahanHarga;
+      //
+      //     // Bulatkan lagi setelah ditambah
+      //     int hargaTarikanFinalBulat = pembulatanRibuan(hargaTarikanFinal);
+      //
+      //     // 4. VALIDASI
+      //     if (hargaKantorBulat < 0) hargaKantorBulat = 0;
+      //     if (hargaTarikanFinalBulat < 0) hargaTarikanFinalBulat = 0;
+      //
+      //     // 5. SIMPAN KE VARIABEL GLOBAL
+      //     _hargaKantorCalculated = hargaKantorBulat.toDouble();
+      //     _hargaTarikanCalculated = hargaTarikanFinalBulat.toDouble();
+      //
+      //     // 6. TAMPILKAN KE CONTROLLER
+      //     hargaKantorController.text = formatter.format(hargaKantorBulat);
+      //     tagihanController.text = formatter.format(hargaTarikanFinalBulat);
+      //
+      //     jumlahTagihan = hargaTarikanFinalBulat.toDouble();
+      //
+      //     print('✅ PERHITUNGAN BERHASIL:');
+      //     print('   Harga Kantor: Rp $_hargaKantorCalculated');
+      //     print('   Harga Tarikan: Rp $_hargaTarikanCalculated');
+      //     print('   Jumlah Tagihan: Rp $jumlahTagihan');
+      //     print('   Kategori Tiket: $selectedKategoriTiket');
+      //
+      //   } catch (e) {
+      //     print('❌ Error dalam setState: $e');
+      //
+      //     // fallback
+      //     hargaKantorController.text = '0';
+      //     tagihanController.text = '0';
+      //     _hargaKantorCalculated = 0.0;
+      //     _hargaTarikanCalculated = 0.0;
+      //     jumlahTagihan = 0.0;
+      //   }
+      // });
+
       setState(() {
         try {
-          // 1. BULATKAN TARIKAN DULU
+          // ---------------------------------------------------
+          // 1. BULATKAN TARIKAN AWAL
+          // ---------------------------------------------------
           int hargaTarikanBulat = pembulatanRibuan(hargaTarikan);
 
-          // 2. HITUNG HARGA KANTOR BARU (BELUM DIBULATKAN)
-          double hargaKantorHitung = hargaTarikanBulat - (persen * hargaTarikanBulat);
+          // ---------------------------------------------------
+          // 2. HITUNG TAMBAHAN HARGA KHUSUS
+          // ---------------------------------------------------
+          double tambahanHarga = hitungPenambahanHarga(
+            jarakAwal: jarakAwal,
+            selisihJarak: selisihJarak,
+            jenisTrayek: jenisTrayek ?? "",
+            kelasBus: kelasBus ?? "",
+            namaTrayek: namaTrayek ?? "",
+          );
 
-          // 3. BULATKAN HASIL HARGA KANTOR BARU
-          int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
+          print("🎁 Tambahan harga khusus: Rp $tambahanHarga");
 
-          // 4. VALIDASI
+          // ---------------------------------------------------
+          // 3. TARIKAN FINAL (BELUM DIBULATKAN)
+          // ---------------------------------------------------
+          double hargaTarikanFinal = hargaTarikanBulat + tambahanHarga;
+
+          // 4. BULATKAN TARIKAN FINAL
+          int hargaTarikanFinalBulat = pembulatanRibuan(hargaTarikanFinal);
+
+          // ---------------------------------------------------
+          // 5. HITUNG HARGA KANTOR DARI TARIKAN FINAL BULAT
+          // ---------------------------------------------------
+          double hargaKantorHitung = hargaTarikanFinalBulat - (persen * hargaTarikanFinalBulat);
+
+          // 6. Bulatkan hasil kantor
+          // int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
+          int hargaKantorBulat = hargaKantorHitung.toInt();
+
+          // atau jika mau tanpa pembulatan:
+          // int hargaKantorBulat = hargaKantorHitung.toInt();
+
+          // ---------------------------------------------------
+          // 7. VALIDASI
+          // ---------------------------------------------------
           if (hargaKantorBulat < 0) hargaKantorBulat = 0;
-          if (hargaTarikanBulat < 0) hargaTarikanBulat = 0;
+          if (hargaTarikanFinalBulat < 0) hargaTarikanFinalBulat = 0;
 
-          // 5. SIMPAN KE VARIABEL GLOBAL
+          // ---------------------------------------------------
+          // 8. SIMPAN KE VARIABEL GLOBAL
+          // ---------------------------------------------------
           _hargaKantorCalculated = hargaKantorBulat.toDouble();
-          _hargaTarikanCalculated = hargaTarikanBulat.toDouble();
+          _hargaTarikanCalculated = hargaTarikanFinalBulat.toDouble();
 
-          // 6. TAMPILKAN KE CONTROLLER
+          // ---------------------------------------------------
+          // 9. TAMPILKAN PADA CONTROLLER
+          // ---------------------------------------------------
           hargaKantorController.text = formatter.format(hargaKantorBulat);
-          tagihanController.text = formatter.format(hargaTarikanBulat);
+          tagihanController.text = formatter.format(hargaTarikanFinalBulat);
 
-          jumlahTagihan = hargaTarikanBulat.toDouble();
+          jumlahTagihan = hargaTarikanFinalBulat.toDouble();
 
           print('✅ PERHITUNGAN BERHASIL:');
           print('   Harga Kantor: Rp $_hargaKantorCalculated');
@@ -780,7 +885,6 @@ class _PenjualanFormState extends State<PenjualanForm> {
         } catch (e) {
           print('❌ Error dalam setState: $e');
 
-          // fallback
           hargaKantorController.text = '0';
           tagihanController.text = '0';
           _hargaKantorCalculated = 0.0;
@@ -994,7 +1098,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
         // Make API request
         final response = await http.post(
-          Uri.parse('https://apimila.sysconix.id/api/storeregulerfaspay'),
+          Uri.parse('https://apimila.milaberkah.com/api/storeregulerfaspay'),
           headers: {
             'Authorization': 'Bearer $token',
             'Content-Type': 'application/json',
@@ -1561,11 +1665,13 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                     jumlahTiket = int.tryParse(value) ?? 0;
                                   });
                                   _calculateTagihan(
-                                    selectedKategoriTiket ?? '',
-                                    kelasBus,
-                                    jumlahTiket,
-                                    selectedKotaBerangkat ?? '', // Handle null value
-                                    selectedKotaTujuan ?? '', // Handle null value
+                                      selectedKategoriTiket ?? '',
+                                      kelasBus,
+                                      jumlahTiket,
+                                      selectedKotaBerangkat ?? '',
+                                      selectedKotaTujuan ?? '',
+                                      namaTrayek,     // 🆕
+                                      jenisTrayek     // 🆕
                                   );
                                 }
                               },
@@ -1649,12 +1755,15 @@ class _PenjualanFormState extends State<PenjualanForm> {
                               selectedKotaBerangkat = value;
                             });
                             _calculateTagihan(
-                              selectedKategoriTiket ?? '',
-                              kelasBus,
-                              jumlahTiket,
-                              selectedKotaBerangkat ?? '', // Handle null value
-                              selectedKotaTujuan ?? '', // Handle null value
+                                selectedKategoriTiket ?? '',
+                                kelasBus,
+                                jumlahTiket,
+                                selectedKotaBerangkat ?? '',
+                                selectedKotaTujuan ?? '',
+                                namaTrayek,     // 🆕
+                                jenisTrayek     // 🆕
                             );
+
                           },
                           validator: (value) {
                             if (value == null) {
@@ -1685,12 +1794,15 @@ class _PenjualanFormState extends State<PenjualanForm> {
                               selectedKotaTujuan = value;
                             });
                             _calculateTagihan(
-                              selectedKategoriTiket ?? '',
-                              kelasBus,
-                              jumlahTiket,
-                              selectedKotaBerangkat ?? '', // Handle null value
-                              selectedKotaTujuan ?? '', // Handle null value
+                                selectedKategoriTiket ?? '',
+                                kelasBus,
+                                jumlahTiket,
+                                selectedKotaBerangkat ?? '',
+                                selectedKotaTujuan ?? '',
+                                namaTrayek,     // 🆕
+                                jenisTrayek     // 🆕
                             );
+
                           },
                           validator: (value) {
                             if (value == null) {
@@ -1761,9 +1873,34 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           keyboardType: TextInputType.number,
                           style: TextStyle(fontSize: 18),
                           enabled: isHargaTarikanEditable, // ← aturan baru
-                          onChanged: (value) {
+                          onChanged: (value) async {
                             setState(() {
-                              jumlahTagihan = double.tryParse(value) ?? 0.0;
+                              jumlahTagihan = double.tryParse(value.replaceAll('.', '').replaceAll(',', '')) ?? 0.0;
+                            });
+
+                            // Ambil persen susukan
+                            final prefs = await SharedPreferences.getInstance();
+                            String? persenStr = prefs.getString('persenSusukanKru');
+
+                            double persenKru = 0.0;
+                            if (persenStr != null && persenStr.contains('%')) {
+                              persenKru = double.tryParse(persenStr.replaceAll('%', '')) ?? 0.0;
+                            }
+
+                            double persen = persenKru / 100;
+
+                            // Hitung ulang harga kantor
+                            double hargaKantorHitung = jumlahTagihan - (jumlahTagihan * persen);
+
+                            // Dibulatkan jika perlu
+                            int hargaKantorBulat = hargaKantorHitung.toInt();
+                            if (hargaKantorBulat < 0) hargaKantorBulat = 0;
+
+                            setState(() {
+                              _hargaKantorCalculated = hargaKantorBulat.toDouble();
+                              hargaKantorController.text = formatter.format(hargaKantorBulat);
+
+                              // Kembalian tetap dihitung
                               _calculateKembalian(jumlahBayar.toDouble(), jumlahTagihan);
                             });
                           },
@@ -2349,7 +2486,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isNotlpPembeliVisible = true;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
-        isHargaTarikanEditable = false;
+        isHargaTarikanEditable = true;
       } else if (kelasBus == 'Non Ekonomi') {
         isHargaKantorVisible = false;
         isTombolVisible = true;
@@ -2363,7 +2500,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isNotlpPembeliVisible = true;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
-        isHargaTarikanEditable = false;
+        isHargaTarikanEditable = true;
       }
     }
     // ==============================
@@ -2424,7 +2561,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
       isFotoVisible = false;
-      isHargaTarikanEditable = false;
+      isHargaTarikanEditable = true;
     } else if (selectedKategoriTiket == 'reguler' && kelasBus == 'Non Ekonomi') {
       isHargaKantorVisible = false;
       isTombolVisible = true;
@@ -2438,7 +2575,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
       isFotoVisible = false;
-      isHargaTarikanEditable = false;
+      isHargaTarikanEditable = true;
     }
 
     // ==============================

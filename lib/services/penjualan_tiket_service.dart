@@ -48,11 +48,13 @@ class PenjualanTiketService {
     final db = await database;
     return await db.rawQuery('''
       SELECT 
-        a.id ||''|| a.tanggal_transaksi ||''|| a.id_bus ||''|| a.id_garasi ||''|| a.rit ||''|| a.kode_trayek AS noOrderTransaksi,
-        a.rit, a.kota_berangkat, a.kota_tujuan, a.nama_pembeli, a.no_telepon,
-        a.jumlah_tagihan, a.nominal_bayar, a.jumlah_kembalian, a.tanggal_transaksi
+        a.*, 
+        a.is_turun,
+        a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
       FROM penjualan_tiket AS a
-      ORDER BY a.id DESC LIMIT 1
+      LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
+      LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
+      ORDER BY a.id DESC;
     ''');
   }
 
@@ -62,14 +64,12 @@ class PenjualanTiketService {
     return await db.rawQuery('''
       SELECT 
         a.*, 
-        a.id AS idKota, 
-        a.id || ' - ' || a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota,
-        c.nama_kota AS kota_tujuan
+        a.is_turun,
+        a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
       FROM penjualan_tiket AS a
       LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
       LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-      GROUP BY a.kategori_tiket, b.nama_kota, c.nama_kota
-      ORDER BY a.id DESC
+      ORDER BY a.id DESC;
     ''');
   }
 
@@ -384,12 +384,10 @@ class PenjualanTiketService {
 
     return await db.update(
       'penjualan_tiket',
-      {
-        'is_turun': newValue,
-        'status': 'Y',
-      },
+      {'is_turun': newValue},
       where: 'kategori_tiket = ? AND kota_berangkat = (SELECT id_kota_tujuan FROM list_kota WHERE nama_kota = ?) AND kota_tujuan = (SELECT id_kota_tujuan FROM list_kota WHERE nama_kota = ?)',
       whereArgs: [kategori, kotaBerangkat, kotaTujuan],
     );
   }
+
 }

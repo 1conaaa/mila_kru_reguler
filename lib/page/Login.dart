@@ -91,7 +91,7 @@ class _LoginState extends State<Login> {
 
     try {
       final response = await http.post(
-        Uri.parse('https://apimila.sysconix.id/api/login?username=$username&password=$password'),
+        Uri.parse('https://apimila.milaberkah.com/api/login?username=$username&password=$password'),
         body: {
           'username': username,
           'password': password,
