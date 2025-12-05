@@ -67,9 +67,9 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/images/logo_mila.png"
+  image_path: "assets/images/mila_icon.png"
   adaptive_icon_background: "#ffffff"
-  adaptive_icon_foreground: "assets/logo_foreground.png"
+  adaptive_icon_foreground: "assets/images/mila_icon.png"
 
   flutter_lints: ^5.0.0
 
@@ -82,3 +82,5 @@ flutter:
     - assets/images/logo_print.png
     - assets/images/icon_mila.png
     - assets/images/logo_mila.png
+    - assets/images/mila_logo.png
+    - assets/images/mila_icon.png

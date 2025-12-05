@@ -74,7 +74,7 @@ class Logout extends StatelessWidget {
                 children: [
                   const SizedBox(height: 16.0),
                   Image.asset(
-                    'assets/images/logo_mila.png',
+                    'assets/images/mila_logo.png',
                     width: 150,
                     height: 150,
                   ),

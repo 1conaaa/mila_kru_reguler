@@ -11,7 +11,7 @@ class LogoutSuccessScreen extends StatelessWidget {
           children: [
             SizedBox(height: 16.0),
             Image.asset(
-              'assets/images/logo_mila.png',
+              'assets/images/mila_logo.png',
               width: 350,
             ),
             SizedBox(height: 16.0),

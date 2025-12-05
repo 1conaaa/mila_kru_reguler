@@ -249,7 +249,7 @@ class _LoginState extends State<Login> {
         title: Text('Aplikasi BIS MILA SEJAHTERA'),
         automaticallyImplyLeading: false,
       ),
-      backgroundColor: Colors.blue[700],
+      backgroundColor: Colors.white,
       resizeToAvoidBottomInset: true,
       body: AbsorbPointer(
         // 🆕 Blokir semua input selama loading
@@ -262,16 +262,15 @@ class _LoginState extends State<Login> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
-                    SizedBox(height: 20.0),
+                    SizedBox(height: 10.0),
                     SizedBox(
-                      width: 200.0,
-                      height: 200.0,
+                      width: 300.0,
+                      height: 300.0,
                       child: Image.asset(
-                        'assets/images/logo_mila.png',
+                        'assets/images/mila_logo.png',
                         fit: BoxFit.contain,
                       ),
                     ),
-                    SizedBox(height: 16.0),
                     Container(
                       padding: const EdgeInsets.all(16.0),
                       decoration: BoxDecoration(
@@ -326,7 +325,7 @@ class _LoginState extends State<Login> {
                               child: ElevatedButton(
                                 onPressed: _isLoading ? null : _login,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.redAccent,
+                                  backgroundColor: const Color(0xFFFF0101),
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 40, vertical: 14),
                                 ),
@@ -391,7 +390,7 @@ class _LoginState extends State<Login> {
               width: 150.0,
               height: 150.0,
               child: Image.asset(
-                'assets/images/logo_mila.png',
+                'assets/images/mila_logo.png',
                 fit: BoxFit.contain,
               ),
             ),

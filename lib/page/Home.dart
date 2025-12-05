@@ -582,7 +582,7 @@ class _HomeState extends State<Home> {
                 width: 120.0,
                 height: 120.0,
                 child: Image.asset(
-                  'assets/images/logo_mila.png',
+                  'assets/images/mila_logo.png',
                   fit: BoxFit.contain,
                 ),
               ),
