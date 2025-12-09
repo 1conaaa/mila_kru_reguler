@@ -7,7 +7,6 @@ class DatabaseHelper {
   static Database? _database;
   static final DatabaseHelper instance = DatabaseHelper._();
   // Define a constructor
-  DatabaseHelper();
   DatabaseHelper._();
 
   Future<Database> get database async {
@@ -24,15 +23,13 @@ class DatabaseHelper {
     _database = await database;
   }
 
-  get databaseHelper => null;
-
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_28112025-v8.db';
+    String path = '${documentsDirectory.path}/bisapp_9122025-v1.db';
 
     return await openDatabase(
       path,
-      version: 8, // Update the version number
+      version: 1, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -44,6 +41,18 @@ class DatabaseHelper {
   }
 
   Future<void> _createTables(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS m_persen_premi_kru (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kode_trayek TEXT,
+        id_jenis_premi INTEGER,
+        id_posisi_kru INTEGER,
+        nilai TEXT,
+        aktif TEXT,
+        UNIQUE(kode_trayek,id_jenis_premi,id_posisi_kru)
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE IF NOT EXISTS m_premi_posisi_kru (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,6 +67,8 @@ class DatabaseHelper {
       CREATE TABLE IF NOT EXISTS premi_harian_kru (
         id INTEGER PRIMARY KEY,
         id_transaksi INTEGER,
+        kode_trayek TEXT,
+        id_jenis_premi INTEGER,
         id_user INTEGER,
         id_group INTEGER,
         persen_premi_disetor REAL,
@@ -166,6 +177,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS list_kota (
         id INTEGER PRIMARY KEY,
+        id_trayek TEXT,
         kode_trayek TEXT,
         id_kota_berangkat INTEGER,
         id_kota_tujuan INTEGER,
@@ -732,7 +744,7 @@ class DatabaseHelper {
     final db = await database;
 
     return await db.update(
-      'setoran_kru',
+      't_setoran_kru',
       {
         'fupload': path,
         'file_name': fileName,

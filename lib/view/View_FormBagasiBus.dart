@@ -14,7 +14,7 @@ import 'dart:io';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'dart:typed_data'; // Untuk Uint8List
+// Untuk Uint8List
 import 'package:flutter/services.dart';
 
 import 'package:device_info_plus/device_info_plus.dart';
@@ -838,17 +838,17 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                       },
                       child: Text('Set.Printer'),
                       style: ButtonStyle(
-                        minimumSize: MaterialStateProperty.all(Size(double.infinity, 48.0)),
-                        backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                              (Set<MaterialState> states) {
-                            if (states.contains(MaterialState.pressed)) {
+                        minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
+                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                              (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.pressed)) {
                               return Colors.grey;
                             } else {
                               return Colors.blue;
                             }
                           },
                         ),
-                        foregroundColor: MaterialStateProperty.all(Colors.white),
+                        foregroundColor: WidgetStateProperty.all(Colors.white),
                       ),
                     ),
                   ),
@@ -881,17 +881,17 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                       },
                       child: Text('Simpan'),
                       style: ButtonStyle(
-                        minimumSize: MaterialStateProperty.all(Size(double.infinity, 48.0)),
-                        backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                              (Set<MaterialState> states) {
-                            if (states.contains(MaterialState.pressed)) {
+                        minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
+                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                              (Set<WidgetState> states) {
+                            if (states.contains(WidgetState.pressed)) {
                               return Colors.grey;
                             } else {
                               return Colors.green;
                             }
                           },
                         ),
-                        foregroundColor: MaterialStateProperty.all(Colors.white),
+                        foregroundColor: WidgetStateProperty.all(Colors.white),
                       ),
                     ),
                   ),

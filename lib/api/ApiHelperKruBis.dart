@@ -22,7 +22,7 @@ class ApiHelperKruBis {
         List<KruBis> krubisData = apiResponseKruBis.krubis;
 
         // Simpan data ke shared preferences
-        DatabaseHelper databaseHelper = DatabaseHelper();
+        DatabaseHelper databaseHelper = DatabaseHelper.instance;
         await databaseHelper.initDatabase(); // Panggil fungsi initDatabase dari DatabaseHelperKruBis
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('krubisData', jsonEncode(krubisData.map((krubis) => krubis.toMap()).toList()));

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/api/ApiHelperMetodePembayaran.dart';
-import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/api/ApiPersenPremiKru..dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -184,7 +184,9 @@ class _LoginState extends State<Login> {
           if (listPenjualan.isEmpty) {
             print('Tidak ada data dalam tabel Penjualan Tiket.');
             await ApiHelperKruBis.requestKruBisAPI(token, idBus, noPol, idGarasi, context);
-            await ApiHelperListKota.requestListKotaAPI(token, namaTrayek);
+            ApiHelperPersenPremiKru.requestListPersenPremiAPI(token, kodeTrayek);
+            await ApiHelperListKota.requestListKotaAPI(token, kodeTrayek);
+
 
             List<String> kata = kelasbus.split(" ");
             int jumlahKata = kata.length;

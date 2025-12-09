@@ -5,7 +5,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    // Hapus baris berikut karena sudah termasuk dalam plugin kotlin-android
+    // Hapus baris berikut karena sudah termasuk dalam pluginwhich flutter kotlin-android
     // id("org.jetbrains.kotlin.jvm") version "1.9.0"
 }
 

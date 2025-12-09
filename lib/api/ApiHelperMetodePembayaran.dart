@@ -20,7 +20,7 @@ class ApiHelperMetodePembayaran {
           List<MetodePembayaran> metodeList =
           jsonList.map((item) => MetodePembayaran.fromJson(item)).toList();
 
-          DatabaseHelper dbHelper = DatabaseHelper();
+          DatabaseHelper dbHelper = DatabaseHelper.instance;
           await dbHelper.initDatabase();
 
           for (var item in metodeList) {
@@ -43,7 +43,7 @@ class ApiHelperMetodePembayaran {
   }
 
   static Future<void> tampilkanDataDariDatabase() async {
-    DatabaseHelper dbHelper = DatabaseHelper();
+    DatabaseHelper dbHelper = DatabaseHelper.instance;
     await dbHelper.initDatabase();
 
     try {

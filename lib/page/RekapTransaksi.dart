@@ -27,7 +27,7 @@ class _RekapTransaksiState extends State<RekapTransaksi> with SingleTickerProvid
     _tabController = TabController(length: 2, vsync: this);
   }
 
-  DatabaseHelper databaseHelper = DatabaseHelper();
+  DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
   @override
   Widget build(BuildContext context) {

@@ -3,7 +3,7 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/premi_harian_kru_model.dart';
 
 class PremiHarianKruService {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
   // Insert data premi harian kru
   Future<int> insertPremiHarianKru(PremiHarianKru premi) async {

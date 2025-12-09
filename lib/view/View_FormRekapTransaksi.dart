@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/premi_harian_kru_model.dart';
 import 'package:mila_kru_reguler/models/premi_posisi_kru_model.dart';
@@ -140,7 +139,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   @override
   void initState() {
     super.initState();
-    databaseHelper = DatabaseHelper();
+    databaseHelper = DatabaseHelper.instance;
     _loadTagTransaksi(); // Load data tag transaksi
     _loadLastRekapTransaksi();
     _getUserData(); // Load user data

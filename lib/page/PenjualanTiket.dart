@@ -29,7 +29,7 @@ class _PenjualanTiketState extends State<PenjualanTiket> with SingleTickerProvid
     _tabController = TabController(length: 3, vsync: this);
   }
 
-  DatabaseHelper databaseHelper = DatabaseHelper();
+  DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
   @override
   Widget build(BuildContext context) {

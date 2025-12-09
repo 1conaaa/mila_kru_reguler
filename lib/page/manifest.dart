@@ -235,7 +235,7 @@ class _ManifestPageState extends State<ManifestPage> {
 
   // Fungsi untuk mengambil data penjualan dari database lokal dengan JOIN
   Future<Map<String, dynamic>?> _getPenjualanDataFromLocal(String idInvoice) async {
-    final databaseHelper = DatabaseHelper();
+    final databaseHelper = DatabaseHelper.instance;
     final db = await databaseHelper.database;
 
     try {
@@ -497,7 +497,7 @@ class _ManifestPageState extends State<ManifestPage> {
     DateTime now = DateTime.now();
     String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
 
-    final databaseHelper = DatabaseHelper();
+    final databaseHelper = DatabaseHelper.instance;
     final database = await databaseHelper.database;
 
     bool tableExists = await _isTableExists(database, 'penjualan_tiket');
@@ -642,7 +642,7 @@ class _ManifestPageState extends State<ManifestPage> {
       return;
     }
 
-    final databaseHelper = DatabaseHelper();
+    final databaseHelper = DatabaseHelper.instance;
     final db = await databaseHelper.database;
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('token');

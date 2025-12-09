@@ -25,7 +25,7 @@ class ApiHelperInspectionItems {
           print('Data Inspection Items API berhasil diambil: $apiResponse');
           List<InspectionItems> inspectionItemsData = apiResponse.inspectionitems;
 
-          DatabaseHelper databaseHelper = DatabaseHelper();
+          DatabaseHelper databaseHelper = DatabaseHelper.instance;
           await databaseHelper.initDatabase();
 
           try {
@@ -50,7 +50,7 @@ class ApiHelperInspectionItems {
             .map((item) => InspectionItems.fromJson(item))
             .toList();
 
-        DatabaseHelper databaseHelper = DatabaseHelper();
+        DatabaseHelper databaseHelper = DatabaseHelper.instance;
         await databaseHelper.initDatabase();
 
         try {
@@ -77,7 +77,7 @@ class ApiHelperInspectionItems {
 
   // Fungsi untuk mengambil dan menampilkan data dari tabel m_inspection_items
   static Future<void> getInspectionItemsFromDB() async {
-    DatabaseHelper databaseHelper = DatabaseHelper();
+    DatabaseHelper databaseHelper = DatabaseHelper.instance;
     await databaseHelper.initDatabase();
 
     try {

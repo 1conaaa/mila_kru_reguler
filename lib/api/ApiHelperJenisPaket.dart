@@ -25,7 +25,7 @@ class ApiHelperJenisPaket {
           print('Data Jenis Paket API berhasil diambil: $apiResponse');
           List<JenisPaket> jenisPaketData = apiResponse.jenispaket;
 
-          DatabaseHelper databaseHelper = DatabaseHelper();
+          DatabaseHelper databaseHelper = DatabaseHelper.instance;
           await databaseHelper.initDatabase();
 
           try {
@@ -50,7 +50,7 @@ class ApiHelperJenisPaket {
             .map((item) => JenisPaket.fromJson(item))
             .toList();
 
-        DatabaseHelper databaseHelper = DatabaseHelper();
+        DatabaseHelper databaseHelper = DatabaseHelper.instance;
         await databaseHelper.initDatabase();
 
         try {
@@ -77,7 +77,7 @@ class ApiHelperJenisPaket {
 
   // Fungsi untuk mengambil dan menampilkan data dari tabel m_inspection_items
   static Future<void> getJenisPaketFromDB() async {
-    DatabaseHelper databaseHelper = DatabaseHelper();
+    DatabaseHelper databaseHelper = DatabaseHelper.instance;
     await databaseHelper.initDatabase();
 
     try {

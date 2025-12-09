@@ -140,7 +140,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     _checkPrinterConnection();
   }
 
-  DatabaseHelper databaseHelper = DatabaseHelper();
+  DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
   TextEditingController sarantagihanController = TextEditingController();
   NumberFormat formatter = NumberFormat.currency(
@@ -545,9 +545,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
       // Handle null values untuk variabel lainnya
       String jenisTrayekSafe = jenisTrayek ?? 'REGULER';
       String kelasBusSafe = kelasBus ?? 'EKONOMI';
-      String selectedPilihRitSafe = selectedPilihRit?.toString() ?? '1';
+      String selectedPilihRitSafe = selectedPilihRit.toString() ?? '1';
       String selectedKategoriTiketSafe = selectedKategoriTiket ?? 'REGULER';
-      String jumlahTiketSafe = jumlahTiket?.toString() ?? '1';
+      String jumlahTiketSafe = jumlahTiket.toString() ?? '1';
 
       List<int> bytes = [];
       CapabilityProfile profile = await CapabilityProfile.load();
@@ -2466,17 +2466,17 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                 },
                                 child: const Text('Simpan'),
                                 style: ButtonStyle(
-                                  minimumSize: MaterialStateProperty.all(Size(double.infinity, 48.0)),
-                                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                                        (Set<MaterialState> states) {
-                                      if (states.contains(MaterialState.pressed)) {
+                                  minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
+                                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                                        (Set<WidgetState> states) {
+                                      if (states.contains(WidgetState.pressed)) {
                                         return Colors.grey; // Warna abu-abu saat tombol ditekan
                                       } else {
                                         return Colors.green; // Warna hijau saat tombol tidak ditekan
                                       }
                                     },
                                   ),
-                                  foregroundColor: MaterialStateProperty.all(Colors.white), // Warna teks putih
+                                  foregroundColor: WidgetStateProperty.all(Colors.white), // Warna teks putih
                                 ),
                               ),
                             ),

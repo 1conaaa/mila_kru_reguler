@@ -317,7 +317,7 @@ class SetoranKruService {
   }
 
   Future<void> updateFilePath(int idTagTransaksi, String filePath) async {
-    final db = await DatabaseHelper().database;
+    final db = await DatabaseHelper.instance.database;
 
     await db.update(
       't_setoran_kru',

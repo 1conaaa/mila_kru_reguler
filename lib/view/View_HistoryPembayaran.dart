@@ -31,7 +31,7 @@ class HistoryPembayaran extends StatefulWidget {
 
 class _HistoryPembayaranState extends State<HistoryPembayaran> {
   List<Map<String, dynamic>> _dataInvoice = [];
-  final DatabaseHelper dbHelper = DatabaseHelper();
+  final DatabaseHelper dbHelper = DatabaseHelper.instance;
   bool _isLoading = true;
   bool _isRefreshing = false;
 

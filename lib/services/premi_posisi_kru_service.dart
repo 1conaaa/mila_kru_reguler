@@ -1,9 +1,11 @@
+import 'package:mila_kru_reguler/api/ApiHelperPremiPosisiKru.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/premi_posisi_kru_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 
 class PremiPosisiKruService {
-  final DatabaseHelper _databaseHelper = DatabaseHelper();
+  final DatabaseHelper _databaseHelper = DatabaseHelper.instance;
 
   // Insert data premi posisi kru
   Future<int> insertPremiPosisiKru(PremiPosisiKru premi) async {
@@ -39,16 +41,50 @@ class PremiPosisiKruService {
 
       print('✅ DEBUG: Tabel m_premi_posisi_kru ditemukan');
 
-      final List<Map<String, dynamic>> maps = await db.query('m_premi_posisi_kru');
+      // ======================================================
+      // 1. Query database pertama kali
+      // ======================================================
+      List<Map<String, dynamic>> maps = await db.query('m_premi_posisi_kru');
 
-      // DEBUG: Tampilkan jumlah data dan detail isi tabel
       print('=== DEBUG PREMI_POSISI_KRU ===');
-      print('📊 Jumlah data dalam m_premi_posisi_kru: ${maps.length}');
+      print('📊 Jumlah data awal dalam m_premi_posisi_kru: ${maps.length}');
 
+      // ======================================================
+      // 2. Jika database kosong → Ambil dari API
+      // ======================================================
       if (maps.isEmpty) {
         print('⚠️ DEBUG: Tabel m_premi_posisi_kru KOSONG');
-        print('ℹ️ DEBUG: Cek apakah data premi posisi sudah di-sync dari server');
-      } else {
+        print('➡️ DEBUG: Mengambil data dari API (requestListPremiPosisiKruAPI)...');
+
+        try {
+          // 🔥 PANGGIL API
+          // 🔹 Ambil data yang dibutuhkan untuk request API
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          String token = prefs.getString('token') ?? '';
+          String jenisTrayek = prefs.getString('jenisTrayek') ?? '';
+          String kelasBus = prefs.getString('kelasBus') ?? '';
+
+          print("DEBUG API PARAMS → token:$token | jenisTrayek:$jenisTrayek | kelasBus:$kelasBus");
+
+// 🔥 Panggil API dengan parameter lengkap
+          await ApiHelperPremiPosisiKru.requestListPremiPosisiKruAPI(token,jenisTrayek,kelasBus,);
+
+          print('✔ DEBUG: API selesai, data harusnya sudah tersimpan ke DB');
+        } catch (apiErr) {
+          print('❌ ERROR Saat memanggil API requestListPremiPosisiKruAPI: $apiErr');
+        }
+
+        // ======================================================
+        // 3. Ambil ulang data dari database setelah API sukses
+        // ======================================================
+        maps = await db.query('m_premi_posisi_kru');
+        print('📊 DEBUG: Jumlah data SETELAH SYNC API: ${maps.length}');
+      }
+
+      // ======================================================
+      // 4. Jika ada data → tampilkan isi tabel
+      // ======================================================
+      if (maps.isNotEmpty) {
         print('📋 DEBUG: Detail data m_premi_posisi_kru:');
         for (var i = 0; i < maps.length; i++) {
           final data = maps[i];
@@ -69,23 +105,25 @@ class PremiPosisiKruService {
       }
       print('=== END DEBUG PREMI_POSISI_KRU ===');
 
-      // Convert maps to objects
+      // ======================================================
+      // 5. Convert maps to objects
+      // ======================================================
       final result = List.generate(maps.length, (i) {
         return PremiPosisiKru.fromMap(maps[i]);
       });
 
-      // DEBUG: Tampilkan hasil konversi
       print('✅ DEBUG: Berhasil mengkonversi ${result.length} data ke objek PremiPosisiKru');
 
       return result;
 
     } catch (e) {
-      print('❌ ERROR get all premi posisi kru: $e');
+      print('❌ ERROR getAllPremiPosisiKru: $e');
       print('📋 Stack trace:');
       print(e.toString());
       rethrow;
     }
   }
+
 
   // Get premi posisi kru by ID
   Future<PremiPosisiKru?> getPremiPosisiKruById(int id) async {

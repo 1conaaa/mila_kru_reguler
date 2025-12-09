@@ -28,7 +28,7 @@ class ApiHelperPremiPosisiKru {
         List<PremiPosisiKruBis> premiPosisiKruData = apiResponsePremiPosisiKru.premiposisikru;
 
         // Simpan data ke shared preferences
-        DatabaseHelper databaseHelper = DatabaseHelper();
+        DatabaseHelper databaseHelper = DatabaseHelper.instance;
         await databaseHelper.initDatabase();
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('premiposisikruData', jsonEncode(premiPosisiKruData.map((premiPosisiKru) => premiPosisiKru.toMap()).toList()));
@@ -105,12 +105,12 @@ class ApiHelperPremiPosisiKru {
 
           // Tampilkan summary
           print('''
-=== SUMMARY SINKRONISASI PREMI POSISI KRU ===
-✅ Data dari API: ${premiPosisiKruData.length} record
-✅ Data tersimpan di database: ${savedModels.length} record
-✅ Proses sinkronisasi BERHASIL
-===========================================
-      ''');
+                === SUMMARY SINKRONISASI PREMI POSISI KRU ===
+                ✅ Data dari API: ${premiPosisiKruData.length} record
+                ✅ Data tersimpan di database: ${savedModels.length} record
+                ✅ Proses sinkronisasi BERHASIL
+                ===========================================
+                      ''');
 
         } catch (e) {
           print('❌ Error menyimpan data premi posisi kru: $e');

@@ -13,7 +13,7 @@ class HistroyTransaksi extends StatefulWidget {
 }
 
 class _HistroyTransaksiState extends State<HistroyTransaksi> {
-  DatabaseHelper databaseHelper = DatabaseHelper();
+  DatabaseHelper databaseHelper = DatabaseHelper.instance;
   List<Map<String, dynamic>> listPenjualan = [];
   NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp');
   bool _isPushingData = false;

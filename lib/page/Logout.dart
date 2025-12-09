@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
+import 'package:mila_kru_reguler/services/persen_premi_kru_service.dart';
 import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
@@ -15,7 +16,7 @@ class Logout extends StatelessWidget {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       prefs.clear(); // Bisa sekalian clear semua key SharedPreferences
 
-      DatabaseHelper databaseHelper = DatabaseHelper();
+      DatabaseHelper databaseHelper = DatabaseHelper.instance;
       await databaseHelper.initDatabase();
 
       // Inisialisasi services
@@ -25,6 +26,7 @@ class Logout extends StatelessWidget {
       final premiPosisiKruService = PremiPosisiKruService();
       final tagService = TagTransaksiService();
       final userService = UserService();
+      final persenPremiKruService = PersenPremiKruService.instance;
 
       await userService.clearUsersTable();
       await databaseHelper.clearKruBis();
@@ -40,6 +42,7 @@ class Logout extends StatelessWidget {
       await databaseHelper.clearOrderBagasiStatus();
       await databaseHelper.clearMetodePembayaran();
       await tagService.clearTagTransaksi();
+      await persenPremiKruService.clearTable();
 
       await databaseHelper.closeDatabase();
 

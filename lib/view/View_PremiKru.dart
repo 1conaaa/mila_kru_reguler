@@ -5,6 +5,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:mila_kru_reguler/api/ApiPersenPremiKru..dart';
+import 'package:mila_kru_reguler/models/PersenPremiKru.dart';
+import 'package:mila_kru_reguler/services/persen_premi_kru_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -30,7 +33,7 @@ class _PremiKruState extends State<PremiKru> {
   final TagTransaksiService tagTransaksiService = TagTransaksiService();
   final DataPusherService dataPusherService = DataPusherService();
 
-  final DatabaseHelper databaseHelper = DatabaseHelper();
+  final DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
   List<Map<String, dynamic>> listPremiHarianKru = [];
   late Future<List<SetoranKru>> setoranKruData;
@@ -40,6 +43,8 @@ class _PremiKruState extends State<PremiKru> {
 
   NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp');
   DateTime? _selectedDate;
+
+  get kodeTrayek => null;
 
   @override
   void initState() {
@@ -60,8 +65,7 @@ class _PremiKruState extends State<PremiKru> {
   }
 
   Future<void> _getListPremiKru() async {
-    List<Map<String, dynamic>> premiKruData =
-    await premiHarianKruService.getPremiHarianKruWithKruBis();
+    List<Map<String, dynamic>> premiKruData = await premiHarianKruService.getPremiHarianKruWithKruBis();
 
     setState(() {
       listPremiHarianKru = premiKruData;
@@ -447,19 +451,194 @@ class _PremiKruState extends State<PremiKru> {
                                 DataColumn(label: Text("Keterangan")),
                                 DataColumn(label: Text("Status")),
                               ],
-                              rows: setoranList.map((s) {
-                                return DataRow(
-                                  cells: [
-                                    DataCell(Text(s.id?.toString() ?? "-")),
-                                    DataCell(Text(_getNamaTagFromList(s.idTagTransaksi, tagList))),
-                                    DataCell(Text(s.nilai != null ? formatter.format(s.nilai!) : "-")),
-                                    DataCell(Text(s.keterangan ?? "-")),
-                                    DataCell(Text(s.status ?? "-")),
-                                  ],
+                              rows: setoranList.expand((s) {
+                                List<DataRow> rows = [];
+
+                                bool isPremiAtas = s.idTagTransaksi == 27;
+                                String namaTag = isPremiAtas
+                                    ? "Premi Atas"
+                                    : _getNamaTagFromList(s.idTagTransaksi, tagList);
+
+                                // ====== ROW UTAMA ======
+                                rows.add(
+                                  DataRow(
+                                    cells: [
+                                      DataCell(Text(s.id?.toString() ?? "-")),
+                                      DataCell(Text(namaTag)),
+                                      DataCell(Text(s.nilai != null ? formatter.format(s.nilai) : "-")),
+                                      DataCell(Text(s.keterangan ?? "-")),
+                                      DataCell(Text(s.status ?? "-")),
+                                    ],
+                                  ),
                                 );
+
+                                // ====== JIKA PREMI ATAS, TAMBAHKAN DETAIL PEMBAGIAN PER KRU ======
+                                if (isPremiAtas && listPremiHarianKru.isNotEmpty) {
+                                  // Row header pembagian
+                                  rows.add(
+                                    DataRow(
+                                      cells: const [
+                                        DataCell(Text("")),
+                                        DataCell(Text("🔽 Pembagian Premi Atas")),
+                                        DataCell(Text("")),
+                                        DataCell(Text("")),
+                                        DataCell(Text("")),
+                                      ],
+                                    ),
+                                  );
+
+                                  // Row untuk data pembagian
+                                  rows.add(
+                                    DataRow(
+                                      cells: [
+                                        const DataCell(Text("")),
+                                        DataCell(
+                                          Container(
+                                            width: MediaQuery.of(context).size.width * 0.6,
+                                            child: FutureBuilder<List<ListPersenPremiKru>>(
+                                              future: PersenPremiKruService.instance.getByKodeTrayek(
+                                                s.kodeTrayek ?? "",
+                                                idJenisPremi: 1,
+                                                onDataFetchedFromApi: (apiSuccess) {
+                                                  if (apiSuccess && mounted) {
+                                                    Future.delayed(Duration(milliseconds: 200), () => setState(() {}));
+                                                  }
+                                                },
+                                              ),
+                                              builder: (context, snapshot) {
+                                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                                  return Row(
+                                                    children: [
+                                                      CircularProgressIndicator(strokeWidth: 2),
+                                                      SizedBox(width: 8),
+                                                      Text("Memuat data..."),
+                                                    ],
+                                                  );
+                                                }
+
+                                                if (snapshot.hasError) {
+                                                  return Text("Error: ${snapshot.error}");
+                                                }
+
+                                                final persenList = snapshot.data ?? [];
+
+                                                if (persenList.isEmpty) {
+                                                  return Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text("⚠️ Data tidak ditemukan"),
+                                                      SizedBox(height: 4),
+                                                      ElevatedButton(
+                                                        onPressed: () async {
+                                                          final prefs = await SharedPreferences.getInstance();
+                                                          final token = prefs.getString('token');
+
+                                                          if (token != null && s.kodeTrayek != null) {
+                                                            final ok = await ApiHelperPersenPremiKru
+                                                                .requestListPersenPremiAPI(token, s.kodeTrayek!);
+                                                            if (mounted) setState(() {});
+                                                          }
+                                                        },
+                                                        child: Text("Ambil Data"),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }
+
+                                                double totalPersen =
+                                                persenList.fold(0.0, (sum, item) => sum + item.nilaiAsDouble);
+
+                                                return SingleChildScrollView(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      // LIST PEMBAGIAN — FIX OVERFLOW
+                                                      ...persenList.map((p) {
+                                                        final persen = p.nilaiAsDouble;
+                                                        final nominal = totalPersen > 0
+                                                            ? (persen / totalPersen) * (s.nilai ?? 0)
+                                                            : 0;
+
+                                                        final namaKru = listPremiHarianKru.firstWhere(
+                                                              (k) => k["id_posisi_kru"] == p.idPosisiKru,
+                                                          orElse: () => {"nama_kru": "Kru #${p.idPosisiKru}"},
+                                                        )["nama_kru"] ??
+                                                            "Kru #${p.idPosisiKru}";
+
+                                                        return Container(
+                                                          padding: EdgeInsets.symmetric(vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            border: Border(
+                                                              bottom: BorderSide(color: Colors.grey[300]!),
+                                                            ),
+                                                          ),
+                                                          child: Column(
+                                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                                            children: [
+                                                              // baris nama kru + nilai nominal
+                                                              Row(
+                                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                                children: [
+                                                                  Expanded(
+                                                                    child: Text(
+                                                                      namaKru,
+                                                                      overflow: TextOverflow.ellipsis,
+                                                                      style: TextStyle(fontSize: 12),
+                                                                    ),
+                                                                  ),
+                                                                  SizedBox(width: 6),
+                                                                  Text(
+                                                                    formatter.format(nominal),
+                                                                    style: TextStyle(
+                                                                      fontSize: 12,
+                                                                      fontWeight: FontWeight.bold,
+                                                                    ),
+                                                                  ),
+                                                                ],
+                                                              ),
+
+                                                              SizedBox(height: 2),
+
+                                                              // persen badge
+                                                              Container(
+                                                                padding:
+                                                                EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                                decoration: BoxDecoration(
+                                                                  color: Colors.green[50],
+                                                                  borderRadius: BorderRadius.circular(3),
+                                                                ),
+                                                                child: Text(
+                                                                  "${persen.toStringAsFixed(1)}%",
+                                                                  style: TextStyle(fontSize: 10),
+                                                                ),
+                                                              ),
+                                                            ],
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                    ],
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ),
+
+                                        const DataCell(Text("")),
+                                        const DataCell(Text("")),
+                                        const DataCell(Text("")),
+                                      ],
+                                    ),
+                                  );
+
+                                }
+
+
+                                return rows;
                               }).toList(),
                             ),
                           );
+
                         },
                       );
                     },
