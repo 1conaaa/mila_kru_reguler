@@ -25,11 +25,11 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_9122025-v1.db';
+    String path = '${documentsDirectory.path}/bisapp_16122025-8.db';
 
     return await openDatabase(
       path,
-      version: 1, // Update the version number
+      version: 8, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -110,8 +110,8 @@ class DatabaseHelper {
       )
     ''');
 
-      // Tabel t_setoran_kru
-      await db.execute('''
+    // Tabel t_setoran_kru
+    await db.execute('''
       CREATE TABLE t_setoran_kru (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         tgl_transaksi TEXT,
@@ -223,18 +223,18 @@ class DatabaseHelper {
       kelas_bus TEXT,
       tanggal_simpan TEXT,
       rute TEXT,
-      keydataPremiextra TEXT,
-      premiExtra TEXT,
-      keydataPremikru TEXT,
-      persenPremikru TEXT,
-      idJadwalTrip TEXT,
-      tagTransaksiPendapatan TEXT,
-      tagTransaksiPengeluaran TEXT,
-      coaPendapatanBus TEXT,
-      coaPengeluaranBus TEXT,
-      coaUtangPremi TEXT,
-      noKontak TEXT,
-      persenSusukanKru TEXT,
+      keydata_premiextra TEXT,
+      premi_extra TEXT,
+      keydata_premikru TEXT,
+      persen_premikru TEXT,
+      id_jadwal_trip INTEGER,
+      tag_transaksi_pendapatan TEXT,
+      tag_transaksi_pengeluaran TEXT,
+      coa_pendapatan_bus TEXT,
+      coa_pengeluaran_bus TEXT,
+      coa_utang_premi TEXT,
+      no_kontak TEXT,
+      persen_susukan TEXT,
       UNIQUE (id_user, id_group, id_company, id_garasi, id_bus, no_pol, tanggal_simpan)
     )
     ''');

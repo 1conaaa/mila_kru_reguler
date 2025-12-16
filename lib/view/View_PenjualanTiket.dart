@@ -269,9 +269,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<void> _getUserData() async {
-    List<Map<String, dynamic>> users = await _userService.getUsers();
+    final users = await _userService.getUsersRaw(); // ✅ GANTI INI
+
     if (users.isNotEmpty) {
-      Map<String, dynamic> firstUser = users[0];
+      final firstUser = users.first;
+
       setState(() {
         idUser = firstUser['id_user'];
         idGroup = firstUser['id_group'];
@@ -283,13 +285,16 @@ class _PenjualanFormState extends State<PenjualanForm> {
         namaTrayek = firstUser['nama_trayek'];
         jenisTrayek = firstUser['jenis_trayek'];
         kelasBus = firstUser['kelas_bus'];
-        keydataPremiextra = firstUser['keydataPremiextra'];
-        premiExtra = firstUser['premiExtra'];
-        keydataPremikru = firstUser['keydataPremikru'];
-        persenPremikru = firstUser['persenPremikru'];
+
+        // ⚠️ PERBAIKI KEY (snake_case)
+        keydataPremiextra = firstUser['keydata_premiextra'];
+        premiExtra = firstUser['premi_extra'];
+        keydataPremikru = firstUser['keydata_premikru'];
+        persenPremikru = firstUser['persen_premikru'];
       });
     }
   }
+
 
   void _calculateKembalian(double jumlahBayar, double jumlahTagihan) {
     setState(() {
@@ -788,80 +793,22 @@ class _PenjualanFormState extends State<PenjualanForm> {
       final prefs = await SharedPreferences.getInstance();
       String? persenStr = prefs.getString('persenSusukanKru');
 
-      // Default 0%
+// Default 0%
       double persenKru = 0.0;
 
+// ✅ NULL-SAFE parsing
       if (persenStr != null && persenStr.contains('%')) {
         persenKru = double.tryParse(
-          persenStr.replaceAll('%', ''),
+          persenStr.replaceAll('%', '').trim(),
         ) ?? 0.0;
+      } else if (persenStr != null) {
+        persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
       }
 
-      // konversi 9% -> 0.09
+// konversi 9% -> 0.09
       double persen = persenKru / 100;
 
-      // setState(() {
-      //   try {
-      //     // 1. BULATKAN TARIKAN DULU
-      //     int hargaTarikanBulat = pembulatanRibuan(hargaTarikan);
-      //
-      //     // 2. HITUNG HARGA KANTOR BARU (BELUM DIBULATKAN)
-      //     double hargaKantorHitung = hargaTarikanBulat - (persen * hargaTarikanBulat);
-      //
-      //     // 3. BULATKAN HASIL HARGA KANTOR BARU
-      //     // int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
-      //     int hargaKantorBulat = hargaKantorHitung.toInt();
-      //
-      //     // ---------------------------------------------------
-      //     // 🆕 Tahap 3 — Tambahkan harga KHUSUS setelah kantorBulat didapat
-      //     // ---------------------------------------------------
-      //     double tambahanHarga = hitungPenambahanHarga(
-      //       jarakAwal: jarakAwal,
-      //       selisihJarak: selisihJarak,
-      //       jenisTrayek: jenisTrayek ?? "",
-      //       kelasBus: kelasBus ?? "",
-      //       namaTrayek: namaTrayek ?? "",
-      //     );
-      //
-      //     print("🎁 Tambahan harga khusus: Rp $tambahanHarga");
-      //
-      //     // Tambahan harga hanya untuk TARIKAN
-      //     double hargaTarikanFinal = hargaTarikanBulat + tambahanHarga;
-      //
-      //     // Bulatkan lagi setelah ditambah
-      //     int hargaTarikanFinalBulat = pembulatanRibuan(hargaTarikanFinal);
-      //
-      //     // 4. VALIDASI
-      //     if (hargaKantorBulat < 0) hargaKantorBulat = 0;
-      //     if (hargaTarikanFinalBulat < 0) hargaTarikanFinalBulat = 0;
-      //
-      //     // 5. SIMPAN KE VARIABEL GLOBAL
-      //     _hargaKantorCalculated = hargaKantorBulat.toDouble();
-      //     _hargaTarikanCalculated = hargaTarikanFinalBulat.toDouble();
-      //
-      //     // 6. TAMPILKAN KE CONTROLLER
-      //     hargaKantorController.text = formatter.format(hargaKantorBulat);
-      //     tagihanController.text = formatter.format(hargaTarikanFinalBulat);
-      //
-      //     jumlahTagihan = hargaTarikanFinalBulat.toDouble();
-      //
-      //     print('✅ PERHITUNGAN BERHASIL:');
-      //     print('   Harga Kantor: Rp $_hargaKantorCalculated');
-      //     print('   Harga Tarikan: Rp $_hargaTarikanCalculated');
-      //     print('   Jumlah Tagihan: Rp $jumlahTagihan');
-      //     print('   Kategori Tiket: $selectedKategoriTiket');
-      //
-      //   } catch (e) {
-      //     print('❌ Error dalam setState: $e');
-      //
-      //     // fallback
-      //     hargaKantorController.text = '0';
-      //     tagihanController.text = '0';
-      //     _hargaKantorCalculated = 0.0;
-      //     _hargaTarikanCalculated = 0.0;
-      //     jumlahTagihan = 0.0;
-      //   }
-      // });
+
 
       setState(() {
         try {
@@ -1930,8 +1877,13 @@ class _PenjualanFormState extends State<PenjualanForm> {
                             String? persenStr = prefs.getString('persenSusukanKru');
 
                             double persenKru = 0.0;
+
                             if (persenStr != null && persenStr.contains('%')) {
-                              persenKru = double.tryParse(persenStr.replaceAll('%', '')) ?? 0.0;
+                              persenKru = double.tryParse(
+                                persenStr.replaceAll('%', '').trim(),
+                              ) ?? 0.0;
+                            } else if (persenStr != null) {
+                              persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
                             }
 
                             double persen = persenKru / 100;

@@ -313,7 +313,8 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   Future<void> _getUserData() async {
     try {
       // GUNAKAN UserService instead of databaseHelper
-      List<Map<String, dynamic>> users = await _userService.getUsers();
+      List<Map<String, dynamic>> users = await _userService.getUsersRaw();
+
       if (users.isNotEmpty) {
         Map<String, dynamic> firstUser = users[0];
         setState(() {

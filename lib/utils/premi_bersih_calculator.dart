@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
-import 'package:mila_kru_reguler/models/user_data.dart';
+import 'package:mila_kru_reguler/models/user.dart';
 
 class PremiBersihCalculator {
   /// Method utama untuk kalkulasi premi bersih dengan user data
@@ -12,7 +12,7 @@ class PremiBersihCalculator {
     required Map<int, TextEditingController> controllers,
     required Map<int, TextEditingController> jumlahControllers,
     required Map<int, TextEditingController> literSolarControllers,
-    required UserData userData,
+    required User userData,
   }) {
     final allData = collectAllTagData(
       tagPendapatan: tagPendapatan,
@@ -69,9 +69,10 @@ class PremiBersihCalculator {
       controllers: controllers,
       jumlahControllers: jumlahControllers,
       literSolarControllers: literSolarControllers,
-      userData: UserData.empty(),
+      userData: User.empty(), // ✅ FIX
     );
   }
+
 
   /// Ekstrak nilai dari controllers berdasarkan ID tag
   static Map<String, double> _extractValuesFromControllers({
@@ -122,7 +123,7 @@ class PremiBersihCalculator {
   /// Kalkulasi kompleks berdasarkan aturan bisnis
   static Map<String, dynamic> _calculateComplexPremi({
     required Map<String, double> extractedValues,
-    required UserData userData,
+    required User userData,
     required Map<String, List<TagData>> allData,
   }) {
     print('=== [DEBUG] START CALCULATION ===');
@@ -172,9 +173,12 @@ class PremiBersihCalculator {
     print('Pengeluaran Operasional Sby: $pengeluaranOperasionalSby');
 
     // Parse persentase premi dari userData
-    final double persenPremiExtra = (double.tryParse(userData.premiExtra.replaceAll('%', '')) ?? 0.0) / 100;
-    final double persenPremiKru = ((double.tryParse(userData.persenPremikru.replaceAll('%', '')) ?? 0.0) -
-        (double.tryParse(userData.premiExtra.replaceAll('%', '')) ?? 0.0)) / 100;
+    final double persenPremiExtra =
+        (double.tryParse(userData.premiExtra?.replaceAll('%', '') ?? '0') ?? 0) / 100;
+
+    final double persenPremiKru =
+        (double.tryParse(userData.persenPremikru?.replaceAll('%', '') ?? '0') ?? 0) / 100;
+
 
     print('=== [DEBUG] PARSED PERCENTAGES ===');
     print('Persen Premi Extra: $persenPremiExtra');
@@ -560,7 +564,7 @@ class PremiBersihCalculator {
   static void updateAutoCalculatedFields({
     required Map<String, dynamic> calculationResult,
     required Map<int, TextEditingController> controllers,
-    required UserData userData,
+    required User userData,
   }) {
     final double nominalPremiExtra = calculationResult['nominalPremiExtra'] as double;
     final double nominalPremiKru = calculationResult['nominalPremiKru'] as double;
@@ -607,7 +611,7 @@ class PremiBersihCalculator {
     updateAutoCalculatedFields(
       calculationResult: calculationResult,
       controllers: controllers,
-      userData: UserData.empty(),
+      userData: User.empty(),
     );
   }
 
@@ -691,7 +695,7 @@ class PremiBersihCalculator {
 
   static void _printDebugInfo(
       Map<String, dynamic> calculations,
-      UserData userData,
+      User userData,
       ) {
     print('=== HASIL KALKULASI PREMI BERSIH ===');
     print('  User Data:');

@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:mila_kru_reguler/models/user_data.dart';
+import 'package:mila_kru_reguler/models/user.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -41,6 +41,14 @@ class _HomeState extends State<Home> {
     loadKruBisData(context);
   }
 
+  String? _getStringSafe(SharedPreferences prefs, String key) {
+    final value = prefs.get(key);
+    if (value == null) return null;
+    if (value is String) return value;
+    return value.toString();
+  }
+
+
   /// Fungsi khusus untuk memanggil ApiHelperKruBis
   Future<void> loadKruBisData(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
@@ -73,20 +81,24 @@ class _HomeState extends State<Home> {
     });
 
     final prefs = await SharedPreferences.getInstance();
+
     setState(() {
-      idUser = prefs.getInt('idUser') ?? 0;
+      idUser = prefs.getInt('idUser');
       idGarasi = prefs.getInt('idGarasi');
       idBus = prefs.getInt('idBus') ?? 0;
-      noPol = prefs.getString('noPol');
-      idJadwalTrip = prefs.getString('idJadwalTrip');
-      token = prefs.getString('token') ?? '';
-      namaTrayek = prefs.getString('namaTrayek') ?? '';
-      namaLengkap = prefs.getString('namaLengkap') ?? '';
-      noKontak = prefs.getString('noKontak') ?? '';
+
+      noPol = _getStringSafe(prefs, 'noPol');
+      idJadwalTrip = _getStringSafe(prefs, 'idJadwalTrip');
+      token = _getStringSafe(prefs, 'token');
+      namaTrayek = _getStringSafe(prefs, 'namaTrayek');
+      namaLengkap = _getStringSafe(prefs, 'namaLengkap');
+      noKontak = _getStringSafe(prefs, 'noKontak');
     });
 
     await _fetchAllData();
   }
+
+
 
   /// 🆕 Fungsi untuk mengambil semua data sekaligus
   Future<void> _fetchAllData() async {
@@ -108,7 +120,7 @@ class _HomeState extends State<Home> {
   /// 🆕 Preload user data
   Future<void> _preloadUserData() async {
     try {
-      await _userService.getAllUsersAsUserData();
+      await _userService.getAllUsers();
     } catch (e) {
       debugPrint('❌ Error preloading user data: $e');
     }
@@ -127,12 +139,13 @@ class _HomeState extends State<Home> {
 
   /// 🔹 Ambil data notifikasi dari API listnotifikasireguler
   Future<void> _fetchNotifikasi() async {
-    if ((token ?? '').isEmpty || idJadwalTrip == null) {
+    if ((token ?? '').isEmpty || (idJadwalTrip ?? '').isEmpty) {
       setState(() {
         notifikasiList = [];
       });
       return;
     }
+
 
     final uri = Uri.parse(
       'https://apimila.milaberkah.com/api/listnotifikasireguler',
@@ -198,11 +211,11 @@ class _HomeState extends State<Home> {
   }
 
   // Method untuk mendapatkan semua user data
-  Future<List<UserData>> getAllUserData() async {
+  Future<List<User>> getAllUserData() async {
     try {
-      return await _userService.getAllUsersAsUserData();
+      return await _userService.getAllUsers();
     } catch (e) {
-      print('Error getting all users: $e');
+      debugPrint('Error getting all users: $e');
       return [];
     }
   }
@@ -240,7 +253,7 @@ class _HomeState extends State<Home> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Beranda'),
+        title: const Text('Berandas'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         // 🆕 Nonaktifkan leading button selama loading
@@ -324,9 +337,9 @@ class _HomeState extends State<Home> {
                           child: AbsorbPointer(
                             // 🆕 Nonaktifkan interaksi selama loading
                             absorbing: _isInitialLoading,
-                            child: FutureBuilder<List<UserData>>(
+                            child: FutureBuilder<List<User>>(
                               future: getAllUserData(),
-                              builder: (BuildContext context, AsyncSnapshot<List<UserData>> snapshot) {
+                              builder: (BuildContext context, AsyncSnapshot<List<User>> snapshot) {
                                 if (snapshot.connectionState == ConnectionState.waiting) {
                                   return const Center(
                                     child: Column(
@@ -354,7 +367,7 @@ class _HomeState extends State<Home> {
                                     ],
                                   );
                                 } else if (snapshot.hasData) {
-                                  List<UserData> users = snapshot.data!;
+                                  List<User> users = snapshot.data!;
 
                                   if (users.isEmpty) {
                                     return const Column(
@@ -371,7 +384,7 @@ class _HomeState extends State<Home> {
                                     physics: const NeverScrollableScrollPhysics(),
                                     itemCount: users.length,
                                     itemBuilder: (BuildContext context, int index) {
-                                      UserData user = users[index];
+                                      User user = users[index];
                                       return Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [

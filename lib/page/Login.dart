@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/api/ApiHelperMetodePembayaran.dart';
 import 'package:mila_kru_reguler/api/ApiPersenPremiKru..dart';
+import 'package:mila_kru_reguler/models/user.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,36 +61,64 @@ class _LoginState extends State<Login> {
   }
 
   void _showDialog(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Login Result'),
-          content: Text(message),
-          actions: <Widget>[
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Masuk'),
-            ),
-          ],
-        );
-      },
-    );
+    print("[DEBUG] ================= SHOW DIALOG =================");
+    print("[DEBUG] Time        : ${DateTime.now()}");
+    print("[DEBUG] Context     : $context");
+    print("[DEBUG] Message     : $message");
+    print("[DEBUG] =================================================");
+
+    try {
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          print("[DEBUG] AlertDialog builder dipanggil");
+          print("[DEBUG] dialogContext: $dialogContext");
+
+          return AlertDialog(
+            title: const Text('Login Result'),
+            content: Text(message),
+            actions: <Widget>[
+              ElevatedButton(
+                onPressed: () {
+                  print("[DEBUG] Tombol 'Masuk' ditekan");
+                  print("[DEBUG] Menutup dialog...");
+                  Navigator.pop(dialogContext);
+                  print("[DEBUG] Dialog ditutup.");
+                },
+                child: const Text('Masuk'),
+              ),
+            ],
+          );
+        },
+      ).catchError((e, stack) {
+        print("[ERROR] showDialog gagal!");
+        print("[ERROR] Pesan   : $e");
+        print("[ERROR] Stack   : $stack");
+      });
+    } catch (e, stack) {
+      print("[FATAL ERROR] Terjadi error pada _showDialog()");
+      print("[FATAL] Pesan : $e");
+      print("[FATAL] Stack : $stack");
+    }
   }
 
   Future<void> _login() async {
-    if (_isLoading || _isInitializing) return; // 🆕 Prevent login during initialization
+    if (_isLoading || _isInitializing) return;
 
     setState(() {
       _isLoading = true;
     });
 
-    String username = _usernameController.text;
-    String password = _passwordController.text;
+    String username = _usernameController.text.trim();
+    String password = _passwordController.text.trim();
 
     try {
+      // ========== DEBUG RESPONSE ==========
+      print("=== DEBUG LOGIN API ===");
+      print("Username : $username");
+      print("Password : (disembunyikan)");
+      print("====================================");
+
       final response = await http.post(
         Uri.parse('https://apimila.milaberkah.com/api/login?username=$username&password=$password'),
         body: {
@@ -98,145 +127,154 @@ class _LoginState extends State<Login> {
         },
       );
 
+      print("Status Code : ${response.statusCode}");
+      print("Raw Body    : ${response.body}");
+      print("====================================");
+
       setState(() {
         _isLoading = false;
       });
 
-      if (response.statusCode == 200) {
-        ApiResponseUser apiResponseUser = ApiResponseUser.fromJson(jsonDecode(response.body));
-        if (apiResponseUser.success == 1) {
-          // If login success, save the status to SharedPreferences
-          SharedPreferences prefs = await SharedPreferences.getInstance();
-          User user = apiResponseUser.user;
-          await prefs.setString('token', apiResponseUser.token);
-          await prefs.setInt('idGroup', user.idGroup);
-          await prefs.setInt('idUser', user.idUser);
-          await prefs.setInt('idCompany', user.idCompany);
-          await prefs.setInt('idGarasi', user.idGarasi);
-          await prefs.setInt('idBus', user.idBus);
-          await prefs.setString('noPol', user.noPol);
-          await prefs.setString('namaLengkap', user.namaLengkap);
-          await prefs.setString('namaUser', user.namaUser);
-          await prefs.setString('password', user.password);
-          await prefs.setString('foto', user.foto);
-          await prefs.setString('group_name', user.groupName);
-          await prefs.setString('kode_trayek', user.kodeTrayek);
-          await prefs.setString('namaTrayek', user.namaTrayek);
-          await prefs.setString('rute', user.rute);
-          await prefs.setString('jenisTrayek', user.jenisTrayek);
-          await prefs.setString('kelasBus', user.kelasBus);
-          await prefs.setString('premiExtra', user.premiExtra);
-          await prefs.setString('keydataPremiextra', user.keydataPremiextra);
-          await prefs.setString('keydataPremikru', user.keydataPremikru);
-          await prefs.setString('persenPremikru', user.persenPremikru);
-          await prefs.setString('idJadwalTrip', user.idJadwalTrip);
-          await prefs.setString('tagTransaksiPendapatan', user.tagTransaksiPendapatan);
-          await prefs.setString('tagTransaksiPengeluaran', user.tagTransaksiPengeluaran);
-          await prefs.setString('coaPendapatanBus', user.coaPendapatanBus);
-          await prefs.setString('coaPengeluaranBus', user.coaPengeluaranBus);
-          await prefs.setString('coaUtangPremi', user.coaUtangPremi);
-          await prefs.setString('noKontak', user.noKontak);
-          await prefs.setString('persenSusukanKru', user.persenSusukanKru);
+      // ========== CEK STATUS CODE ==========
+      if (response.statusCode != 200) {
+        _showDialog(context, 'Login gagal! Server tidak merespons dengan benar.');
+        return;
+      }
 
-          // 🧩 Tambahkan print untuk memeriksa nilainya
-          print("=== DATA TAG TRANSAKSI ===");
-          print("Pendapatan: ${user.tagTransaksiPendapatan}");
-          print("Pengeluaran: ${user.tagTransaksiPengeluaran}");
-          print("COA Pendapatan: ${user.coaPendapatanBus}");
-          print("COA Pengeluaran: ${user.coaPengeluaranBus}");
-          print("COA Utang Premi: ${user.coaUtangPremi}");
-          print("No Kontak: ${user.noKontak}");
-          print("Persen Susukan Kru: ${user.persenSusukanKru}");
-          print("===========================");
+      // ========== PARSE JSON DENGAN TRY/CATCH ==========
+      ApiResponseUser apiResponseUser;
+      try {
+        apiResponseUser = ApiResponseUser.fromJson(jsonDecode(response.body));
+      } catch (e) {
+        print("[ERROR] Parsing JSON gagal: $e");
+        _showDialog(context, "Login gagal: Format data tidak valid!\n$e");
+        return;
+      }
 
-          try {
-            await _userService.insertUser(user.toMap());
-            print('User data saved successfully');
-          } catch (e) {
-            print('Error saving user data: $e');
-          }
+      // ========== CEK LOGIN SUCCESS ==========
+      if (apiResponseUser.success != 1) {
+        _showDialog(context, 'Username atau password salah.');
+        return;
+      }
 
-          Navigator.pushReplacementNamed(context, '/');
+      // =================== SIMPAN DATA =====================
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      User user = apiResponseUser.user;
 
-          _showDialog(
-            context,
-            'Salam ${user.namaLengkap}, Saat ini Anda berserta kru yang lain sudah terdaftar untuk bertugas hari ini pada Bis (${user.idBus})-${user.noPol} pada Trayek ${user.namaTrayek}, Selamat Bertugas. Bismillah.',
-          );
+      print("=== DEBUG: Menyimpan Data SharedPreferences ===");
 
-          String token = apiResponseUser.token;
-          int idBus = user.idBus;
-          String noPol = user.noPol;
-          int idGarasi = user.idGarasi;
-          String namaTrayek = user.namaTrayek;
-          String jenisTrayek = user.jenisTrayek;
-          String kodeTrayek = user.kodeTrayek;
-          String kelasbus = user.kelasBus;
-          String keydataPremiextra = user.keydataPremiextra;
-          String premiExtra = user.premiExtra;
-          String keydataPremikru = user.keydataPremikru;
-          String persenPremikru = user.persenPremikru;
+      Map<String, dynamic> dataUserToSave = {
+        "token": apiResponseUser.token,
+        "idGroup": user.idGroup,
+        "idUser": user.idUser,
+        "idCompany": user.idCompany,
+        "idGarasi": user.idGarasi,
+        "idBus": user.idBus,
+        "noPol": user.noPol ?? "",
+        "namaLengkap": user.namaLengkap ?? "",
+        "namaUser": user.namaUser ?? "",
+        "foto": user.foto ?? "",
+        "group_name": user.groupName ?? "",
+        "kode_trayek": user.kodeTrayek ?? "",
+        "namaTrayek": user.namaTrayek ?? "",
+        "rute": user.rute ?? "",
+        "jenisTrayek": user.jenisTrayek ?? "",
+        "kelasBus": user.kelasBus ?? "",
+        "premiExtra": user.premiExtra ?? "",
+        "keydataPremiextra": user.keydataPremiextra ?? "",
+        "keydataPremikru": user.keydataPremikru ?? "",
+        "persenPremikru": user.persenPremikru ?? "",
+        "idJadwalTrip": user.idJadwalTrip ?? "",
+        "tagTransaksiPendapatan": user.tagTransaksiPendapatan ?? "",
+        "tagTransaksiPengeluaran": user.tagTransaksiPengeluaran ?? "",
+        "coaPendapatanBus": user.coaPendapatanBus ?? "",
+        "coaPengeluaranBus": user.coaPengeluaranBus ?? "",
+        "coaUtangPremi": user.coaUtangPremi ?? "",
+        "noKontak": user.noKontak ?? "",
+        "persenSusukanKru": user.persenSusukan ?? "",
+      };
 
-          List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getDataPenjualan();
-          setState(() {
-            listPenjualan = penjualanData;
-          });
+      for (var entry in dataUserToSave.entries) {
+        print("[DEBUG] Simpan ${entry.key} = ${entry.value}");
 
-          if (listPenjualan.isEmpty) {
-            print('Tidak ada data dalam tabel Penjualan Tiket.');
-            await ApiHelperKruBis.requestKruBisAPI(token, idBus, noPol, idGarasi, context);
-            ApiHelperPersenPremiKru.requestListPersenPremiAPI(token, kodeTrayek);
-            await ApiHelperListKota.requestListKotaAPI(token, kodeTrayek);
-
-
-            List<String> kata = kelasbus.split(" ");
-            int jumlahKata = kata.length;
-            print("Jumlah kata dalam kelasBus: $jumlahKata");
-
-            List<String> kataTerbaru = [];
-            for (int i = 0; i < kata.length; i++) {
-              if (i < kata.length - 1) {
-                if (kata[i].endsWith("-") && kata[i + 1].startsWith("-")) {
-                  String gabunganKata = kata[i] + kata[i + 1];
-                  kataTerbaru.add(gabunganKata);
-                  i++;
-                } else {
-                  kataTerbaru.add(kata[i]);
-                }
-              } else {
-                kataTerbaru.add(kata[i]);
-              }
-            }
-
-            jumlahKata = kataTerbaru.length;
-            print("Jumlah kata setelah penggabungan: $jumlahKata");
-
-            String kelasBus = kataTerbaru.join("");
-            print("Kata-kata setelah penggabungan: $kelasBus");
-
-            await ApiHelperMetodePembayaran.fetchAndStoreMetodePembayaran(token);
-            await ApiHelperPremiPosisiKru.requestListPremiPosisiKruAPI(token, jenisTrayek, kelasBus);
-            await ApiHelperOperasiHarianBus.addListOperasiHarianBusAPI(token, idBus, noPol, kodeTrayek);
-            await ApiHelperInspectionItems.addListInspectionItemsAPI(token);
-            await ApiHelperJenisPaket.addListJenisPaketAPI(token);
-            await ApiHelperTagTransaksi.fetchAndStoreTagTransaksi(token);
-
-          } else {
-            print('Data ditemukan dalam tabel Penjualan Tiket.');
-          }
-
+        if (entry.value is int) {
+          await prefs.setInt(entry.key, entry.value);
         } else {
-          _showDialog(context, 'Anda gagal melakukan login. Silakan coba lagi.');
+          await prefs.setString(entry.key, entry.value.toString());
         }
+      }
+
+      print("=== DEBUG: Penyimpanan selesai ===");
+
+      // ========== SIMPAN USER KE SQLITE ==========
+      try {
+        await _userService.insertUser(user.toMap());
+        print('[SUCCESS] User data saved to SQLite');
+      } catch (e) {
+        print('[ERROR] Gagal simpan ke SQLite: $e');
+      }
+
+      // ========== PINDAH HALAMAN ==========
+      Navigator.pushReplacementNamed(context, '/');
+
+      // ========== TAMPILKAN DIALOG ==========
+      _showDialog(
+        context,
+        'Salam ${user.namaLengkap}, Anda sudah terdaftar bertugas pada Bis (${user.idBus})-${user.noPol} '
+            'Trayek ${user.namaTrayek}. Selamat bertugas. Bismillah.',
+      );
+
+      // ========== LOAD DATA LANJUTAN ==========
+      String token = apiResponseUser.token;
+      int idBus = user.idBus;
+      int idGarasi = user.idGarasi;
+      String noPol = user.noPol ?? "";
+      String namaTrayek = user.namaTrayek ?? "";
+      String jenisTrayek = user.jenisTrayek ?? "";
+      String kodeTrayek = user.kodeTrayek ?? "";
+      String kelasBusRaw = user.kelasBus ?? "";
+
+      List<Map<String, dynamic>> penjualanData =
+      await PenjualanTiketService.instance.getDataPenjualan();
+      setState(() => listPenjualan = penjualanData);
+
+      if (listPenjualan.isEmpty) {
+        print('Tidak ada data penjualan, memuat dari API...');
+
+        await ApiHelperKruBis.requestKruBisAPI(token, idBus, noPol, idGarasi, context);
+        ApiHelperPersenPremiKru.requestListPersenPremiAPI(token, kodeTrayek);
+        await ApiHelperListKota.requestListKotaAPI(token, kodeTrayek);
+
+        // Perbaikan kelasBus
+        List<String> kata = kelasBusRaw.split(" ");
+        List<String> kataFix = [];
+        for (int i = 0; i < kata.length; i++) {
+          if (i < kata.length - 1 && kata[i].endsWith("-") && kata[i + 1].startsWith("-")) {
+            kataFix.add(kata[i] + kata[i + 1]);
+            i++;
+          } else {
+            kataFix.add(kata[i]);
+          }
+        }
+
+        String kelasBusFinal = kataFix.join("");
+
+        await ApiHelperMetodePembayaran.fetchAndStoreMetodePembayaran(token);
+        await ApiHelperPremiPosisiKru.requestListPremiPosisiKruAPI(token, jenisTrayek, kelasBusFinal);
+        await ApiHelperOperasiHarianBus.addListOperasiHarianBusAPI(token, idBus, noPol, kodeTrayek);
+        await ApiHelperInspectionItems.addListInspectionItemsAPI(token);
+        await ApiHelperJenisPaket.addListJenisPaketAPI(token);
+        await ApiHelperTagTransaksi.fetchAndStoreTagTransaksi(token);
       } else {
-        _showDialog(context, 'Anda gagal melakukan login. Silakan coba lagi.');
+        print('Data penjualan ditemukan, tidak memuat ulang API.');
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      print("[EXCEPTION] $e");
+      setState(() => _isLoading = false);
       _showDialog(context, 'Terjadi kesalahan: $e');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

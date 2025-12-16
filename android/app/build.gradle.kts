@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.example.mila_kru_reguler"
+    namespace = "com.milaberkah.mila_kru_reguler"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "27.0.12077973"
 
@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.milaberkah.BIS"
+        applicationId = "com.milaberkah.mila_kru_reguler"
         minSdk = 23
         targetSdk = 35
         targetSdk = flutter.targetSdkVersion

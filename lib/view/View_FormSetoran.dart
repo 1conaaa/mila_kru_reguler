@@ -154,7 +154,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
                           // Kondisi: jika kelasLayanan = 'akapekonomi', sembunyikan idTag 15
                           if (kelasLayanan.toLowerCase() == 'akapekonomi' && tag.id == 15) {
                             print('🚫 Menyembunyikan tag ID 15 (Biaya Tol) untuk kelasLayanan: $kelasLayanan');
-                            return false;
+                            return true;
                           }
                           return true;
                         }).toList(),

@@ -5,7 +5,7 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/premi_harian_kru_model.dart';
 import 'package:mila_kru_reguler/models/premi_posisi_kru_model.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
-import 'package:mila_kru_reguler/models/user_data.dart';
+import 'package:mila_kru_reguler/models/user.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
 import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
@@ -134,7 +134,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   List<TagTransaksi> tagBersihSetoran = [];
 
   // Tambahkan deklarasi userData
-  UserData? _userData;
+  User? _user;
 
   @override
   void initState() {
@@ -146,7 +146,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   }
 
   void _handleCalculatePremiBersih() {
-    if (_userData == null) {
+    if (_user == null) {
       print('User data belum tersedia, menggunakan kalkulasi tanpa user data');
       final result = PremiBersihCalculator.calculatePremiBersihWithoutUser(
         tagPendapatan: tagPendapatan,
@@ -163,7 +163,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         controllers: _controllers,
       );
     } else {
-      print('Menggunakan user data untuk kalkulasi: $_userData');
+      print('Menggunakan user data untuk kalkulasi: $_user');
       final result = PremiBersihCalculator.calculatePremiBersih(
         tagPendapatan: tagPendapatan,
         tagPengeluaran: tagPengeluaran,
@@ -172,13 +172,13 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         controllers: _controllers,
         jumlahControllers: _jumlahControllers,
         literSolarControllers: _literSolarControllers,
-        userData: _userData!, // Gunakan userData yang sudah ada
+        userData: _user!, // Gunakan userData yang sudah ada
       );
 
       PremiBersihCalculator.updateAutoCalculatedFields(
         calculationResult: result,
         controllers: _controllers,
-        userData: _userData!,
+        userData: _user!,
       );
     }
   }
@@ -223,7 +223,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   Future<void> _getUserData() async {
     try {
       // GUNAKAN UserService instead of databaseHelper
-      List<Map<String, dynamic>> users = await _userService.getUsers();
+      List<Map<String, dynamic>> users = await _userService.getUsersRaw();
+
 
       print('=== [DEBUG] DATABASE QUERY RESULTS ===');
       print('Number of users: ${users.length}');
@@ -243,115 +244,165 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         print('coaUtangPremi = ${firstUser['coaUtangPremi']}');
 
         setState(() {
-          _userData = UserData.fromMap(firstUser);
+          _user = User.fromMap(firstUser);
 
-          // Update variabel lokal dengan camelCase
-          idUser = firstUser['id_user'];
-          idGroup = firstUser['id_group'];
-          idCompany = firstUser['id_company'];
+          idUser = firstUser['id_user'] ?? 0;
+          idGroup = firstUser['id_group'] ?? 0;
+          idCompany = firstUser['id_company'] ?? 0;
           idGarasi = firstUser['id_garasi'];
-          idBus = firstUser['id_bus'];
-          noPol = firstUser['no_pol'];
-          namaTrayek = firstUser['nama_trayek'];
-          kodeTrayek = firstUser['kode_trayek'];
-          jenisTrayek = firstUser['jenis_trayek'];
-          kelasBus = firstUser['kelas_bus'];
-          keydataPremiextra = firstUser['keydataPremiextra']; // CAMEL CASE
-          premiExtra = firstUser['premiExtra']; // CAMEL CASE
+          idBus = firstUser['id_bus'] ?? 0;
+
+          noPol = firstUser['no_pol']?.toString();
+          namaTrayek = firstUser['nama_trayek']?.toString();
+          kodeTrayek = firstUser['kode_trayek']?.toString();
+          jenisTrayek = firstUser['jenis_trayek']?.toString();
+          kelasBus = firstUser['kelas_bus']?.toString();
+
+          keydataPremiextra = firstUser['keydata_premiextra']?.toString();
+          premiExtra = firstUser['premi_extra']?.toString();
           premiExtraController.text = premiExtra ?? '0';
-          keydataPremikru = firstUser['keydataPremikru']; // CAMEL CASE
-          persenPremikru = firstUser['persenPremikru']; // CAMEL CASE
+
+          keydataPremikru = firstUser['keydata_premikru']?.toString();
+          persenPremikru = firstUser['persen_premikru']?.toString();
           persenPremikruController.text = persenPremikru ?? '0';
-          coaPendapatanBusController.text = firstUser['coaPendapatanBus'];
-          coaPengeluaranBusController.text = firstUser['coaPengeluaranBus'];
-          coaUtangPremiController.text = firstUser['coaUtangPremi'];
+
+          // 🔥 FIX UTAMA (ANTI CRASH)
+          coaPendapatanBusController.text =
+              firstUser['coa_pendapatan_bus']?.toString() ?? '';
+
+          coaPengeluaranBusController.text =
+              firstUser['coa_pengeluaran_bus']?.toString() ?? '';
+
+          coaUtangPremiController.text =
+              firstUser['coa_utang_premi']?.toString() ?? '';
         });
 
+
         print('=== [DEBUG] AFTER UserData.fromMap ===');
-        print('UserData object: $_userData');
+        print('UserData object: $_user');
 
       } else {
         setState(() {
-          _userData = UserData.empty();
+          _user = User.empty();
         });
         print('No user data found, using empty data');
       }
     } catch (e) {
       print('Error loading user data: $e');
       setState(() {
-        _userData = UserData.empty();
+        _user = User.empty();
       });
     }
   }
 
   // Fungsi untuk memuat data tag transaksi
   Future<void> _loadTagTransaksi() async {
+    // Pastikan DB siap (cukup sekali)
     await databaseHelper.initDatabase();
 
-    List<Map<String, dynamic>> users = await _userService.getUsers();
-    if (users.isEmpty) return;
+    // Reset data agar tidak dobel
+    tagPendapatan.clear();
+    tagPengeluaran.clear();
+    tagPremi.clear();
+    tagBersihSetoran.clear();
 
-    Map<String, dynamic> firstUser = users[0];
-    String? tagPendapatanStr = firstUser['tagTransaksiPendapatan'];
-    String? tagPengeluaranStr = firstUser['tagTransaksiPengeluaran'];
+    _controllers.clear();
+    _jumlahControllers.clear();
+    _literSolarControllers.clear();
 
-    print("Tag Pendapatan dari prefs: $tagPendapatanStr");
-    print("Tag Pengeluaran dari prefs: $tagPengeluaranStr");
+    // Ambil user dari SQLite
+    final users = await _userService.getUsersRaw();
+    if (users.isEmpty) {
+      debugPrint('[WARN] User kosong');
+      return;
+    }
 
-    if (tagPendapatanStr != null && tagPengeluaranStr != null) {
-      List<int> idPendapatan = tagPendapatanStr.split(',').map((e) => int.tryParse(e) ?? 0).where((id) => id > 0).toList();
-      List<int> idPengeluaran = tagPengeluaranStr.split(',').map((e) => int.tryParse(e) ?? 0).where((id) => id > 0).toList();
+    final firstUser = users.first;
 
-      await databaseHelper.initDatabase();
+    // Ambil tag dari kolom user (SQLite)
+    final String? tagPendapatanStr =
+    firstUser['tag_transaksi_pendapatan']?.toString();
+    final String? tagPengeluaranStr =
+    firstUser['tag_transaksi_pengeluaran']?.toString();
 
-      List<TagTransaksi> allTags = await TagTransaksiService().getTagTransaksiByIds([...idPendapatan, ...idPengeluaran]);
+    debugPrint("Tag Pendapatan dari DB: $tagPendapatanStr");
+    debugPrint("Tag Pengeluaran dari DB: $tagPengeluaranStr");
 
-      // Kelompokkan berdasarkan kategori_transaksi
-      for (var tag in allTags) {
-        // Handle tipe data kategoriTransaksi dengan aman
-        int kategori = 2; // default ke Pengeluaran
-        if (tag.kategoriTransaksi != null) {
-          if (tag.kategoriTransaksi is int) {
-            kategori = tag.kategoriTransaksi as int;
-          } else if (tag.kategoriTransaksi is String) {
-            kategori = int.tryParse(tag.kategoriTransaksi as String) ?? 2;
-          } else if (tag.kategoriTransaksi is double) {
-            kategori = (tag.kategoriTransaksi as double).toInt();
-          }
-        }
+    if ((tagPendapatanStr == null || tagPendapatanStr.isEmpty) &&
+        (tagPengeluaranStr == null || tagPengeluaranStr.isEmpty)) {
+      debugPrint('[WARN] Tag pendapatan & pengeluaran kosong');
+      return;
+    }
 
-        switch (kategori) {
-          case 1:
-            tagPendapatan.add(tag);
-            break;
-          case 2:
-            tagPengeluaran.add(tag);
-            break;
-          case 3:
-            tagPremi.add(tag);
-            break;
-          case 4:
-            tagBersihSetoran.add(tag);
-            break;
-          default:
-            tagPengeluaran.add(tag);
-        }
+    // Parse ID tag
+    List<int> idPendapatan = tagPendapatanStr
+        ?.split(',')
+        .map((e) => int.tryParse(e.trim()) ?? 0)
+        .where((id) => id > 0)
+        .toList() ??
+        [];
 
-        // Inisialisasi controller untuk nominal
-        _controllers[tag.id] = TextEditingController();
-        // Inisialisasi controller untuk jumlah
-        _jumlahControllers[tag.id] = TextEditingController();
-        // Inisialisasi controller untuk liter solar
-        _literSolarControllers[tag.id] = TextEditingController();
+    List<int> idPengeluaran = tagPengeluaranStr
+        ?.split(',')
+        .map((e) => int.tryParse(e.trim()) ?? 0)
+        .where((id) => id > 0)
+        .toList() ??
+        [];
+
+    final List<int> allIds = {...idPendapatan, ...idPengeluaran}.toList();
+    if (allIds.isEmpty) {
+      debugPrint('[WARN] Tidak ada ID tag valid');
+      return;
+    }
+
+    // Ambil data tag dari DB
+    final allTags =
+    await TagTransaksiService().getTagTransaksiByIds(allIds);
+
+    for (final tag in allTags) {
+      if (tag.id == null) continue;
+
+      // 🔥 FIX FINAL KATEGORI TRANSAKSI
+      int kategori = int.tryParse(
+        tag.kategoriTransaksi?.toString() ?? '2',
+      ) ?? 2;
+
+      switch (kategori) {
+        case 1:
+          tagPendapatan.add(tag);
+          break;
+        case 2:
+          tagPengeluaran.add(tag);
+          break;
+        case 3:
+          tagPremi.add(tag);
+          break;
+        case 4:
+          tagBersihSetoran.add(tag);
+          break;
+        default:
+          tagPengeluaran.add(tag);
       }
 
-      // Setelah semua controller dibuat, panggil _loadLastRekapTransaksi
-      // untuk mengisi data pendapatan ke controller
-      await _loadLastRekapTransaksi();
+      _controllers.putIfAbsent(tag.id!, () => TextEditingController());
+      _jumlahControllers.putIfAbsent(tag.id!, () => TextEditingController());
+      _literSolarControllers.putIfAbsent(tag.id!, () => TextEditingController());
+    }
 
+
+    debugPrint('Jumlah tag pendapatan: ${tagPendapatan.length}');
+    debugPrint('Jumlah tag pengeluaran: ${tagPengeluaran.length}');
+    debugPrint('Jumlah tag premi: ${tagPremi.length}');
+    debugPrint('Jumlah tag bersih/setoran: ${tagBersihSetoran.length}');
+
+    // Isi controller dari transaksi terakhir (kalau ada)
+    await _loadLastRekapTransaksi();
+
+    if (mounted) {
       setState(() {});
     }
   }
+
 
   Future<void> _loadLastRekapTransaksi() async {
     await databaseHelper.initDatabase();
@@ -908,7 +959,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       print('kelasLayanan: $kelasLayanan');
       print('=============================');
 
-      List<Map<String, dynamic>> users = await _userService.getUsers();
+      List<Map<String, dynamic>> users = await _userService.getUsersRaw();
+
       if (users.isEmpty) {
         print('Tidak ada data user');
         return;
@@ -1206,7 +1258,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         controllers: _controllers,
         jumlahControllers: _jumlahControllers,
         literSolarControllers: _literSolarControllers,
-        userData: _userData!,
+        userData: _user!,
       );
 
 // Ekstrak semua nilai yang diperlukan dari calculationResult

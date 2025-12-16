@@ -132,7 +132,6 @@ class _PremiKruState extends State<PremiKru> {
     });
 
     try {
-      // 1. Push premi harian kru
       await dataPusherService.pushDataPremiHarianKru(
         selectedDate: _selectedDate!,
         onProgress: _updateUploadProgress,
@@ -142,18 +141,14 @@ class _PremiKruState extends State<PremiKru> {
         },
       );
 
-      // 2. Load token & idTransaksi
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-      final int? idBus = prefs.getInt('idBus');
-      String? idTransaksi = prefs.getString('idTransaksi');
+      final String? idTransaksi = prefs.getString('idTransaksi');
 
-      if (idTransaksi == null) {
-        idTransaksi = "KEUBIS${idBus}${DateTime.now().millisecondsSinceEpoch}";
-        prefs.setString('idTransaksi', idTransaksi);
+      if (token == null || idTransaksi == null || idTransaksi.isEmpty) {
+        throw Exception('Token atau ID Transaksi tidak valid.');
       }
 
-      // 3. Ambil setoran kru yang status N
       final allSetoran = await setoranKruService.getAllSetoran();
       final filtered = allSetoran.where((e) => e.status == "N").toList();
 
@@ -162,41 +157,32 @@ class _PremiKruState extends State<PremiKru> {
         return;
       }
 
-      // 4. Siapkan rows
-      final rowsList = filtered.map((d) {
-        return {
-          "tgl_transaksi": d.tglTransaksi,
-          "km_pulang": d.kmPulang ?? "",
-          "rit": d.rit,
-          "no_pol": d.noPol,
-          "id_bus": d.idBus,
-          "kode_trayek": d.kodeTrayek,
-          "id_personil": d.idPersonil,
-          "id_group": d.idGroup,
-          "jumlah": d.jumlah ?? "",
-          "coa": d.coa ?? "",
-          "nilai": d.nilai,
-          "id_tag_transaksi": d.idTagTransaksi,
-          "status": d.status,
-          "keterangan": d.keterangan ?? "",
-        };
+      final rowsList = filtered.map((d) => {
+        "tgl_transaksi": d.tglTransaksi,
+        "km_pulang": d.kmPulang ?? "",
+        "rit": d.rit,
+        "no_pol": d.noPol,
+        "id_bus": d.idBus,
+        "kode_trayek": d.kodeTrayek,
+        "id_personil": d.idPersonil,
+        "id_group": d.idGroup,
+        "jumlah": d.jumlah ?? "",
+        "coa": d.coa ?? "",
+        "nilai": d.nilai,
+        "id_tag_transaksi": d.idTagTransaksi,
+        "status": d.status,
+        "keterangan": d.keterangan ?? "",
       }).toList();
 
-      // 5. Callback update status
       Future<void> updateStatusCallback(String idTransaksi) async {
         for (var s in filtered) {
-          try {
-            await setoranKruService.updateSetoran(s.copyWith(status: "Y"));
-          } catch (e) {
-            print("Gagal update status: $e");
-          }
+          await setoranKruService.updateSetoran(s.copyWith(status: "Y"));
         }
       }
 
-      // 6. Kirim API
       final response = await kirimSetoranKruMobile(
         idTransaksi: idTransaksi,
-        token: token!,
+        token: token,
         rows: rowsList,
         files: filtered,
         onSuccessCallback: updateStatusCallback,
@@ -212,6 +198,7 @@ class _PremiKruState extends State<PremiKru> {
       });
     }
   }
+
 
   //----------------------------------------------------------------------
   // MULTIPART API KIRIM SETORAN
@@ -533,9 +520,9 @@ class _PremiKruState extends State<PremiKru> {
                                                           final prefs = await SharedPreferences.getInstance();
                                                           final token = prefs.getString('token');
 
-                                                          if (token != null && s.kodeTrayek != null) {
+                                                          if (token != null) {
                                                             final ok = await ApiHelperPersenPremiKru
-                                                                .requestListPersenPremiAPI(token, s.kodeTrayek!);
+                                                                .requestListPersenPremiAPI(token, s.kodeTrayek);
                                                             if (mounted) setState(() {});
                                                           }
                                                         },

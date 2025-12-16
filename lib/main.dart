@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mila_kru_reguler/page/manifest.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/page/Home.dart';
 import 'package:mila_kru_reguler/page/Login.dart';
@@ -67,35 +68,35 @@ Drawer buildDrawer(BuildContext context, int idUser) {
             Navigator.pushNamed(context, '/penjualantiket');
           },
         ),
-        // const Divider(),
-        // ListTile(
-        //   title: const Text('Penumpang'),
-        //   leading: const Icon(Icons.people_alt_outlined),
-        //   onTap: () async {
-        //     // 🔹 Ambil data dari SharedPreferences untuk dikirim ke ManifestPage
-        //     SharedPreferences prefs = await SharedPreferences.getInstance();
-        //     String idJadwalTrip = prefs.getString('idJadwalTrip') ?? '';
-        //     String token = prefs.getString('token') ?? '';
-        //
-        //     if (idJadwalTrip.isNotEmpty && token.isNotEmpty) {
-        //       Navigator.push(
-        //         context,
-        //         MaterialPageRoute(
-        //           builder: (context) => ManifestPage(
-        //             idJadwalTrip: idJadwalTrip,
-        //             token: token,
-        //           ),
-        //         ),
-        //       );
-        //     } else {
-        //       ScaffoldMessenger.of(context).showSnackBar(
-        //         const SnackBar(
-        //           content: Text('Data jadwal atau token tidak ditemukan.'),
-        //         ),
-        //       );
-        //     }
-        //   },
-        // ),
+        const Divider(),
+        ListTile(
+          title: const Text('Penumpang'),
+          leading: const Icon(Icons.people_alt_outlined),
+          onTap: () async {
+            // 🔹 Ambil data dari SharedPreferences untuk dikirim ke ManifestPage
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            String idJadwalTrip = prefs.getString('idJadwalTrip') ?? '';
+            String token = prefs.getString('token') ?? '';
+
+            if (idJadwalTrip.isNotEmpty && token.isNotEmpty) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ManifestPage(
+                    idJadwalTrip: idJadwalTrip,
+                    token: token,
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Data jadwal atau token tidak ditemukan.'),
+                ),
+              );
+            }
+          },
+        ),
         Divider(),
         ListTile(
           title: Text('Rekap Transaksi'),

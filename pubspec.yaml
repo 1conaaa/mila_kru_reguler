@@ -1,7 +1,7 @@
 name: mila_kru_reguler
 description: "Aplikasi BIS MILA SEJAHTERA Kru Reguler"
 
-version: 1.0.0+8
+version: 1.0.0+2
 
 environment:
   sdk: ^3.8.1
@@ -47,6 +47,8 @@ dependencies:
   permission_handler_platform_interface: ^4.0.2
 
   fluttertoast: ^8.2.2
+
+  shimmer: ^3.0.0
 
   #  baru
   image_picker: ^0.8.7+3

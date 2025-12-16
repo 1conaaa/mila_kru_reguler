@@ -80,10 +80,8 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
         var uri = Uri.parse(apiUrl);
         var request = http.MultipartRequest("POST", uri);
 
-        if (token != null) {
-          request.headers['Authorization'] = 'Bearer $token';
-        }
-
+        request.headers['Authorization'] = 'Bearer $token';
+      
         // Isi semua field sebagai request.fields sehingga request berdiri sendiri
         request.fields['id'] = penjualanId.toString();
         request.fields['tgl_transaksi'] = penjualan['tanggal_transaksi']?.toString() ?? '';
