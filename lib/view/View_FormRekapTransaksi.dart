@@ -360,9 +360,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     await TagTransaksiService().getTagTransaksiByIds(allIds);
 
     for (final tag in allTags) {
-      if (tag.id == null) continue;
-
-      // 🔥 FIX FINAL KATEGORI TRANSAKSI
       int kategori = int.tryParse(
         tag.kategoriTransaksi?.toString() ?? '2',
       ) ?? 2;
@@ -384,9 +381,9 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           tagPengeluaran.add(tag);
       }
 
-      _controllers.putIfAbsent(tag.id!, () => TextEditingController());
-      _jumlahControllers.putIfAbsent(tag.id!, () => TextEditingController());
-      _literSolarControllers.putIfAbsent(tag.id!, () => TextEditingController());
+      _controllers.putIfAbsent(tag.id, () => TextEditingController());
+      _jumlahControllers.putIfAbsent(tag.id, () => TextEditingController());
+      _literSolarControllers.putIfAbsent(tag.id, () => TextEditingController());
     }
 
 
