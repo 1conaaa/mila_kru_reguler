@@ -75,7 +75,9 @@ Drawer buildDrawer(BuildContext context, int idUser) {
           onTap: () async {
             // 🔹 Ambil data dari SharedPreferences untuk dikirim ke ManifestPage
             SharedPreferences prefs = await SharedPreferences.getInstance();
-            String idJadwalTrip = prefs.getString('idJadwalTrip') ?? '';
+            // String idJadwalTrip = prefs.getString('idJadwalTrip') ?? '';
+            final int? idJadwalTripInt = prefs.getInt('idJadwalTrip');
+            final String idJadwalTrip = idJadwalTripInt?.toString() ?? '';
             String token = prefs.getString('token') ?? '';
 
             if (idJadwalTrip.isNotEmpty && token.isNotEmpty) {

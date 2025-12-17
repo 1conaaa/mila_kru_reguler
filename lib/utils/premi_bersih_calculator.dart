@@ -214,7 +214,7 @@ class PremiBersihCalculator {
                 print('=== [DEBUG] PROCESSING: YOGYAKARTA - BANYUWANGI ===');
                 // Pengeluaran untuk AKAP Ekonomi Yogyakarta-Banyuwangi
                 totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci +
-                    pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
+                    pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranTol;
 
                 print('=== [DEBUG] PENGELUARAN DETAIL ===');
                 print('Solar: $nominalsolar');
@@ -223,6 +223,7 @@ class PremiBersihCalculator {
                 print('Parkir: $pengeluaranParkir');
                 print('Perbaikan: $pengeluaranPerbaikan');
                 print('Lain-lain: $pengeluaranLainLain');
+                print('Tol: $pengeluaranTol');
                 print('Total Pengeluaran: $totalPengeluaran');
 
                 pendBersih = pendapatanKotor - totalPengeluaran;
@@ -230,7 +231,8 @@ class PremiBersihCalculator {
 
                 // Premi berdasarkan pendapatan bersih
                 nominalPremiExtra = pendBersih * persenPremiExtra;
-                nominalPremiKru = pendBersih * persenPremiKru;
+                // nominalPremiKru = pendBersih * persenPremiKru;
+                nominalPremiKru   = pendBersih * (persenPremiKru - persenPremiExtra);
 
                 print('Premi Extra ($persenPremiExtra): $nominalPremiExtra');
                 print('Premi Kru ($persenPremiKru): $nominalPremiKru');
@@ -238,24 +240,25 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                // Adjust tol berdasarkan sisa pendapatan
-                if (sisaPendapatan > 0) {
-                  if (sisaPendapatan < 2500000) {
-                    tolAdjustment = 140000;
-                    print('Tol Adjustment: 140.000 (sisa < 2.5jt)');
-                  } else if (sisaPendapatan > 2500000) {
-                    tolAdjustment = 270000;
-                    print('Tol Adjustment: 270.000 (sisa > 2.5jt)');
-                  }
-                } else {
-                  print('Tol Adjustment: Tidak ada penyesuaian (sisa <= 0)');
-                }
+                // // Adjust tol berdasarkan sisa pendapatan
+                // if (sisaPendapatan > 0) {
+                //   if (sisaPendapatan < 2500000) {
+                //     tolAdjustment = 140000;
+                //     print('Tol Adjustment: 140.000 (sisa < 2.5jt)');
+                //   } else if (sisaPendapatan > 2500000) {
+                //     tolAdjustment = 270000;
+                //     print('Tol Adjustment: 270.000 (sisa > 2.5jt)');
+                //   }
+                // } else {
+                //   print('Tol Adjustment: Tidak ada penyesuaian (sisa <= 0)');
+                // }
 
-                pendDisetor = sisaPendapatan - tolAdjustment + pendapatanBagasi - nominalTiketOnline;
+                // pendDisetor = sisaPendapatan - tolAdjustment + pendapatanBagasi - nominalTiketOnline;
+                pendDisetor = sisaPendapatan + pendapatanBagasi - nominalTiketOnline;
                 print('=== [DEBUG] FINAL CALCULATION ===');
                 print('Pendapatan Bersih: $pendBersih');
                 print('Sisa Pendapatan: $sisaPendapatan');
-                print('Tol Adjustment: $tolAdjustment');
+                // print('Tol Adjustment: $tolAdjustment');
                 print('Pendapatan Bagasi: $pendapatanBagasi');
                 print('Tiket Online: $nominalTiketOnline');
                 print('Pendapatan Disetor: $pendDisetor');

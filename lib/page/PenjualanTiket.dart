@@ -54,7 +54,7 @@ class _PenjualanTiketState extends State<PenjualanTiket> with SingleTickerProvid
                 unselectedLabelStyle: TextStyle(fontSize: 18),
                 tabs: const [
                   Tab(text: 'Penjualan'),
-                  Tab(text: 'Non-Tunai'),
+                  // Tab(text: 'Non-Tunai'),
                   Tab(text: 'Transaksi'),
                 ],
               ),
@@ -65,7 +65,7 @@ class _PenjualanTiketState extends State<PenjualanTiket> with SingleTickerProvid
               controller: _tabController,
               children: [
                 PenjualanForm(),
-                HistoryPembayaran(),
+                // HistoryPembayaran(),
                 HistroyTransaksi(),
               ],
             ),
