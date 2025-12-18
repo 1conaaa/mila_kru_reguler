@@ -791,8 +791,12 @@ class _PenjualanFormState extends State<PenjualanForm> {
       print('   Harga per km (kantor): Rp ${hargaPerKmKantor.toStringAsFixed(2)}');
       print('   Harga per km (tarikan): Rp ${hargaPerKmTarikan.toStringAsFixed(2)}');
 
-      double hargaKantor = hargaPerKmKantor * selisihJarak * jumlahTiket;
-      double hargaTarikan = hargaPerKmTarikan * selisihJarak * jumlahTiket;
+      // double hargaKantor = hargaPerKmKantor * selisihJarak * jumlahTiket;
+      // double hargaTarikan = hargaPerKmTarikan * selisihJarak * jumlahTiket;
+
+      // HARGA UNTUK 1 TIKET
+      double hargaKantor = hargaPerKmKantor * selisihJarak;
+      double hargaTarikan = hargaPerKmTarikan * selisihJarak;
 
       // PERBAIKAN: Validasi hasil perhitungan
       if (hargaKantor.isNaN || hargaKantor.isInfinite) {
@@ -832,10 +836,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
         persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
       }
 
-// konversi 9% -> 0.09
+      // konversi 9% -> 0.09
       double persen = persenKru / 100;
-
-
 
       setState(() {
         try {
@@ -858,17 +860,26 @@ class _PenjualanFormState extends State<PenjualanForm> {
           print("🎁 Tambahan harga khusus: Rp $tambahanHarga");
 
           // ---------------------------------------------------
-          // 3. TARIKAN FINAL (BELUM DIBULATKAN)
-          // ---------------------------------------------------
-          double hargaTarikanFinal = hargaTarikanBulat + tambahanHarga;
+// 3. TARIKAN FINAL PER TIKET
+// ---------------------------------------------------
+          double hargaTarikanFinalPerTiket = hargaTarikanBulat + tambahanHarga;
+          int hargaTarikanFinalPerTiketBulat =
+          pembulatanRibuan(hargaTarikanFinalPerTiket);
 
-          // 4. BULATKAN TARIKAN FINAL
-          int hargaTarikanFinalBulat = pembulatanRibuan(hargaTarikanFinal);
+// ---------------------------------------------------
+// 4. KALIKAN JUMLAH TIKET (FINAL)
+// ---------------------------------------------------
+          int hargaTarikanFinalBulat =
+              hargaTarikanFinalPerTiketBulat * jumlahTiket;
 
-          // ---------------------------------------------------
-          // 5. HITUNG HARGA KANTOR DARI TARIKAN FINAL BULAT
-          // ---------------------------------------------------
-          double hargaKantorHitung = hargaTarikanFinalBulat - (persen * hargaTarikanFinalBulat);
+// ---------------------------------------------------
+// 5. HITUNG HARGA KANTOR DARI TOTAL TARIKAN
+// ---------------------------------------------------
+          double hargaKantorHitung =
+              hargaTarikanFinalBulat - (persen * hargaTarikanFinalBulat);
+
+          // int hargaKantorBulat = hargaKantorHitung.toInt();
+
 
           // 6. Bulatkan hasil kantor
           // int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
