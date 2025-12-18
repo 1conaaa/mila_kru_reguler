@@ -10,16 +10,25 @@ import 'package:mila_kru_reguler/page/BagasiBus.dart';
 import 'package:mila_kru_reguler/page/LaporPerpal.dart';
 import 'package:mila_kru_reguler/page/PengecekanBus.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart';
+import 'package:provider/provider.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-  // Inisialisasi WebView sebelum runApp
-  WidgetsFlutterBinding.ensureInitialized();
-  final printerService = BluetoothPrinterService();
-  printerService.checkConnection();
-  runApp(MyApp(isLoggedIn: isLoggedIn));
+
+  final prefs = await SharedPreferences.getInstance();
+  final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => BluetoothPrinterService()..checkConnection(),
+        ),
+      ],
+      child: MyApp(isLoggedIn: isLoggedIn),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

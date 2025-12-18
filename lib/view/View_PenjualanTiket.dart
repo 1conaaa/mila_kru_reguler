@@ -393,6 +393,33 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
   }
 
+  Future<void> pilihPrinter(BuildContext context) async {
+    final devices = await printerService.bluetooth.getBondedDevices();
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text("Pilih Printer"),
+        content: ListView.builder(
+          shrinkWrap: true,
+          itemCount: devices.length,
+          itemBuilder: (_, i) {
+            final device = devices[i];
+            return ListTile(
+              title: Text(device.name ?? "Printer"),
+              subtitle: Text(device.address ?? ""),
+              onTap: () async {
+                Navigator.pop(context);
+                await printerService.connect(device);
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+
   Future<void> getBluetooth() async {
     try {
       print("🔍 Mulai getBluetooth...");
@@ -2335,31 +2362,64 @@ class _PenjualanFormState extends State<PenjualanForm> {
                             Expanded(
                               child: ElevatedButton(
                                 onPressed: () async {
-                                  this.getBluetooth();
-                                  // Cek apakah izin diberikan, jika tidak, minta izin.
-                                  if (!await _checkBluetoothPermission()) {
-                                    await _requestBluetoothPermission();
+                                  final printerService = BluetoothPrinterService();
+
+                                  // Ambil printer yang sudah dipairing
+                                  final devices =
+                                  await printerService.bluetooth.getBondedDevices();
+
+                                  if (devices.isEmpty) {
+                                    Fluttertoast.showToast(msg: "Printer tidak ditemukan");
+                                    return;
                                   }
+
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      title: const Text("Pilih Printer"),
+                                      content: SizedBox(
+                                        width: double.maxFinite,
+                                        child: ListView.builder(
+                                          shrinkWrap: true,
+                                          itemCount: devices.length,
+                                          itemBuilder: (_, index) {
+                                            final device = devices[index];
+                                            return ListTile(
+                                              title: Text(device.name ?? 'Printer'),
+                                              subtitle: Text(device.address ?? ''),
+                                              onTap: () async {
+                                                Navigator.pop(context);
+                                                try {
+                                                  await printerService.connect(device);
+                                                  Fluttertoast.showToast(
+                                                    msg: "Terhubung ke ${device.name}",
+                                                  );
+                                                } catch (e) {
+                                                  Fluttertoast.showToast(
+                                                    msg: "Gagal connect printer",
+                                                  );
+                                                }
+                                              },
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  );
                                 },
-                                child: Text('Set.Printer'),
+                                child: const Text('Set Printer'),
                                 style: ButtonStyle(
                                   minimumSize: WidgetStateProperty.all(
-                                      Size(double.infinity, 48.0)),
-                                  backgroundColor:
-                                  WidgetStateProperty.resolveWith<Color>(
-                                        (Set<WidgetState> states) {
-                                      if (states.contains(WidgetState.pressed)) {
-                                        return Colors.grey; // Warna abu-abu saat tombol ditekan
-                                      } else {
-                                        return Colors.blue; // Warna biru saat tombol tidak ditekan
-                                      }
-                                    },
+                                    const Size(double.infinity, 48),
                                   ),
-                                  foregroundColor: WidgetStateProperty.resolveWith<Color>(
-                                        (Set<WidgetState> states) {
-                                      return Colors.white; // Warna teks putih
-                                    },
+                                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                                        (states) =>
+                                    states.contains(WidgetState.pressed)
+                                        ? Colors.grey
+                                        : Colors.blue,
                                   ),
+                                  foregroundColor:
+                                  WidgetStateProperty.all(Colors.white),
                                 ),
                               ),
                             ),

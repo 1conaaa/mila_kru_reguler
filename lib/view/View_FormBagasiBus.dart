@@ -6,8 +6,6 @@ import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:permission_handler/permission_handler.dart';
-
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -16,10 +14,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 // Untuk Uint8List
 import 'package:flutter/services.dart';
-
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+import 'package:provider/provider.dart';
+import 'package:mila_kru_reguler/page/bluetooth_service.dart'; // BluetoothPrinterService
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:typed_data';
+
+
+
 
 class FormBagasiBus extends StatefulWidget {
   @override
@@ -89,10 +91,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   String? _base64Image;
   String? _fileName;
 
-  final BlueThermalPrinter _bluetooth = BlueThermalPrinter.instance;
-  List<BluetoothDevice> _devices = [];
-  BluetoothDevice? _selectedDevice;
-  bool _isConnected = false;
 
   List<Map<String, dynamic>> listKota = [];
 
@@ -133,9 +131,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   @override
   void dispose() {
     // Putuskan koneksi printer saat dispose
-    if (_isConnected) {
-      _bluetooth.disconnect();
-    }
     super.dispose();
   }
 
@@ -370,199 +365,195 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     });
   }
 
-  // Function to request the Bluetooth permission.
-  Future<void> _requestBluetoothPermission() async {
-    if (Platform.isAndroid) {
-      final deviceInfo = DeviceInfoPlugin();
-      final androidInfo = await deviceInfo.androidInfo;
-      final androidSdk = androidInfo.version.sdkInt ?? 0;
-
-      if (androidSdk >= 31) {
-        await [
-          Permission.bluetoothScan,
-          Permission.bluetoothConnect,
-          Permission.bluetoothAdvertise,
-        ].request();
-      } else {
-        await Permission.bluetooth.request();
-      }
-    }
-  }
-
-  Future<void> disconnectPrinter() async {
-    try {
-      await _bluetooth.disconnect();
-
-      setState(() {
-        _isConnected = false;
-        _selectedDevice = null;
-      });
-
-      Fluttertoast.showToast(msg: "Printer terputus");
-    } catch (e) {
-      Fluttertoast.showToast(msg: "Error memutuskan koneksi: ${e.toString()}");
-    }
-  }
-
-  // Function to check if the Bluetooth permission is granted.
-  Future<bool> _checkBluetoothPermission() async {
-    final PermissionStatus status = await Permission.bluetoothConnect.status;
-    return status.isGranted;
-  }
-
-  Future<void> getBluetooth() async {
-    try {
-      await _requestBluetoothPermission();
-
-      // Dapatkan daftar perangkat yang dipasangkan
-      _devices = await _bluetooth.getBondedDevices();
-
-      if (_devices.isEmpty) {
-        Fluttertoast.showToast(msg: "Tidak ada printer yang ditemukan");
-        return;
-      }
-
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text("Pilih Printer"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _devices.length,
-              itemBuilder: (context, index) {
-                final device = _devices[index];
-                return ListTile(
-                  title: Text(device.name ?? 'Printer ${index + 1}'),
-                  subtitle: Text(device.address ?? 'Alamat tidak tersedia'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _connectToDevice(device);
-                  },
-                );
-              },
-            ),
-          ),
-        ),
-      );
-    } catch (e) {
-      Fluttertoast.showToast(msg: "Error: ${e.toString()}");
-    }
-  }
-
-  Future<void> _connectToDevice(BluetoothDevice device) async {
-    try {
-      await _bluetooth.connect(device);
-
-      setState(() {
-        _isConnected = true;
-        _selectedDevice = device;
-      });
-
-      Fluttertoast.showToast(msg: "Terhubung ke printer ${device.name}");
-    } catch (e) {
-      Fluttertoast.showToast(msg: "Gagal terhubung ke printer: ${e.toString()}");
-      setState(() {
-        _isConnected = false;
-        _selectedDevice = null;
-      });
-    }
-  }
-
-  Future<void> printTicket() async {
-    if (!_isConnected || _selectedDevice == null) {
-      Fluttertoast.showToast(msg: "Printer belum terhubung");
-      return;
-    }
-
-    try {
-      final bytes = await getTicketBagasi();
-      // Konversi List<int> ke Uint8List
-      await _bluetooth.writeBytes(Uint8List.fromList(bytes));
-      Fluttertoast.showToast(msg: "Tiket berhasil dicetak");
-    } catch (e) {
-      Fluttertoast.showToast(msg: "Error mencetak: ${e.toString()}");
-    }
-  }
 
   Future<List<int>> getTicketBagasi() async {
     // Ambil SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090'; // Default value jika tidak ada
+    String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090';
 
-    List<Map<String, dynamic>> lastTransaksi = await DatabaseHelper.instance.getDataTransaksiBagasiTerakhir();
-    String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ? lastTransaksi[0]['id_order'] : '';
-    String kotaBerangkat = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_berangkat'] : '';
-    String noPol = lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_pol'] : '';
-    String kotaTujuan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_tujuan'] : '';
-    String namaPengirim = lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_pengirim'] : '';
-    String noTeleponPengirim = lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_pengirim'] : '';
+    List<Map<String, dynamic>> lastTransaksi =
+    await DatabaseHelper.instance.getDataTransaksiBagasiTerakhir();
 
-    String namaPenerima = lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_penerima'] : '';
-    String noTeleponPenerima = lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_penerima'] : '';
+    String noOrderTransaksiTerakhir =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['id_order'] : '';
+    String kotaBerangkat =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_berangkat'] : '';
+    String noPol =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_pol'] : '';
+    String kotaTujuan =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_tujuan'] : '';
+    String namaPengirim =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_pengirim'] : '';
+    String noTeleponPengirim =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_pengirim'] : '';
+    String jenisPaket =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['jenis_paket'] : '';
 
-    double jumlahTagihan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['jml_harga'] : 0.0;
+    String namaPenerima =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_penerima'] : '';
+    String noTeleponPenerima =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_penerima'] : '';
+
+    double jumlahTagihan =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['jml_harga'] : 0.0;
     String jumlahTagihanCetak = formatter.format(jumlahTagihan);
 
-    String tanggalTransaksi = lastTransaksi.isNotEmpty ? lastTransaksi[0]['tgl_order'] : '';
+    String tanggalTransaksi =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['tgl_order'] : '';
     var dateParts = tanggalTransaksi.split('-');
-    var formattedDate = dateParts[2] + '-' + dateParts[1] + '-' + dateParts[0];
+    var formattedDate =
+    dateParts.length == 3 ? '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}' : tanggalTransaksi;
 
-    int qtyBarang = lastTransaksi.isNotEmpty ? lastTransaksi[0]['qty_barang'] : 0;
-    String keterangan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['keterangan'] : '';
+    int qtyBarang =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['qty_barang'] : 0;
+    String keterangan =
+    lastTransaksi.isNotEmpty ? lastTransaksi[0]['keterangan'] : '';
 
     List<int> bytes = [];
     CapabilityProfile profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm58, profile);
     bytes += generator.reset();
 
-    bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
-        styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
-    bytes += generator.text("Probolinggo - Jawa Timur 67214", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("WA: $noWhatsapp", styles: PosStyles(align: PosAlign.center));
+    // ===============================
+    // 🔹 TAMBAHKAN LOGO (SAMA DENGAN getTicket)
+    // ===============================
+    try {
+      final ByteData logoData =
+      await rootBundle.load('assets/images/icon_mila.png');
+      final Uint8List logoBytes = logoData.buffer.asUint8List();
+      final img.Image? image = img.decodeImage(logoBytes);
+
+      if (image != null) {
+        final img.Image resizedImage = img.copyResize(image, width: 380);
+        bytes += generator.image(resizedImage, align: PosAlign.center);
+      }
+    } catch (e) {
+      print('Gagal memuat logo bagasi: $e');
+    }
+
+    // ===============================
+    // 🔹 HEADER
+    // ===============================
+    bytes += generator.text(
+      "PT. MILA AKAS BERKAH SEJAHTERA",
+      styles: PosStyles(
+        align: PosAlign.center,
+        height: PosTextSize.size1,
+        width: PosTextSize.size1,
+        bold: true,
+      ),
+    );
+    bytes += generator.text(
+      "Probolinggo - Jawa Timur 67214",
+      styles: PosStyles(align: PosAlign.center),
+    );
+    bytes += generator.text(
+      "IG: akasmilasejahtera_official",
+      styles: PosStyles(align: PosAlign.center),
+    );
+    bytes += generator.text(
+      "WA: $noWhatsapp",
+      styles: PosStyles(align: PosAlign.center),
+    );
+
     bytes += generator.hr();
-    bytes += generator.row([
-      PosColumn(text: "$kotaBerangkat",width: 6,styles: PosStyles(align: PosAlign.right, bold: true)),
-      PosColumn(text: " $kotaTujuan", width: 6, styles: PosStyles(align: PosAlign.left, bold: true)),
-    ]);
-    bytes += generator.text("$noOrderTransaksiTerakhir", styles: PosStyles(align: PosAlign.center));
-    bytes += generator.text("$formattedDate", styles: PosStyles(align: PosAlign.center, bold: false));
 
+    // ===============================
+    // 🔹 RUTE
+    // ===============================
     bytes += generator.row([
-      PosColumn(text: "No.Pol: $noPol", width: 12, styles: PosStyles(align: PosAlign.left)),
-    ]);
-    bytes += generator.row([
-      PosColumn(text: "Paket: $keterangan", width: 12, styles: PosStyles(align: PosAlign.left)),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(text: "Pengirim: $namaPengirim",width: 12,styles: PosStyles(align: PosAlign.left,)),
-    ]);
-    bytes += generator.row([
-      PosColumn(text: "Telepon: $noTeleponPengirim", width: 12, styles: PosStyles(align: PosAlign.left)),
+      PosColumn(
+        text: kotaBerangkat,
+        width: 6,
+        styles: PosStyles(align: PosAlign.right, bold: true),
+      ),
+      PosColumn(
+        text: " - $kotaTujuan",
+        width: 6,
+        styles: PosStyles(align: PosAlign.left, bold: true),
+      ),
     ]);
 
+    bytes += generator.text(
+      noOrderTransaksiTerakhir,
+      styles: PosStyles(align: PosAlign.center),
+    );
+    bytes += generator.text(
+      formattedDate,
+      styles: PosStyles(align: PosAlign.center),
+    );
+
     bytes += generator.row([
-      PosColumn(text: "Penerima: $namaPenerima",width: 12,styles: PosStyles(align: PosAlign.left,)),
-    ]);
-    bytes += generator.row([
-      PosColumn(text: "Telepon: $noTeleponPenerima", width: 12, styles: PosStyles(align: PosAlign.left)),
+      PosColumn(
+        text: "No.Pol: $noPol",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
     ]);
 
     bytes += generator.row([
-      PosColumn(text: "Jumlah Barang: $qtyBarang paket",width: 12,styles: PosStyles(align: PosAlign.left,)),
+      PosColumn(
+        text: "Pengirim: $namaPengirim",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
     ]);
+
     bytes += generator.row([
-      PosColumn(text: "Biaya : $jumlahTagihanCetak", width: 12, styles: PosStyles(align: PosAlign.left)),
+      PosColumn(
+        text: "Telepon: $noTeleponPengirim",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
+    ]);
+
+    bytes += generator.row([
+      PosColumn(
+        text: "Penerima: $namaPenerima",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
+    ]);
+
+    bytes += generator.row([
+      PosColumn(
+        text: "Telepon: $noTeleponPenerima",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
+    ]);
+
+    bytes += generator.row([
+      PosColumn(
+        text: "Jumlah Barang: $qtyBarang ($jenisPaket)",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
+    ]);
+
+    bytes += generator.row([
+      PosColumn(
+        text: "Biaya : $jumlahTagihanCetak",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
+    ]);
+
+    bytes += generator.row([
+      PosColumn(
+        text: "Keterangan: $keterangan",
+        width: 12,
+        styles: PosStyles(align: PosAlign.left),
+      ),
     ]);
 
     bytes += generator.hr();
-    // bytes += generator.qrcode("$noOrderTransaksiTerakhir");
+
     bytes += generator.qrcode("https://www.milaberkah.com/");
-
-    bytes += generator.text('Semoga Allah SWT melindungi kita dalam perjalanan ini.', styles: PosStyles(align: PosAlign.center, bold: false));
+    bytes += generator.text(
+      'Semoga Allah SWT melindungi kita dalam perjalanan ini.',
+      styles: PosStyles(align: PosAlign.center),
+    );
     bytes += generator.hr();
 
     return bytes;
@@ -608,19 +599,35 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     return Scaffold(
       resizeToAvoidBottomInset: true, // biar layout bergeser saat keyboard muncul
       appBar: AppBar(
-        title: Text('Form Bagasi Bus'),
+        title: const Text('Form Bagasi Bus'),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isConnected ? Icons.print : Icons.print_disabled,
-              color: _isConnected ? Colors.green : Colors.red,
-            ),
-            onPressed: () {
-              if (_isConnected) {
-                printTicket();
-              } else {
-                getBluetooth();
-              }
+          Consumer<BluetoothPrinterService>(
+            builder: (context, printer, _) {
+              return IconButton(
+                icon: Icon(
+                  printer.isConnected
+                      ? Icons.print
+                      : Icons.print_disabled,
+                  color: printer.isConnected
+                      ? Colors.green
+                      : Colors.red,
+                ),
+                tooltip: printer.isConnected
+                    ? 'Cetak Tiket'
+                    : 'Printer belum diset',
+                onPressed: printer.isConnected
+                    ? () async {
+                  // final bytes = await getTicketBagasi();
+                  // await printer.bluetooth.writeBytes(
+                  //   Uint8List.fromList(bytes),
+                  // );
+                }
+                    : () {
+                  Fluttertoast.showToast(
+                    msg: "Printer belum diset di Penjualan Tiket",
+                  );
+                },
+              );
             },
           ),
         ],
@@ -832,34 +839,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        this.getBluetooth();
-                        if (!await _checkBluetoothPermission()) {
-                          await _requestBluetoothPermission();
-                        }
-                      },
-                      child: Text('Set.Printer'),
-                      style: ButtonStyle(
-                        minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
-                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                              (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.pressed)) {
-                              return Colors.grey;
-                            } else {
-                              return Colors.blue;
-                            }
-                          },
-                        ),
-                        foregroundColor: WidgetStateProperty.all(Colors.white),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
                         if (selectedKotaBerangkat != null &&
                             selectedKotaTujuan != null &&
                             selectedJenisPaket != null) {
+
                           int idkotaAwal =
                               int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
                           int idkotaAkhir =
@@ -869,21 +852,48 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
                           print('cek nilai: $idkotaAwal , $idkotaAkhir , $idjenisPaket');
 
-                          _submitForm(
-                            idjenisPaket,
-                            idkotaAwal,
-                            idkotaAkhir,
-                          ).then((_) {
-                            printTicket();
-                          }).catchError((error) {
-                            print("Error during submit form: $error");
-                          });
+                          try {
+                            // 1️⃣ Simpan data bagasi
+                            await _submitForm(
+                              idjenisPaket,
+                              idkotaAwal,
+                              idkotaAkhir,
+                            );
+
+                            // 2️⃣ Ambil printer global
+                            final printer =
+                            context.read<BluetoothPrinterService>();
+
+                            if (!printer.isConnected) {
+                              Fluttertoast.showToast(
+                                msg: "Printer belum diset di Penjualan Tiket",
+                              );
+                              return;
+                            }
+
+                            // 3️⃣ Print tiket bagasi
+                            final bytes = await getTicketBagasi();
+                            await printer.bluetooth.writeBytes(
+                              Uint8List.fromList(bytes),
+                            );
+
+                            Fluttertoast.showToast(
+                              msg: "Data tersimpan & tiket dicetak",
+                            );
+                          } catch (e) {
+                            print("Error during submit/print: $e");
+                            Fluttertoast.showToast(
+                              msg: "Gagal simpan / cetak",
+                            );
+                          }
                         }
                       },
                       child: Text('Simpan'),
                       style: ButtonStyle(
-                        minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
-                        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                        minimumSize:
+                        WidgetStateProperty.all(Size(double.infinity, 48.0)),
+                        backgroundColor:
+                        WidgetStateProperty.resolveWith<Color>(
                               (Set<WidgetState> states) {
                             if (states.contains(WidgetState.pressed)) {
                               return Colors.grey;
@@ -892,7 +902,8 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                             }
                           },
                         ),
-                        foregroundColor: WidgetStateProperty.all(Colors.white),
+                        foregroundColor:
+                        WidgetStateProperty.all(Colors.white),
                       ),
                     ),
                   ),
