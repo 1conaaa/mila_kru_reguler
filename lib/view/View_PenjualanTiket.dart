@@ -734,7 +734,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         jarakAwal = 0.0;
       }
 
-      if (jarakAkhir <= 0) {
+      if (jarakAkhir < 0) {
         print('   ❌ Error: Jarak akhir harus > 0');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
