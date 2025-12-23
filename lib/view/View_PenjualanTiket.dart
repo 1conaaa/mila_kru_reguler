@@ -2781,7 +2781,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
       isFotoVisible = false;
-      isHargaTarikanEditable = true;
+      isHargaTarikanEditable = false;
     } else if (selectedKategoriTiket == 'reguler' && kelasBus == 'Non Ekonomi') {
       isHargaKantorVisible = false;
       isTombolVisible = true;
@@ -2795,7 +2795,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       isNotlpPembeliVisible = false;
       isMetodePembayaranVisible = true;
       isFotoVisible = false;
-      isHargaTarikanEditable = true;
+      isHargaTarikanEditable = false;
     }
 
     // ==============================
