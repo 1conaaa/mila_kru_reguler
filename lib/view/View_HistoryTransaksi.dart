@@ -184,7 +184,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     print("=== PUSH DATA SELESAI ===");
   }
 
-
   Future<void> _getListTransaksi() async {
     List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getDataPenjualan();
     setState(() {

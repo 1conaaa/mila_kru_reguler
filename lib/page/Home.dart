@@ -513,16 +513,28 @@ class _HomeState extends State<Home> {
                                             color: _isInitialLoading ? Colors.grey[50] : null,
                                             child: ListTile(
                                               title: Text(
-                                                '${krubis['nama_lengkap']}',
+                                                krubis['nama_lengkap'],
                                                 style: TextStyle(
                                                   color: _isInitialLoading ? Colors.grey : Colors.black,
+                                                  fontWeight: FontWeight.bold,
                                                 ),
                                               ),
-                                              subtitle: Text(
-                                                '${krubis['group_name']}',
-                                                style: TextStyle(
-                                                  color: _isInitialLoading ? Colors.grey : null,
-                                                ),
+                                              subtitle: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    krubis['nik'],
+                                                    style: TextStyle(
+                                                      color: _isInitialLoading ? Colors.grey : Colors.black,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    krubis['group_name'],
+                                                    style: TextStyle(
+                                                      color: _isInitialLoading ? Colors.grey : Colors.black54,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           );

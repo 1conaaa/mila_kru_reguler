@@ -29,6 +29,7 @@ class User {
   final String? coaUtangPremi;
   final String? noKontak;
   final String? persenSusukan;
+  final String? hargaBatas;
 
   User({
     required this.idUser,
@@ -58,6 +59,7 @@ class User {
     this.coaUtangPremi,
     this.noKontak,
     this.persenSusukan,
+    this.hargaBatas,
   });
 
   // =======================
@@ -92,6 +94,7 @@ class User {
       coaUtangPremi: json['coa_utang_premi']?.toString(),
       noKontak: json['no_kontak']?.toString(),
       persenSusukan: json['persen_susukan']?.toString(),
+      hargaBatas: json['harga_batas']?.toString(),
     );
   }
 
@@ -132,9 +135,9 @@ class User {
 
       noKontak: map['no_kontak']?.toString(),
       persenSusukan: map['persen_susukan']?.toString(),
+      hargaBatas: map['harga_batas']?.toString(),
     );
   }
-
 
   // =======================
   // TO SQLITE MAP
@@ -168,6 +171,7 @@ class User {
       'coa_utang_premi': coaUtangPremi,
       'no_kontak': noKontak,
       'persen_susukan': persenSusukan,
+      'harga_batas': hargaBatas,
       'tanggal_simpan': DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
   }
@@ -201,6 +205,7 @@ class User {
       coaUtangPremi: '',
       noKontak: '',
       persenSusukan: '0%',
+      hargaBatas: '',
     );
   }
 

@@ -97,12 +97,14 @@ class ApiResponseKruBis {
 class KruBis {
   final int idPersonil;
   final int idGroup;
+  final String nik;
   final String namaLengkap;
   final String groupName;
 
   KruBis({
     required this.idPersonil,
     required this.idGroup,
+    required this.nik,
     required this.namaLengkap,
     required this.groupName,
   });
@@ -111,6 +113,7 @@ class KruBis {
     return KruBis(
       idPersonil: json['id_personil'] is int ? json['id_personil'] : int.tryParse(json['id_personil']) ?? 0,
       idGroup: json['id_group'] is int ? json['id_group'] : int.tryParse(json['id_group']) ?? 0,
+      nik: json['nik'] ?? '',
       namaLengkap: json['nama_lengkap'] ?? '',
       groupName: json['group_name'] ?? '',
     );
@@ -120,6 +123,7 @@ class KruBis {
     return {
       'id_personil': idPersonil,
       'id_group': idGroup,
+      'nik': nik,
       'nama_lengkap': namaLengkap,
       'group_name': groupName,
     };

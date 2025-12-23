@@ -192,6 +192,7 @@ class _LoginState extends State<Login> {
         "coaUtangPremi": user.coaUtangPremi ?? "",
         "noKontak": user.noKontak ?? "",
         "persenSusukanKru": user.persenSusukan ?? "",
+        "hargaBatas": user.hargaBatas ?? "",
       };
 
       for (var entry in dataUserToSave.entries) {

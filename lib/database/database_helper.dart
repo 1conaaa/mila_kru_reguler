@@ -25,7 +25,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_16122025-8.db';
+    String path = '${documentsDirectory.path}/bisapp_23122025-1.db';
 
     return await openDatabase(
       path,
@@ -197,6 +197,7 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY,
         id_personil INTEGER,
         id_group INTEGER,
+        nik TEXT,
         nama_lengkap TEXT,
         group_name TEXT, UNIQUE (id_personil, id_group)
       )
@@ -235,6 +236,7 @@ class DatabaseHelper {
       coa_utang_premi TEXT,
       no_kontak TEXT,
       persen_susukan TEXT,
+      harga_batas TEXT,
       UNIQUE (id_user, id_group, id_company, id_garasi, id_bus, no_pol, tanggal_simpan)
     )
     ''');
@@ -456,23 +458,60 @@ class DatabaseHelper {
     );
   }
 
+  // Future<List<Map<String, dynamic>>> getAllTransaksiBagasi() async {
+  //   final db = await database;
+  //
+  //   // Menggunakan rawQuery untuk menjalankan query JOIN
+  //   return await db.rawQuery('''
+  //     SELECT
+  //       a.id,a.tgl_order,a.id_jenis_paket,a.id_order,a.rit,a.no_pol,a.id_bus,
+  //       a.kode_trayek,a.id_personil,a.id_group,a.id_kota_berangkat,a.id_kota_tujuan,
+  //       a.qty_barang,a.harga_km,a.jml_harga,a.nama_pengirim,a.no_tlp_pengirim,
+  //       a.nama_penerima,a.no_tlp_penerima,a.keterangan,b.jenis_paket,b.deskripsi,b.persen,
+  //       c.nama_kota AS kota_berangkat,d.nama_kota AS kota_tujuan,a.keterangan,a.fupload,a.file_name,a.status
+  //     FROM
+  //       t_order_bagasi AS a
+  //       INNER JOIN m_jenis_paket AS b ON a.id_jenis_paket=b.id
+  //       LEFT JOIN list_kota AS c ON a.id_kota_berangkat = c.id_kota_tujuan
+  //       LEFT JOIN list_kota AS d ON a.id_kota_tujuan = d.id_kota_tujuan
+  //   ''');
+  // }
+
   Future<List<Map<String, dynamic>>> getAllTransaksiBagasi() async {
     final db = await database;
 
-    // Menggunakan rawQuery untuk menjalankan query JOIN
     return await db.rawQuery('''
-      SELECT 
-        a.id,a.tgl_order,a.id_jenis_paket,a.id_order,a.rit,a.no_pol,a.id_bus,
-        a.kode_trayek,a.id_personil,a.id_group,a.id_kota_berangkat,a.id_kota_tujuan,
-        a.qty_barang,a.harga_km,a.jml_harga,a.nama_pengirim,a.no_tlp_pengirim,
-        a.nama_penerima,a.no_tlp_penerima,a.keterangan,b.jenis_paket,b.deskripsi,b.persen,
-        c.nama_kota AS kota_berangkat,d.nama_kota AS kota_tujuan,a.keterangan,a.fupload,a.file_name,a.status
-      FROM
-        t_order_bagasi AS a
-        INNER JOIN m_jenis_paket AS b ON a.id_jenis_paket=b.id
-        LEFT JOIN list_kota AS c ON a.id_kota_berangkat = c.id_kota_tujuan
-        LEFT JOIN list_kota AS d ON a.id_kota_tujuan = d.id_kota_tujuan
-    ''');
+    SELECT 
+      a.id,a.tgl_order,a.id_jenis_paket,a.id_order,a.rit,a.no_pol,a.id_bus,
+      a.kode_trayek,a.id_personil,a.id_group,a.id_kota_berangkat,a.id_kota_tujuan,
+      a.qty_barang,a.harga_km,a.jml_harga,a.nama_pengirim,a.no_tlp_pengirim,
+      a.nama_penerima,a.no_tlp_penerima,a.keterangan,b.jenis_paket,
+      b.deskripsi,b.persen,
+
+      -- 🔽 AMBIL NAMA KOTA TANPA DUPLIKASI
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_berangkat = a.id_kota_berangkat
+        LIMIT 1
+      ) AS kota_berangkat,
+
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_tujuan = a.id_kota_tujuan
+        LIMIT 1
+      ) AS kota_tujuan,
+
+      a.fupload,
+      a.file_name,
+      a.status
+
+    FROM t_order_bagasi AS a
+    INNER JOIN m_jenis_paket AS b 
+      ON a.id_jenis_paket = b.id
+    ORDER BY a.id DESC
+  ''');
   }
 
   Future<List<Map<String, dynamic>>> getDataTransaksiBagasiTerakhir() async {
@@ -620,9 +659,23 @@ class DatabaseHelper {
   }
 
 
+  // Future<List<Map<String, dynamic>>> getListKota() async {
+  //   final db = await database;
+  //   return await db.query('list_kota');
+  // }
+
   Future<List<Map<String, dynamic>>> getListKota() async {
     final db = await database;
-    return await db.query('list_kota');
+    return await db.rawQuery('''
+    SELECT *
+    FROM list_kota
+    WHERE id IN (
+      SELECT MIN(id)
+      FROM list_kota
+      GROUP BY nama_kota
+    )
+    ORDER BY nama_kota
+  ''');
   }
 
   Future<Map<String, dynamic>> getLastKotaTerakhir() async {
@@ -641,6 +694,24 @@ class DatabaseHelper {
     } else {
       return {};
     }
+  }
+
+  Future<List<Map<String, dynamic>>> getJarakKota(
+      String kotaA,
+      String kotaB,
+      ) async {
+    final db = await database;
+    return await db.rawQuery(
+      '''
+    SELECT *
+    FROM list_kota a
+    WHERE
+      (a.id_kota_berangkat = ? AND a.id_kota_tujuan = ?)
+      OR
+      (a.id_kota_berangkat = ? AND a.id_kota_tujuan = ?)
+    ''',
+      [kotaA, kotaB, kotaB, kotaA],
+    );
   }
 
   Future<String> getNamaKota(int idKota) async {

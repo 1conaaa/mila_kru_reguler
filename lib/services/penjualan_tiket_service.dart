@@ -59,19 +59,43 @@ class PenjualanTiketService {
   }
 
   /// Mengambil seluruh data penjualan tiket (gabung dengan list_kota)
+  // Future<List<Map<String, dynamic>>> getDataPenjualan() async {
+  //   final db = await database;
+  //   return await db.rawQuery('''
+  //     SELECT
+  //       a.*,
+  //       a.is_turun,
+  //       a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
+  //     FROM penjualan_tiket AS a
+  //     LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
+  //     LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
+  //     ORDER BY a.id DESC;
+  //   ''');
+  // }
+
   Future<List<Map<String, dynamic>>> getDataPenjualan() async {
     final db = await database;
     return await db.rawQuery('''
-      SELECT 
-        a.*, 
-        a.is_turun,
-        a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
-      FROM penjualan_tiket AS a
-      LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
-      LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-      ORDER BY a.id DESC;
-    ''');
+    SELECT 
+      a.*,
+      a.kategori_tiket || ' - ' ||
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_tujuan = a.kota_berangkat
+        LIMIT 1
+      ) || ' - ' ||
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_tujuan = a.kota_tujuan
+        LIMIT 1
+      ) AS rute_kota
+    FROM penjualan_tiket a
+    ORDER BY a.id DESC
+  ''');
   }
+
 
   /// Mengambil daftar rute kota dari penjualan tiket
   Future<List<Map<String, dynamic>>> getRuteKota() async {

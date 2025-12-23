@@ -18,8 +18,13 @@ import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 import 'package:mila_kru_reguler/services/data_pusher_service.dart';
+import 'package:mila_kru_reguler/services/user_service.dart';
 
 import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 
 class PremiKru extends StatefulWidget {
   @override
@@ -45,6 +50,8 @@ class _PremiKruState extends State<PremiKru> {
   DateTime? _selectedDate;
 
   get kodeTrayek => null;
+
+  final UserService _userService = UserService();
 
   @override
   void initState() {
@@ -199,7 +206,6 @@ class _PremiKruState extends State<PremiKru> {
     }
   }
 
-
   //----------------------------------------------------------------------
   // MULTIPART API KIRIM SETORAN
   //----------------------------------------------------------------------
@@ -316,6 +322,327 @@ class _PremiKruState extends State<PremiKru> {
   }
 
   //----------------------------------------------------------------------
+  // EXPORT TO PDF (SIMPLE VERSION)
+  //----------------------------------------------------------------------
+  Future<void> _exportToPDF() async {
+    try {
+      final setoranList = await setoranKruService.getAllSetoran();
+      final tagList = await _getAllTagTransaksi();
+      final users = await _userService.getAllUsers();
+      final user = users.isNotEmpty ? users.first : null;
+
+      if (setoranList.isEmpty) {
+        _showAlertDialog(context, "Tidak ada data setoran kru untuk diekspor.");
+        return;
+      }
+
+      // Loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Text("Membuat PDF..."),
+            ],
+          ),
+        ),
+      );
+
+      final pdf = pw.Document();
+      final now = DateTime.now();
+      final dateFormat = DateFormat('dd-MM-yyyy HH:mm');
+      final fileNameFormat = DateFormat('yyyyMMdd_HHmmss');
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) {
+            // ===== GROUPING DATA =====
+            final Map<String, List<dynamic>> groupedData = {};
+
+            for (var item in setoranList) {
+              final key =
+                  '${item.noPol}_${item.tglTransaksi}_${item.kodeTrayek}';
+
+              groupedData.putIfAbsent(key, () => []);
+              groupedData[key]!.add(item);
+            }
+
+            // ===== AMBIL TANGGAL LAPORAN DARI DATA =====
+            String tanggalLaporan = "-";
+            if (groupedData.isNotEmpty) {
+              final firstGroup = groupedData.values.first.first;
+              tanggalLaporan = firstGroup.tglTransaksi ?? "-";
+              if (tanggalLaporan.length > 10) {
+                tanggalLaporan = tanggalLaporan.substring(0, 10);
+              }
+            }
+
+            return [
+              // ================= HEADER =================
+              pw.Text(
+                'LAPORAN SETORAN KRU',
+                style: pw.TextStyle(
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 6),
+
+              // ===== DATA KRU / BUS =====
+              if (user != null) ...[
+                _pdfRow("No Pol", user.noPol ?? "-"),
+                _pdfRow("Nama Kru", user.namaLengkap ?? "-"),
+                _pdfRow("Trayek", user.namaTrayek ?? "-"),
+                _pdfRow("Jenis Trayek", user.jenisTrayek ?? "-"),
+                _pdfRow("Kelas Bus", user.kelasBus ?? "-"),
+              ],
+
+              // ===== TANGGAL OPERASIONAL =====
+              _pdfRow("Tanggal", tanggalLaporan),
+
+              pw.Divider(),
+
+              // ================= LIST GROUP =================
+              ...groupedData.entries.map((entry) {
+                final items = entry.value;
+                final first = items.first;
+
+                String tgl = first.tglTransaksi ?? '-';
+                if (tgl.length > 10) tgl = tgl.substring(0, 10);
+
+                return pw.Container(
+                  margin: const pw.EdgeInsets.only(bottom: 12),
+                  padding: const pw.EdgeInsets.all(8),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey400),
+                    borderRadius: pw.BorderRadius.circular(4),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+
+                      // ===== LIST TAG TRANSAKSI =====
+                      ...items.map((data) {
+                        final bool isPremiAtas =
+                            data.idTagTransaksi == 27;
+
+                        final String namaTag = isPremiAtas
+                            ? "Premi Atas"
+                            : _getNamaTagFromList(
+                          data.idTagTransaksi,
+                          tagList,
+                        );
+
+                        return pw.Padding(
+                          padding:
+                          const pw.EdgeInsets.symmetric(vertical: 2),
+                          child: pw.Row(
+                            mainAxisAlignment:
+                            pw.MainAxisAlignment.spaceBetween,
+                            children: [
+                              pw.Text(
+                                "- $namaTag",
+                                style:
+                                const pw.TextStyle(fontSize: 9),
+                              ),
+                              pw.Text(
+                                formatter.format(data.nilai ?? 0),
+                                style: pw.TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                );
+              }).toList(),
+
+              pw.Divider(),
+              pw.Text(
+                'Dibuat oleh: Aplikasi Mila KRU Reguler',
+                style: pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+              ),
+            ];
+          },
+        ),
+      );
+
+      final bytes = await pdf.save();
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName = 'setoran_kru_${fileNameFormat.format(now)}.pdf';
+      final filePath = '${directory.path}/$fileName';
+
+      final file = File(filePath);
+      await file.writeAsBytes(bytes);
+
+      Navigator.pop(context);
+      await _showPDFSuccessDialog(filePath, fileName);
+    } catch (e) {
+      if (Navigator.canPop(context)) Navigator.pop(context);
+      _showAlertDialog(context, "Error membuat PDF: $e");
+    }
+  }
+
+  pw.Widget _pdfRow(String label, String value, {bool bold = false}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 2),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.SizedBox(
+            width: 70,
+            child: pw.Text(
+              label,
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+          ),
+          pw.Text(": ", style: const pw.TextStyle(fontSize: 9)),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: pw.TextStyle(
+                fontSize: 9,
+                fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showPDFSuccessDialog(String filePath, String fileName) async {
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 10),
+            Text("PDF Berhasil Dibuat"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "File telah disimpan sebagai:",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 5),
+            Text(
+              fileName,
+              style: TextStyle(fontSize: 12, color: Colors.blue),
+            ),
+            SizedBox(height: 10),
+            Text(
+              "Lokasi:",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 5),
+            Text(
+              filePath,
+              style: TextStyle(fontSize: 10, color: Colors.grey),
+            ),
+            SizedBox(height: 15),
+            Text(
+              "Pilih aksi:",
+              style: TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 1),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.folder_open, size: 18),
+                SizedBox(width: 5),
+                Text("Buka File"),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.download, size: 18),
+                SizedBox(width: 5),
+                Text("Download Ulang"),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 0),
+            child: Text("Tutup"),
+          ),
+        ],
+      ),
+    );
+
+    switch (result) {
+      case 1:
+      // Buka file dengan aplikasi default
+        await OpenFile.open(filePath);
+        break;
+      case 2:
+      // Download ulang ke folder Downloads jika ada
+        await _saveToDownloads(filePath, fileName);
+        break;
+    }
+  }
+
+  Future<void> _saveToDownloads(String sourcePath, String fileName) async {
+    try {
+      // Coba akses folder Downloads
+      final downloadsDirectory = await getDownloadsDirectory();
+
+      if (downloadsDirectory != null) {
+        final destPath = '${downloadsDirectory.path}/$fileName';
+        final sourceFile = File(sourcePath);
+        final destFile = File(destPath);
+
+        await sourceFile.copy(destFile.path);
+
+        _showAlertDialog(
+          context,
+          "File berhasil disalin ke folder Downloads:\n$fileName",
+        );
+
+        // Buka file setelah disalin
+        await OpenFile.open(destPath);
+      } else {
+        // Fallback ke Documents directory
+        final documents = await getApplicationDocumentsDirectory();
+        final destPath = '${documents.path}/$fileName';
+        final sourceFile = File(sourcePath);
+        final destFile = File(destPath);
+
+        await sourceFile.copy(destFile.path);
+
+        _showAlertDialog(
+          context,
+          "File disalin ke:\n$destPath",
+        );
+      }
+    } catch (e) {
+      _showAlertDialog(context, "Error menyimpan file: $e");
+    }
+  }
+
+  //----------------------------------------------------------------------
   // BUILD UI
   //----------------------------------------------------------------------
 
@@ -346,6 +673,11 @@ class _PremiKruState extends State<PremiKru> {
         title: Text("Data Premi Disetor Harian Kru"),
         actions: [
           IconButton(
+            icon: Icon(Icons.picture_as_pdf),
+            tooltip: "Export to PDF",
+            onPressed: _exportToPDF,
+          ),
+          IconButton(
             icon: Icon(Icons.calendar_today),
             tooltip: "Pilih Tanggal",
             onPressed: () => _selectDate(context),
@@ -363,277 +695,348 @@ class _PremiKruState extends State<PremiKru> {
         ],
       ),
 
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // ------------------- TABLE PREMI KRU -------------------
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text("Kru")),
-                  DataColumn(label: Text("%")),
-                  DataColumn(label: Text("Nominal"), numeric: true),
-                  DataColumn(label: Text("Status")),
-                ],
-                rows: listPremiHarianKru.map((item) {
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(item["nama_kru"].toString())),
-                      DataCell(Text(item["persen_premi"].toString())),
-                      DataCell(Text(formatter.format(item["nominal_premi_disetor"]))),
-                      DataCell(Text(item["status"].toString())),
-                    ],
-                  );
-                }).toList(),
+      body: SafeArea(
+        bottom: true,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // ------------------- TABLE PREMI KRU -------------------
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: DataTable(
+                  columns: const [
+                    DataColumn(label: Text("Kru")),
+                    DataColumn(label: Text("%")),
+                    DataColumn(label: Text("Nominal"), numeric: true),
+                    DataColumn(label: Text("Status")),
+                  ],
+                  rows: listPremiHarianKru.map((item) {
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(item["nama_kru"].toString())),
+                        DataCell(Text(item["persen_premi"].toString())),
+                        DataCell(Text(formatter.format(item["nominal_premi_disetor"]))),
+                        DataCell(Text(item["status"].toString())),
+                      ],
+                    );
+                  }).toList(),
+                ),
               ),
-            ),
 
-            SizedBox(height: 30),
+              SizedBox(height: 30),
 
-            // ------------------- SETORAN KRU -------------------
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Text(
-                    "Data Setoran Kru",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 12),
+              // ------------------- SETORAN KRU -------------------
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Text(
+                      "Data Setoran Kru",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 12),
 
-                  FutureBuilder(
-                    future: setoranKruData,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Center(child: CircularProgressIndicator());
-                      }
+                    FutureBuilder(
+                      future: setoranKruData,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(child: CircularProgressIndicator());
+                        }
 
-                      if (snapshot.hasError) {
-                        return Text("Error: ${snapshot.error}");
-                      }
+                        if (snapshot.hasError) {
+                          return Text("Error: ${snapshot.error}");
+                        }
 
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return Text("Tidak ada data setoran kru");
-                      }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Text("Tidak ada data setoran kru");
+                        }
 
-                      List<SetoranKru> setoranList = snapshot.data!;
+                        List<SetoranKru> setoranList = snapshot.data!;
 
-                      return FutureBuilder<List<TagTransaksi>>(
-                        future: _getAllTagTransaksi(),
-                        builder: (context, tagSnap) {
-                          if (!tagSnap.hasData) {
-                            return Center(child: CircularProgressIndicator());
-                          }
+                        return FutureBuilder<List<TagTransaksi>>(
+                          future: _getAllTagTransaksi(),
+                          builder: (context, tagSnap) {
+                            if (!tagSnap.hasData) {
+                              return Center(child: CircularProgressIndicator());
+                            }
 
-                          final tagList = tagSnap.data!;
+                            final tagList = tagSnap.data!;
 
-                          return SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              columns: const [
-                                DataColumn(label: Text("ID")),
-                                DataColumn(label: Text("Nama Tag")),
-                                DataColumn(label: Text("Nilai"), numeric: true),
-                                DataColumn(label: Text("Keterangan")),
-                                DataColumn(label: Text("Status")),
-                              ],
-                              rows: setoranList.expand((s) {
-                                List<DataRow> rows = [];
+                            return SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: DataTable(
+                                columns: const [
+                                  DataColumn(label: Text("ID")),
+                                  DataColumn(label: Text("Nama Tag")),
+                                  DataColumn(label: Text("Nilai"), numeric: true),
+                                  DataColumn(label: Text("Keterangan")),
+                                  DataColumn(label: Text("Status")),
+                                ],
+                                rows: setoranList.expand((s) {
+                                  List<DataRow> rows = [];
 
-                                bool isPremiAtas = s.idTagTransaksi == 27;
-                                String namaTag = isPremiAtas
-                                    ? "Premi Atas"
-                                    : _getNamaTagFromList(s.idTagTransaksi, tagList);
+                                  bool isPremiAtas = s.idTagTransaksi == 27;
+                                  bool isTag61 = s.idTagTransaksi == 61;
+                                  String namaTag = isPremiAtas
+                                      ? "Premi Atas"
+                                      : _getNamaTagFromList(s.idTagTransaksi, tagList);
 
-                                // ====== ROW UTAMA ======
-                                rows.add(
-                                  DataRow(
-                                    cells: [
-                                      DataCell(Text(s.id?.toString() ?? "-")),
-                                      DataCell(Text(namaTag)),
-                                      DataCell(Text(s.nilai != null ? formatter.format(s.nilai) : "-")),
-                                      DataCell(Text(s.keterangan ?? "-")),
-                                      DataCell(Text(s.status ?? "-")),
-                                    ],
-                                  ),
-                                );
-
-                                // ====== JIKA PREMI ATAS, TAMBAHKAN DETAIL PEMBAGIAN PER KRU ======
-                                if (isPremiAtas && listPremiHarianKru.isNotEmpty) {
-                                  // Row header pembagian
-                                  rows.add(
-                                    DataRow(
-                                      cells: const [
-                                        DataCell(Text("")),
-                                        DataCell(Text("🔽 Pembagian Premi Atas")),
-                                        DataCell(Text("")),
-                                        DataCell(Text("")),
-                                        DataCell(Text("")),
-                                      ],
-                                    ),
-                                  );
-
-                                  // Row untuk data pembagian
+                                  // ====== ROW UTAMA ======
                                   rows.add(
                                     DataRow(
                                       cells: [
-                                        const DataCell(Text("")),
+                                        // ID Cell
+                                        DataCell(Text(
+                                          s.id?.toString() ?? "-",
+                                          style: isTag61
+                                              ? TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue[800],
+                                          )
+                                              : null,
+                                        )),
+
+                                        // Nama Tag Cell - BOLD & BESAR untuk ID 61
+                                        DataCell(Text(
+                                          namaTag,
+                                          style: isTag61
+                                              ? TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red[800],
+                                          )
+                                              : null,
+                                        )),
+
+                                        // Nilai Cell - BOLD & BESAR untuk ID 61
+                                        DataCell(Text(
+                                          s.nilai != null ? formatter.format(s.nilai) : "-",
+                                          style: isTag61
+                                              ? TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green[800],
+                                          )
+                                              : TextStyle(
+                                            fontWeight: isTag61 ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                        )),
+
+                                        // Keterangan Cell
+                                        DataCell(Text(
+                                          s.keterangan ?? "-",
+                                          style: isTag61
+                                              ? TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            fontStyle: FontStyle.italic,
+                                          )
+                                              : null,
+                                        )),
+
+                                        // Status Cell - BOLD untuk ID 61
                                         DataCell(
                                           Container(
-                                            width: MediaQuery.of(context).size.width * 0.6,
-                                            child: FutureBuilder<List<ListPersenPremiKru>>(
-                                              future: PersenPremiKruService.instance.getByKodeTrayek(
-                                                s.kodeTrayek ?? "",
-                                                idJenisPremi: 1,
-                                                onDataFetchedFromApi: (apiSuccess) {
-                                                  if (apiSuccess && mounted) {
-                                                    Future.delayed(Duration(milliseconds: 200), () => setState(() {}));
-                                                  }
-                                                },
+                                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black, // background selalu hitam
+                                              borderRadius: BorderRadius.circular(4),
+                                              border: Border.all(
+                                                color: Colors.black, // border hitam
+                                                width: 1,            // bisa disesuaikan
                                               ),
-                                              builder: (context, snapshot) {
-                                                if (snapshot.connectionState == ConnectionState.waiting) {
-                                                  return Row(
-                                                    children: [
-                                                      CircularProgressIndicator(strokeWidth: 2),
-                                                      SizedBox(width: 8),
-                                                      Text("Memuat data..."),
-                                                    ],
-                                                  );
-                                                }
-
-                                                if (snapshot.hasError) {
-                                                  return Text("Error: ${snapshot.error}");
-                                                }
-
-                                                final persenList = snapshot.data ?? [];
-
-                                                if (persenList.isEmpty) {
-                                                  return Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Text("⚠️ Data tidak ditemukan"),
-                                                      SizedBox(height: 4),
-                                                      ElevatedButton(
-                                                        onPressed: () async {
-                                                          final prefs = await SharedPreferences.getInstance();
-                                                          final token = prefs.getString('token');
-
-                                                          if (token != null) {
-                                                            final ok = await ApiHelperPersenPremiKru
-                                                                .requestListPersenPremiAPI(token, s.kodeTrayek);
-                                                            if (mounted) setState(() {});
-                                                          }
-                                                        },
-                                                        child: Text("Ambil Data"),
-                                                      ),
-                                                    ],
-                                                  );
-                                                }
-
-                                                double totalPersen =
-                                                persenList.fold(0.0, (sum, item) => sum + item.nilaiAsDouble);
-
-                                                return SingleChildScrollView(
-                                                  child: Column(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      // LIST PEMBAGIAN — FIX OVERFLOW
-                                                      ...persenList.map((p) {
-                                                        final persen = p.nilaiAsDouble;
-                                                        final nominal = totalPersen > 0
-                                                            ? (persen / totalPersen) * (s.nilai ?? 0)
-                                                            : 0;
-
-                                                        final namaKru = listPremiHarianKru.firstWhere(
-                                                              (k) => k["id_posisi_kru"] == p.idPosisiKru,
-                                                          orElse: () => {"nama_kru": "Kru #${p.idPosisiKru}"},
-                                                        )["nama_kru"] ??
-                                                            "Kru #${p.idPosisiKru}";
-
-                                                        return Container(
-                                                          padding: EdgeInsets.symmetric(vertical: 4),
-                                                          decoration: BoxDecoration(
-                                                            border: Border(
-                                                              bottom: BorderSide(color: Colors.grey[300]!),
-                                                            ),
-                                                          ),
-                                                          child: Column(
-                                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                                            children: [
-                                                              // baris nama kru + nilai nominal
-                                                              Row(
-                                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                                children: [
-                                                                  Expanded(
-                                                                    child: Text(
-                                                                      namaKru,
-                                                                      overflow: TextOverflow.ellipsis,
-                                                                      style: TextStyle(fontSize: 12),
-                                                                    ),
-                                                                  ),
-                                                                  SizedBox(width: 6),
-                                                                  Text(
-                                                                    formatter.format(nominal),
-                                                                    style: TextStyle(
-                                                                      fontSize: 12,
-                                                                      fontWeight: FontWeight.bold,
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-
-                                                              SizedBox(height: 2),
-
-                                                              // persen badge
-                                                              Container(
-                                                                padding:
-                                                                EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                                                decoration: BoxDecoration(
-                                                                  color: Colors.green[50],
-                                                                  borderRadius: BorderRadius.circular(3),
-                                                                ),
-                                                                child: Text(
-                                                                  "${persen.toStringAsFixed(1)}%",
-                                                                  style: TextStyle(fontSize: 10),
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        );
-                                                      }).toList(),
-                                                    ],
-                                                  ),
-                                                );
-                                              },
+                                            ),
+                                            child: Text(
+                                              s.status ?? "-",      // tetap tampil status atau "-"
+                                              style: TextStyle(
+                                                fontSize: 12,       // ukuran font standar
+                                                fontWeight: FontWeight.normal, // font biasa
+                                                color: Colors.white, // teks putih agar terlihat di background hitam
+                                              ),
                                             ),
                                           ),
                                         ),
-
-                                        const DataCell(Text("")),
-                                        const DataCell(Text("")),
-                                        const DataCell(Text("")),
                                       ],
                                     ),
                                   );
 
-                                }
+                                  // ====== JIKA PREMI ATAS, TAMBAHKAN DETAIL PEMBAGIAN PER KRU ======
+                                  if (isPremiAtas && listPremiHarianKru.isNotEmpty) {
+                                    // Row header pembagian
+                                    rows.add(
+                                      DataRow(
+                                        cells: const [
+                                          DataCell(Text("")),
+                                          DataCell(Text("🔽 Pembagian Premi Atas")),
+                                          DataCell(Text("")),
+                                          DataCell(Text("")),
+                                          DataCell(Text("")),
+                                        ],
+                                      ),
+                                    );
 
+                                    // Row untuk data pembagian
+                                    rows.add(
+                                      DataRow(
+                                        cells: [
+                                          const DataCell(Text("")),
+                                          DataCell(
+                                            Container(
+                                              width: MediaQuery.of(context).size.width * 0.6,
+                                              child: FutureBuilder<List<ListPersenPremiKru>>(
+                                                future: PersenPremiKruService.instance.getByKodeTrayek(
+                                                  s.kodeTrayek ?? "",
+                                                  idJenisPremi: 1,
+                                                  onDataFetchedFromApi: (apiSuccess) {
+                                                    if (apiSuccess && mounted) {
+                                                      Future.delayed(Duration(milliseconds: 200), () => setState(() {}));
+                                                    }
+                                                  },
+                                                ),
+                                                builder: (context, snapshot) {
+                                                  if (snapshot.connectionState == ConnectionState.waiting) {
+                                                    return Row(
+                                                      children: [
+                                                        CircularProgressIndicator(strokeWidth: 2),
+                                                        SizedBox(width: 8),
+                                                        Text("Memuat data..."),
+                                                      ],
+                                                    );
+                                                  }
 
-                                return rows;
-                              }).toList(),
-                            ),
-                          );
+                                                  if (snapshot.hasError) {
+                                                    return Text("Error: ${snapshot.error}");
+                                                  }
 
-                        },
-                      );
-                    },
-                  ),
-                ],
+                                                  final persenList = snapshot.data ?? [];
+
+                                                  if (persenList.isEmpty) {
+                                                    return Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text("⚠️ Data tidak ditemukan"),
+                                                        SizedBox(height: 4),
+                                                        ElevatedButton(
+                                                          onPressed: () async {
+                                                            final prefs = await SharedPreferences.getInstance();
+                                                            final token = prefs.getString('token');
+
+                                                            if (token != null) {
+                                                              final ok = await ApiHelperPersenPremiKru
+                                                                  .requestListPersenPremiAPI(token, s.kodeTrayek);
+                                                              if (mounted) setState(() {});
+                                                            }
+                                                          },
+                                                          child: Text("Ambil Data"),
+                                                        ),
+                                                      ],
+                                                    );
+                                                  }
+
+                                                  double totalPersen =
+                                                  persenList.fold(0.0, (sum, item) => sum + item.nilaiAsDouble);
+
+                                                  return SingleChildScrollView(
+                                                    child: Column(
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        // LIST PEMBAGIAN — FIX OVERFLOW
+                                                        ...persenList.map((p) {
+                                                          final persen = p.nilaiAsDouble;
+                                                          final nominal = totalPersen > 0
+                                                              ? (persen / totalPersen) * (s.nilai ?? 0)
+                                                              : 0;
+
+                                                          final namaKru = listPremiHarianKru.firstWhere(
+                                                                (k) => k["id_posisi_kru"] == p.idPosisiKru,
+                                                            orElse: () => {"nama_kru": "Kru #${p.idPosisiKru}"},
+                                                          )["nama_kru"] ??
+                                                              "Kru #${p.idPosisiKru}";
+
+                                                          return Container(
+                                                            padding: EdgeInsets.symmetric(vertical: 4),
+                                                            decoration: BoxDecoration(
+                                                              border: Border(
+                                                                bottom: BorderSide(color: Colors.grey[300]!),
+                                                              ),
+                                                            ),
+                                                            child: Column(
+                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                              children: [
+                                                                // baris nama kru + nilai nominal
+                                                                Row(
+                                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                                  children: [
+                                                                    Expanded(
+                                                                      child: Text(
+                                                                        namaKru,
+                                                                        overflow: TextOverflow.ellipsis,
+                                                                        style: TextStyle(fontSize: 12),
+                                                                      ),
+                                                                    ),
+                                                                    SizedBox(width: 6),
+                                                                    Text(
+                                                                      formatter.format(nominal),
+                                                                      style: TextStyle(
+                                                                        fontSize: 12,
+                                                                        fontWeight: FontWeight.bold,
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+
+                                                                SizedBox(height: 2),
+
+                                                                // persen badge
+                                                                Container(
+                                                                  padding:
+                                                                  EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                                  decoration: BoxDecoration(
+                                                                    color: Colors.green[50],
+                                                                    borderRadius: BorderRadius.circular(3),
+                                                                  ),
+                                                                  child: Text(
+                                                                    "${persen.toStringAsFixed(1)}%",
+                                                                    style: TextStyle(fontSize: 10),
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          );
+                                                        }).toList(),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                          ),
+
+                                          const DataCell(Text("")),
+                                          const DataCell(Text("")),
+                                          const DataCell(Text("")),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  return rows;
+                                }).toList(),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+
+              // Padding bawah untuk memberi jarak dengan navbar
+              SizedBox(height: 30),
+            ],
+          ),
         ),
       ),
     );

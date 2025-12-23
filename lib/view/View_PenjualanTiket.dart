@@ -666,282 +666,432 @@ class _PenjualanFormState extends State<PenjualanForm> {
   double _hargaKantorCalculated = 0.0;
   double _hargaTarikanCalculated = 0.0;
 
-  void _calculateTagihan(
+//   void _calculateTagihan(
+//       String? selectedKategoriTiket,
+//       String? kelasBus,
+//       int jumlahTiket,
+//       String? selectedKotaBerangkat,
+//       String? selectedKotaTujuan,
+//       String? namaTrayek,       // 🆕
+//       String? jenisTrayek       // 🆕
+//       ) async {
+//     // VALIDASI INPUT DASAR
+//     if (selectedKotaBerangkat == null || selectedKotaTujuan == null) {
+//       print('⚠️  Info: Menunggu pemilihan kota lengkap');
+//       return;
+//     }
+//
+//     print('🛣 Trayek: $namaTrayek');
+//     print('🚌 Jenis: $jenisTrayek');
+//     print('🚌 Kelas: $kelasBus');
+//
+//     if (jumlahTiket <= 0) {
+//       print('⚠️  Info: Jumlah tiket harus > 0');
+//       return;
+//     }
+//
+//     try {
+//       // PERBAIKAN: Validasi dan parsing string yang lebih aman
+//       print('🔍 PARSING DATA KOTA:');
+//       print('   Kota Berangkat: "$selectedKotaBerangkat"');
+//       print('   Kota Tujuan: "$selectedKotaTujuan"');
+//
+//       // PERBAIKAN: Parsing yang lebih robust dengan error handling
+//       double jarakAwal = 0.0;
+//       double jarakAkhir = 0.0;
+//
+//       try {
+//         List<String> partsBerangkat = selectedKotaBerangkat.split(' - ');
+//         if (partsBerangkat.length >= 2) {
+//           jarakAwal = double.tryParse(partsBerangkat[1]) ?? 0.0;
+//           print('   ✅ Jarak Awal berhasil di-parse: $jarakAwal');
+//         } else {
+//           print('   ❌ Format kota berangkat tidak valid: $selectedKotaBerangkat');
+//           return;
+//         }
+//       } catch (e) {
+//         print('   ❌ Error parsing kota berangkat: $e');
+//         jarakAwal = 0.0;
+//       }
+//
+//       try {
+//         List<String> partsTujuan = selectedKotaTujuan.split(' - ');
+//         if (partsTujuan.length >= 2) {
+//           jarakAkhir = double.tryParse(partsTujuan[1]) ?? 0.0;
+//           print('   ✅ Jarak Akhir berhasil di-parse: $jarakAkhir');
+//         } else {
+//           print('   ❌ Format kota tujuan tidak valid: $selectedKotaTujuan');
+//           return;
+//         }
+//       } catch (e) {
+//         print('   ❌ Error parsing kota tujuan: $e');
+//         jarakAkhir = 0.0;
+//       }
+//
+//       // PERBAIKAN: Validasi jarak yang lebih toleran
+//       if (jarakAwal < 0) {
+//         print('   ⚠️  Jarak awal negatif, di-set ke 0');
+//         jarakAwal = 0.0;
+//       }
+//
+//       if (jarakAkhir < 0) {
+//         print('   ❌ Error: Jarak akhir harus > 0');
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text('Jarak tujuan tidak valid: $jarakAkhir'),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//         return;
+//       }
+//
+//       // PERBAIKAN: Hitung selisih jarak
+//       double selisihJarak = (jarakAkhir - jarakAwal).abs();
+//
+//       // Validasi selisih jarak
+//       if (selisihJarak <= 0) {
+//         print('   ⚠️  Selisih jarak <= 0, menggunakan jarak akhir');
+//         selisihJarak = jarakAkhir;
+//       }
+//
+//       // PERBAIKAN: Validasi parameter perhitungan dengan lebih ketat
+//       if (jarakPP <= 0) {
+//         print('❌ Error: Jarak PP tidak valid: $jarakPP');
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text('Error: Jarak PP tidak valid'),
+//             backgroundColor: Colors.red,
+//           ),
+//         );
+//         return;
+//       }
+//
+//       if (biayaPerkursi <= 0) {
+//         print('❌ Error: Biaya perkursi tidak valid: $biayaPerkursi');
+//         return;
+//       }
+//
+//       print('📍 DATA JARAK YANG DIGUNAKAN:');
+//       print('   jarakAwal: $jarakAwal km');
+//       print('   jarakAkhir: $jarakAkhir km');
+//       print('   selisihJarak: $selisihJarak km');
+//       print('   biayaPerkursi: Rp ${formatter.format(biayaPerkursi.toInt())}');
+//       print('   marginKantor: Rp ${formatter.format(marginKantor.toInt())}');
+//       print('   marginTarikan: Rp ${formatter.format(marginTarikan.toInt())}');
+//       print('   jarakPP: $jarakPP km');
+//       print('   jumlahTiket: $jumlahTiket');
+//
+//       // ----------------------------
+//       // HITUNG HARGA KANTOR & TARIKAN
+//       // ----------------------------
+//       double hargaPerKmKantor = (biayaPerkursi + marginKantor) / jarakPP;
+//       double hargaPerKmTarikan = (biayaPerkursi + marginTarikan) / jarakPP;
+//
+//       print('🧮 HARGA PER KM:');
+//       print('   Harga per km (kantor): Rp ${hargaPerKmKantor.toStringAsFixed(2)}');
+//       print('   Harga per km (tarikan): Rp ${hargaPerKmTarikan.toStringAsFixed(2)}');
+//
+//       // double hargaKantor = hargaPerKmKantor * selisihJarak * jumlahTiket;
+//       // double hargaTarikan = hargaPerKmTarikan * selisihJarak * jumlahTiket;
+//
+//       // HARGA UNTUK 1 TIKET
+//       double hargaKantor = hargaPerKmKantor * selisihJarak;
+//       double hargaTarikan = hargaPerKmTarikan * selisihJarak;
+//
+//       // PERBAIKAN: Validasi hasil perhitungan
+//       if (hargaKantor.isNaN || hargaKantor.isInfinite) {
+//         print('❌ Error: Harga kantor tidak valid (NaN/Infinite)');
+//         hargaKantor = 0.0;
+//       }
+//
+//       if (hargaTarikan.isNaN || hargaTarikan.isInfinite) {
+//         print('❌ Error: Harga tarikan tidak valid (NaN/Infinite)');
+//         hargaTarikan = 0.0;
+//       }
+//
+//       // Kasus khusus gratis
+//       if (selectedKategoriTiket == 'gratis') {
+//         print('🎫 TIKET GRATIS - harga di-set ke 0');
+//         hargaKantor = 0;
+//         hargaTarikan = 0;
+//       }
+//
+//       print("💰 HASIL PERHITUNGAN SEBELUM PEMBULATAN:");
+//       print("   Harga Kantor: Rp $hargaKantor");
+//       print("   Harga Tarikan: Rp $hargaTarikan");
+//
+//       // 🔸 Ambil persen susukan kru dari prefs
+//       final prefs = await SharedPreferences.getInstance();
+//       String? persenStr = prefs.getString('persenSusukanKru');
+//
+// // Default 0%
+//       double persenKru = 0.0;
+//
+// // ✅ NULL-SAFE parsing
+//       if (persenStr != null && persenStr.contains('%')) {
+//         persenKru = double.tryParse(
+//           persenStr.replaceAll('%', '').trim(),
+//         ) ?? 0.0;
+//       } else if (persenStr != null) {
+//         persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
+//       }
+//
+//       // konversi 9% -> 0.09
+//       double persen = persenKru / 100;
+//
+//       setState(() {
+//         try {
+//           // ---------------------------------------------------
+//           // 1. BULATKAN TARIKAN AWAL
+//           // ---------------------------------------------------
+//           int hargaTarikanBulat = pembulatanRibuan(hargaTarikan);
+//
+//           // ---------------------------------------------------
+//           // 2. HITUNG TAMBAHAN HARGA KHUSUS
+//           // ---------------------------------------------------
+//           double tambahanHarga = hitungPenambahanHarga(
+//             jarakAwal: jarakAwal,
+//             selisihJarak: selisihJarak,
+//             jenisTrayek: jenisTrayek ?? "",
+//             kelasBus: kelasBus ?? "",
+//             namaTrayek: namaTrayek ?? "",
+//           );
+//
+//           print("🎁 Tambahan harga khusus: Rp $tambahanHarga");
+//
+//           // ---------------------------------------------------
+// // 3. TARIKAN FINAL PER TIKET
+// // ---------------------------------------------------
+//           double hargaTarikanFinalPerTiket = hargaTarikanBulat + tambahanHarga;
+//           int hargaTarikanFinalPerTiketBulat =
+//           pembulatanRibuan(hargaTarikanFinalPerTiket);
+//
+// // ---------------------------------------------------
+// // 4. KALIKAN JUMLAH TIKET (FINAL)
+// // ---------------------------------------------------
+//           int hargaTarikanFinalBulat =
+//               hargaTarikanFinalPerTiketBulat * jumlahTiket;
+//
+// // ---------------------------------------------------
+// // 5. HITUNG HARGA KANTOR DARI TOTAL TARIKAN
+// // ---------------------------------------------------
+//           double hargaKantorHitung =
+//               hargaTarikanFinalBulat - (persen * hargaTarikanFinalBulat);
+//
+//           // int hargaKantorBulat = hargaKantorHitung.toInt();
+//
+//
+//           // 6. Bulatkan hasil kantor
+//           // int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
+//           int hargaKantorBulat = hargaKantorHitung.toInt();
+//
+//           // atau jika mau tanpa pembulatan:
+//           // int hargaKantorBulat = hargaKantorHitung.toInt();
+//
+//           // ---------------------------------------------------
+//           // 7. VALIDASI
+//           // ---------------------------------------------------
+//           if (hargaKantorBulat < 0) hargaKantorBulat = 0;
+//           if (hargaTarikanFinalBulat < 0) hargaTarikanFinalBulat = 0;
+//
+//           // ---------------------------------------------------
+//           // 8. SIMPAN KE VARIABEL GLOBAL
+//           // ---------------------------------------------------
+//           _hargaKantorCalculated = hargaKantorBulat.toDouble();
+//           _hargaTarikanCalculated = hargaTarikanFinalBulat.toDouble();
+//
+//           // ---------------------------------------------------
+//           // 9. TAMPILKAN PADA CONTROLLER
+//           // ---------------------------------------------------
+//           hargaKantorController.text = formatter.format(hargaKantorBulat);
+//           tagihanController.text = formatter.format(hargaTarikanFinalBulat);
+//
+//           jumlahTagihan = hargaTarikanFinalBulat.toDouble();
+//
+//           print('✅ PERHITUNGAN BERHASIL:');
+//           print('   Harga Kantor: Rp $_hargaKantorCalculated');
+//           print('   Harga Tarikan: Rp $_hargaTarikanCalculated');
+//           print('   Jumlah Tagihan: Rp $jumlahTagihan');
+//           print('   Kategori Tiket: $selectedKategoriTiket');
+//
+//         } catch (e) {
+//           print('❌ Error dalam setState: $e');
+//
+//           hargaKantorController.text = '0';
+//           tagihanController.text = '0';
+//           _hargaKantorCalculated = 0.0;
+//           _hargaTarikanCalculated = 0.0;
+//           jumlahTagihan = 0.0;
+//         }
+//       });
+//
+//     } catch (e) {
+//       print('❌ Error dalam _calculateTagihan: $e');
+//       print('❌ Stack trace: ${e.toString()}');
+//
+//       // PERBAIKAN: Error handling yang lebih spesifik
+//       String errorMessage = 'Error menghitung tagihan';
+//       if (e is RangeError) {
+//         errorMessage = 'Format data kota tidak valid';
+//       } else if (e is FormatException) {
+//         errorMessage = 'Error parsing angka';
+//       }
+//
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('$errorMessage: ${e.toString()}'),
+//           backgroundColor: Colors.red,
+//           duration: Duration(seconds: 3),
+//         ),
+//       );
+//     }
+//   }
+
+  Future<void> _calculateTagihan(
       String? selectedKategoriTiket,
       String? kelasBus,
       int jumlahTiket,
       String? selectedKotaBerangkat,
       String? selectedKotaTujuan,
-      String? namaTrayek,       // 🆕
-      String? jenisTrayek       // 🆕
+      String? namaTrayek,
+      String? jenisTrayek,
       ) async {
-    // VALIDASI INPUT DASAR
-    if (selectedKotaBerangkat == null || selectedKotaTujuan == null) {
-      print('⚠️  Info: Menunggu pemilihan kota lengkap');
-      return;
-    }
-
-    print('🛣 Trayek: $namaTrayek');
-    print('🚌 Jenis: $jenisTrayek');
-    print('🚌 Kelas: $kelasBus');
-
-    if (jumlahTiket <= 0) {
-      print('⚠️  Info: Jumlah tiket harus > 0');
+    // -------------------------
+    // VALIDASI DASAR
+    // -------------------------
+    if (selectedKotaBerangkat == null ||
+        selectedKotaTujuan == null ||
+        jumlahTiket <= 0) {
+      print('⚠️ Input belum lengkap');
       return;
     }
 
     try {
-      // PERBAIKAN: Validasi dan parsing string yang lebih aman
-      print('🔍 PARSING DATA KOTA:');
-      print('   Kota Berangkat: "$selectedKotaBerangkat"');
-      print('   Kota Tujuan: "$selectedKotaTujuan"');
+      // -------------------------
+      // AMBIL ID KOTA
+      // -------------------------
+      final kotaBerangkatParts = selectedKotaBerangkat.split(' - ');
+      final kotaTujuanParts = selectedKotaTujuan.split(' - ');
 
-      // PERBAIKAN: Parsing yang lebih robust dengan error handling
-      double jarakAwal = 0.0;
-      double jarakAkhir = 0.0;
-
-      try {
-        List<String> partsBerangkat = selectedKotaBerangkat.split(' - ');
-        if (partsBerangkat.length >= 2) {
-          jarakAwal = double.tryParse(partsBerangkat[1]) ?? 0.0;
-          print('   ✅ Jarak Awal berhasil di-parse: $jarakAwal');
-        } else {
-          print('   ❌ Format kota berangkat tidak valid: $selectedKotaBerangkat');
-          return;
-        }
-      } catch (e) {
-        print('   ❌ Error parsing kota berangkat: $e');
-        jarakAwal = 0.0;
-      }
-
-      try {
-        List<String> partsTujuan = selectedKotaTujuan.split(' - ');
-        if (partsTujuan.length >= 2) {
-          jarakAkhir = double.tryParse(partsTujuan[1]) ?? 0.0;
-          print('   ✅ Jarak Akhir berhasil di-parse: $jarakAkhir');
-        } else {
-          print('   ❌ Format kota tujuan tidak valid: $selectedKotaTujuan');
-          return;
-        }
-      } catch (e) {
-        print('   ❌ Error parsing kota tujuan: $e');
-        jarakAkhir = 0.0;
-      }
-
-      // PERBAIKAN: Validasi jarak yang lebih toleran
-      if (jarakAwal < 0) {
-        print('   ⚠️  Jarak awal negatif, di-set ke 0');
-        jarakAwal = 0.0;
-      }
-
-      if (jarakAkhir < 0) {
-        print('   ❌ Error: Jarak akhir harus > 0');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Jarak tujuan tidak valid: $jarakAkhir'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (kotaBerangkatParts.isEmpty || kotaTujuanParts.isEmpty) {
+        print('❌ Format kota tidak valid');
         return;
       }
 
-      // PERBAIKAN: Hitung selisih jarak
-      double selisihJarak = (jarakAkhir - jarakAwal).abs();
+      final String idKotaBerangkat = kotaBerangkatParts[0];
+      final String idKotaTujuan = kotaTujuanParts[0];
 
-      // Validasi selisih jarak
-      if (selisihJarak <= 0) {
-        print('   ⚠️  Selisih jarak <= 0, menggunakan jarak akhir');
-        selisihJarak = jarakAkhir;
-      }
+      print('📍 ID Kota Berangkat: $idKotaBerangkat');
+      print('📍 ID Kota Tujuan: $idKotaTujuan');
 
-      // PERBAIKAN: Validasi parameter perhitungan dengan lebih ketat
-      if (jarakPP <= 0) {
-        print('❌ Error: Jarak PP tidak valid: $jarakPP');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: Jarak PP tidak valid'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      // -------------------------
+      // AMBIL DATA JARAK DARI DB
+      // -------------------------
+      final List<Map<String, dynamic>> dataJarak =
+      await databaseHelper.getJarakKota(
+        idKotaBerangkat,
+        idKotaTujuan,
+      );
+
+      if (dataJarak.isEmpty) {
+        print('❌ Data jarak tidak ditemukan');
         return;
       }
 
-      if (biayaPerkursi <= 0) {
-        print('❌ Error: Biaya perkursi tidak valid: $biayaPerkursi');
+      final double jarak =
+          (dataJarak.first['jarak'] as num?)?.toDouble() ?? 0.0;
+
+      if (jarak <= 0) {
+        print('❌ Jarak tidak valid: $jarak');
         return;
       }
 
-      print('📍 DATA JARAK YANG DIGUNAKAN:');
-      print('   jarakAwal: $jarakAwal km');
-      print('   jarakAkhir: $jarakAkhir km');
-      print('   selisihJarak: $selisihJarak km');
-      print('   biayaPerkursi: Rp ${formatter.format(biayaPerkursi.toInt())}');
-      print('   marginKantor: Rp ${formatter.format(marginKantor.toInt())}');
-      print('   marginTarikan: Rp ${formatter.format(marginTarikan.toInt())}');
-      print('   jarakPP: $jarakPP km');
-      print('   jumlahTiket: $jumlahTiket');
+      print('🛣 Jarak trayek: $jarak km');
 
-      // ----------------------------
-      // HITUNG HARGA KANTOR & TARIKAN
-      // ----------------------------
-      double hargaPerKmKantor = (biayaPerkursi + marginKantor) / jarakPP;
-      double hargaPerKmTarikan = (biayaPerkursi + marginTarikan) / jarakPP;
-
-      print('🧮 HARGA PER KM:');
-      print('   Harga per km (kantor): Rp ${hargaPerKmKantor.toStringAsFixed(2)}');
-      print('   Harga per km (tarikan): Rp ${hargaPerKmTarikan.toStringAsFixed(2)}');
-
-      // double hargaKantor = hargaPerKmKantor * selisihJarak * jumlahTiket;
-      // double hargaTarikan = hargaPerKmTarikan * selisihJarak * jumlahTiket;
-
-      // HARGA UNTUK 1 TIKET
-      double hargaKantor = hargaPerKmKantor * selisihJarak;
-      double hargaTarikan = hargaPerKmTarikan * selisihJarak;
-
-      // PERBAIKAN: Validasi hasil perhitungan
-      if (hargaKantor.isNaN || hargaKantor.isInfinite) {
-        print('❌ Error: Harga kantor tidak valid (NaN/Infinite)');
-        hargaKantor = 0.0;
-      }
-
-      if (hargaTarikan.isNaN || hargaTarikan.isInfinite) {
-        print('❌ Error: Harga tarikan tidak valid (NaN/Infinite)');
-        hargaTarikan = 0.0;
-      }
-
-      // Kasus khusus gratis
-      if (selectedKategoriTiket == 'gratis') {
-        print('🎫 TIKET GRATIS - harga di-set ke 0');
-        hargaKantor = 0;
-        hargaTarikan = 0;
-      }
-
-      print("💰 HASIL PERHITUNGAN SEBELUM PEMBULATAN:");
-      print("   Harga Kantor: Rp $hargaKantor");
-      print("   Harga Tarikan: Rp $hargaTarikan");
-
-      // 🔸 Ambil persen susukan kru dari prefs
+      // -------------------------
+      // AMBIL HARGA BATAS
+      // -------------------------
       final prefs = await SharedPreferences.getInstance();
-      String? persenStr = prefs.getString('persenSusukanKru');
+      final String hargaBatasStr = prefs.getString('hargaBatas') ?? '0';
 
-// Default 0%
+      final double hargaBatas =
+          double.tryParse(hargaBatasStr) ?? 0.0;
+
+      if (hargaBatas <= 0) {
+        print('❌ Harga batas tidak valid: $hargaBatas');
+        return;
+      }
+
+      print('💰 Harga batas: Rp $hargaBatas / km');
+
+      // -------------------------
+      // HITUNG TARIKAN PER TIKET
+      // -------------------------
+      double hargaTarikanPerTiket = jarak * hargaBatas;
+
+      if (selectedKategoriTiket == 'gratis') {
+        hargaTarikanPerTiket = 0;
+      }
+
+      int hargaTarikanPerTiketBulat =
+      pembulatanRibuan(hargaTarikanPerTiket);
+
+      // -------------------------
+      // TOTAL TARIKAN
+      // -------------------------
+      int hargaTarikanFinal =
+          hargaTarikanPerTiketBulat * jumlahTiket;
+
+      // -------------------------
+      // HITUNG HARGA KANTOR
+      // -------------------------
+      final String? persenStr =
+      prefs.getString('persenSusukanKru');
+
       double persenKru = 0.0;
-
-// ✅ NULL-SAFE parsing
-      if (persenStr != null && persenStr.contains('%')) {
+      if (persenStr != null) {
         persenKru = double.tryParse(
           persenStr.replaceAll('%', '').trim(),
-        ) ?? 0.0;
-      } else if (persenStr != null) {
-        persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
+        ) ??
+            0.0;
       }
 
-      // konversi 9% -> 0.09
-      double persen = persenKru / 100;
+      final double persen = persenKru / 100;
 
+      double hargaKantorHitung =
+          hargaTarikanFinal - (hargaTarikanFinal * persen);
+
+      int hargaKantorBulat = hargaKantorHitung.toInt();
+
+      if (hargaKantorBulat < 0) hargaKantorBulat = 0;
+      if (hargaTarikanFinal < 0) hargaTarikanFinal = 0;
+
+      // -------------------------
+      // SIMPAN KE STATE
+      // -------------------------
       setState(() {
-        try {
-          // ---------------------------------------------------
-          // 1. BULATKAN TARIKAN AWAL
-          // ---------------------------------------------------
-          int hargaTarikanBulat = pembulatanRibuan(hargaTarikan);
+        _hargaTarikanCalculated = hargaTarikanFinal.toDouble();
+        _hargaKantorCalculated = hargaKantorBulat.toDouble();
+        jumlahTagihan = hargaTarikanFinal.toDouble();
 
-          // ---------------------------------------------------
-          // 2. HITUNG TAMBAHAN HARGA KHUSUS
-          // ---------------------------------------------------
-          double tambahanHarga = hitungPenambahanHarga(
-            jarakAwal: jarakAwal,
-            selisihJarak: selisihJarak,
-            jenisTrayek: jenisTrayek ?? "",
-            kelasBus: kelasBus ?? "",
-            namaTrayek: namaTrayek ?? "",
-          );
-
-          print("🎁 Tambahan harga khusus: Rp $tambahanHarga");
-
-          // ---------------------------------------------------
-// 3. TARIKAN FINAL PER TIKET
-// ---------------------------------------------------
-          double hargaTarikanFinalPerTiket = hargaTarikanBulat + tambahanHarga;
-          int hargaTarikanFinalPerTiketBulat =
-          pembulatanRibuan(hargaTarikanFinalPerTiket);
-
-// ---------------------------------------------------
-// 4. KALIKAN JUMLAH TIKET (FINAL)
-// ---------------------------------------------------
-          int hargaTarikanFinalBulat =
-              hargaTarikanFinalPerTiketBulat * jumlahTiket;
-
-// ---------------------------------------------------
-// 5. HITUNG HARGA KANTOR DARI TOTAL TARIKAN
-// ---------------------------------------------------
-          double hargaKantorHitung =
-              hargaTarikanFinalBulat - (persen * hargaTarikanFinalBulat);
-
-          // int hargaKantorBulat = hargaKantorHitung.toInt();
-
-
-          // 6. Bulatkan hasil kantor
-          // int hargaKantorBulat = pembulatanRibuan(hargaKantorHitung);
-          int hargaKantorBulat = hargaKantorHitung.toInt();
-
-          // atau jika mau tanpa pembulatan:
-          // int hargaKantorBulat = hargaKantorHitung.toInt();
-
-          // ---------------------------------------------------
-          // 7. VALIDASI
-          // ---------------------------------------------------
-          if (hargaKantorBulat < 0) hargaKantorBulat = 0;
-          if (hargaTarikanFinalBulat < 0) hargaTarikanFinalBulat = 0;
-
-          // ---------------------------------------------------
-          // 8. SIMPAN KE VARIABEL GLOBAL
-          // ---------------------------------------------------
-          _hargaKantorCalculated = hargaKantorBulat.toDouble();
-          _hargaTarikanCalculated = hargaTarikanFinalBulat.toDouble();
-
-          // ---------------------------------------------------
-          // 9. TAMPILKAN PADA CONTROLLER
-          // ---------------------------------------------------
-          hargaKantorController.text = formatter.format(hargaKantorBulat);
-          tagihanController.text = formatter.format(hargaTarikanFinalBulat);
-
-          jumlahTagihan = hargaTarikanFinalBulat.toDouble();
-
-          print('✅ PERHITUNGAN BERHASIL:');
-          print('   Harga Kantor: Rp $_hargaKantorCalculated');
-          print('   Harga Tarikan: Rp $_hargaTarikanCalculated');
-          print('   Jumlah Tagihan: Rp $jumlahTagihan');
-          print('   Kategori Tiket: $selectedKategoriTiket');
-
-        } catch (e) {
-          print('❌ Error dalam setState: $e');
-
-          hargaKantorController.text = '0';
-          tagihanController.text = '0';
-          _hargaKantorCalculated = 0.0;
-          _hargaTarikanCalculated = 0.0;
-          jumlahTagihan = 0.0;
-        }
+        hargaKantorController.text =
+            formatter.format(hargaKantorBulat);
+        tagihanController.text =
+            formatter.format(hargaTarikanFinal);
       });
 
-    } catch (e) {
-      print('❌ Error dalam _calculateTagihan: $e');
-      print('❌ Stack trace: ${e.toString()}');
-
-      // PERBAIKAN: Error handling yang lebih spesifik
-      String errorMessage = 'Error menghitung tagihan';
-      if (e is RangeError) {
-        errorMessage = 'Format data kota tidak valid';
-      } else if (e is FormatException) {
-        errorMessage = 'Error parsing angka';
-      }
+      print('✅ HITUNGAN BERHASIL');
+      print('   Harga Tarikan: Rp $_hargaTarikanCalculated');
+      print('   Harga Kantor: Rp $_hargaKantorCalculated');
+      print('   Jumlah Tiket: $jumlahTiket');
+    } catch (e, s) {
+      print('❌ Error calculateTagihan: $e');
+      print(s);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('$errorMessage: ${e.toString()}'),
+          content: Text('Gagal menghitung tagihan'),
           backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
         ),
       );
     }
