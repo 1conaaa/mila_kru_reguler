@@ -15,6 +15,7 @@ import 'package:mila_kru_reguler/api/ApiHelperInspectionItems.dart';
 import 'package:mila_kru_reguler/api/ApiHelperJenisPaket.dart';
 import 'package:mila_kru_reguler/api/ApiHelperUser.dart';
 import 'package:mila_kru_reguler/api/ApiHelperTagTransaksi.dart';
+import 'package:mila_kru_reguler/api/ApiHelperRuteTrayekUrutan.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -245,6 +246,7 @@ class _LoginState extends State<Login> {
         await ApiHelperKruBis.requestKruBisAPI(token, idBus, noPol, idGarasi, context);
         ApiHelperPersenPremiKru.requestListPersenPremiAPI(token, kodeTrayek);
         await ApiHelperListKota.requestListKotaAPI(token, kodeTrayek);
+        await ApiHelperRuteTrayekUrutan.requestRuteTrayekUrutanAPI(token, kodeTrayek);
 
         // Perbaikan kelasBus
         List<String> kata = kelasBusRaw.split(" ");
@@ -263,7 +265,7 @@ class _LoginState extends State<Login> {
         await ApiHelperMetodePembayaran.fetchAndStoreMetodePembayaran(token);
         await ApiHelperPremiPosisiKru.requestListPremiPosisiKruAPI(token, jenisTrayek, kelasBusFinal);
         await ApiHelperOperasiHarianBus.addListOperasiHarianBusAPI(token, idBus, noPol, kodeTrayek);
-        await ApiHelperInspectionItems.addListInspectionItemsAPI(token);
+        // await ApiHelperInspectionItems.addListInspectionItemsAPI(token);
         await ApiHelperJenisPaket.addListJenisPaketAPI(token);
         await ApiHelperTagTransaksi.fetchAndStoreTagTransaksi(token);
       } else {

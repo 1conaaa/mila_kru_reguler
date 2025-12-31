@@ -25,11 +25,11 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_23122025-1.db';
+    String path = '${documentsDirectory.path}/bisapp_31122025-3.db';
 
     return await openDatabase(
       path,
-      version: 8, // Update the version number
+      version: 3, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -181,6 +181,7 @@ class DatabaseHelper {
         kode_trayek TEXT,
         id_kota_berangkat INTEGER,
         id_kota_tujuan INTEGER,
+        no_urut_kota INTEGER,
         jarak INTEGER,
         nama_kota TEXT,
         id_harga_tiket INTEGER,
@@ -189,6 +190,24 @@ class DatabaseHelper {
         margin_kantor REAL,
         margin_tarikan REAL,
         aktif TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS rute_trayek_urutan (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_jarak_kota INTEGER,
+        id_trayek TEXT,
+        kode_trayek TEXT,
+        id_kota_berangkat INTEGER,
+        id_kota_tujuan INTEGER,
+        latitude TEXT,
+        longitude TEXT,
+        jarak INTEGER,
+        harga_kantor REAL,
+        no_urut_kota INTEGER,
+        tanggal TEXT,
+        nama_kota TEXT
       )
     ''');
 
@@ -670,12 +689,34 @@ class DatabaseHelper {
     SELECT *
     FROM list_kota
     WHERE id IN (
-      SELECT MIN(id)
-      FROM list_kota
-      GROUP BY nama_kota
+        SELECT MIN(id)
+        FROM list_kota
+        GROUP BY id_kota_tujuan
     )
-    ORDER BY nama_kota
+    ORDER BY no_urut_kota
   ''');
+  }
+
+  Future<void> insertRuteTrayekUrutan(Map<String, dynamic> data) async {
+    final db = await database;
+    await db.insert(
+      'rute_trayek_urutan',
+      data,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getRuteTrayekUrutan() async {
+    final db = await database;
+    return await db.query(
+      'rute_trayek_urutan',
+      orderBy: 'no_urut_kota ASC',
+    );
+  }
+
+  Future<void> clearRuteTrayekUrutan() async {
+    final db = await database;
+    await db.delete('rute_trayek_urutan');
   }
 
   Future<Map<String, dynamic>> getLastKotaTerakhir() async {

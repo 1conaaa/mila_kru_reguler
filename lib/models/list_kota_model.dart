@@ -3,6 +3,7 @@ class ListKota {
   final String kodeTrayek;
   final String idKotaBerangkat;
   final String idKotaTujuan;
+  final int noUrutKota;
   final double jarak;
   final String namaKota;
   final int idHargaTiket;
@@ -17,6 +18,7 @@ class ListKota {
     required this.kodeTrayek,
     required this.idKotaBerangkat,
     required this.idKotaTujuan,
+    required this.noUrutKota,
     required this.jarak,
     required this.namaKota,
     required this.idHargaTiket,
@@ -33,6 +35,9 @@ class ListKota {
       kodeTrayek: json['kode_trayek'] ?? '',
       idKotaBerangkat: json['id_kota_berangkat'] ?? '',
       idKotaTujuan: json['id_kota_tujuan'] ?? '',
+      noUrutKota: json['no_urut_kota'] is int
+          ? json['no_urut_kota']
+          : int.tryParse(json['no_urut_kota'].toString()) ?? 0,
       jarak: json['jarak'] != null
           ? (json['jarak'] is int ? json['jarak'].toDouble() : double.parse(json['jarak'].toString()))
           : 0.0,
@@ -62,6 +67,7 @@ class ListKota {
       'kode_trayek': kodeTrayek,
       'id_kota_berangkat': idKotaBerangkat,
       'id_kota_tujuan': idKotaTujuan,
+      'no_urut_kota': noUrutKota,
       'jarak': jarak,
       'nama_kota': namaKota,
       'id_harga_tiket': idHargaTiket,

@@ -162,7 +162,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
   Future<void> _getListKota() async {
     try {
-      List<Map<String, dynamic>> kotaData = await databaseHelper.getListKota();
+      List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan();
       setState(() {
         listKota = kotaData; // Pastikan 'listKota' adalah list yang sesuai
       });
@@ -1926,7 +1926,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           ),
                           items: listKota.map((kota) {
                             String valueText =
-                                '${kota['id_kota_tujuan']} - ${kota['jarak']}';
+                                '${kota['id_kota_berangkat']} - ${kota['jarak']}';
                             return DropdownMenuItem(
                               child: Text(kota['nama_kota']),
                               value: valueText,
@@ -1965,7 +1965,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           ),
                           items: listKota.map((kota) {
                             String valueText =
-                                '${kota['id_kota_tujuan']} - ${kota['jarak']}';
+                                '${kota['id_kota_berangkat']} - ${kota['jarak']}';
                             return DropdownMenuItem(
                               child: Text(kota['nama_kota']),
                               value: valueText,
