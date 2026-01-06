@@ -1419,57 +1419,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       // Debug: tampilkan semua setoran yang akan disimpan
       print('--- DETAIL SETORAN YANG AKAN DISIMPAN ---');
 
-//       // Hitung biaya tol berdasarkan kondisi
-//       double biayaTol = 0;
-//       // Kondisi khusus hanya untuk kelasLayanan: akapekonomi
-//       if (kelasLayanan.toLowerCase() == 'akapekonomi') {
-//         final double sisaPendapatanTol = pendapatanBersih - nominalPremiExtra;
-//         if (sisaPendapatanTol > 2500000) {
-//           biayaTol = 270000;
-//         } else if (sisaPendapatanTol < 2500000 && sisaPendapatanTol > 0) {
-//           biayaTol = 140000;
-//         }
-//         // Jika sisaPendapatanTol <= 0, biayaTol tetap 0
-//       } else {
-//
-//       }
-//
-// // Cari dan update setoran biaya tol (ID 15) jika ada
-//       bool biayaTolUpdated = false;
-//       for (var setoran in semuaSetoran) {
-//         if (setoran.idTagTransaksi == 15) {
-//           setoran.nilai = biayaTol;
-//           biayaTolUpdated = true;
-//           break;
-//         }
-//       }
-//
-// // Jika tidak ada setoran biaya tol, tambahkan baru
-//       if (!biayaTolUpdated && biayaTol > 0) {
-//         final setoranTol = SetoranKru(
-//           tglTransaksi: formattedDate,
-//           kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-//           rit: ritValue,
-//           noPol: noPol ?? '',
-//           idBus: idBus,
-//           kodeTrayek: kodeTrayek ?? '',
-//           idPersonil: idUser,
-//           idGroup: idGroup,
-//           jumlah: 0,
-//           idTransaksi: idTransaksi,
-//           coa: coaPengeluaranBusController.text,
-//           nilai: biayaTol,
-//           idTagTransaksi: 15,
-//           status: 'N',
-//           keterangan: 'Biaya Tol (Dihitung Otomatis)',
-//           fupload: null,
-//           fileName: null,
-//           updatedAt: formattedDate,
-//           createdAt: formattedDate,
-//         );
-//         semuaSetoran.add(setoranTol);
-//       }
-
       print('--- DETAIL SETORAN YANG AKAN DISIMPAN ---');
       for (var i = 0; i < semuaSetoran.length; i++) {
         final setoran = semuaSetoran[i];

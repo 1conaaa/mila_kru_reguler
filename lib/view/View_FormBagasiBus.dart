@@ -18,7 +18,6 @@ import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:provider/provider.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart'; // BluetoothPrinterService
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:typed_data';
 
 
 

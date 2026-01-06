@@ -129,6 +129,7 @@ class PremiBersihCalculator {
     print('=== [DEBUG] START CALCULATION ===');
     print('Kelas Bus: ${userData.kelasBus}');
     print('Jenis Trayek: ${userData.jenisTrayek}');
+    print('Kode Trayek: ${userData.kodeTrayek}');
     print('Nama Trayek: ${userData.namaTrayek}');
     print('Premi Extra: ${userData.premiExtra}%');
     print('Persen Premi Kru: ${userData.persenPremikru}%');
@@ -173,11 +174,9 @@ class PremiBersihCalculator {
     print('Pengeluaran Operasional Sby: $pengeluaranOperasionalSby');
 
     // Parse persentase premi dari userData
-    final double persenPremiExtra =
-        (double.tryParse(userData.premiExtra?.replaceAll('%', '') ?? '0') ?? 0) / 100;
+    final double persenPremiExtra = (double.tryParse(userData.premiExtra?.replaceAll('%', '') ?? '0') ?? 0) / 100;
 
-    final double persenPremiKru =
-        (double.tryParse(userData.persenPremikru?.replaceAll('%', '') ?? '0') ?? 0) / 100;
+    final double persenPremiKru = (double.tryParse(userData.persenPremikru?.replaceAll('%', '') ?? '0') ?? 0) / 100;
 
 
     print('=== [DEBUG] PARSED PERCENTAGES ===');
@@ -208,13 +207,13 @@ class PremiBersihCalculator {
         switch (userData.jenisTrayek) {
           case 'AKAP':
             print('=== [DEBUG] PROCESSING: AKAP ===');
-            switch (userData.namaTrayek) {
-              case 'YOGYAKARTA - BANYUWANGI':
-              case 'BANYUWANGI - YOGYAKARTA':
+            switch (userData.kodeTrayek) {
+              //BWI-YOG BWI-STB-YOG
+              case '3471351001':
+              case '3471351002':
                 print('=== [DEBUG] PROCESSING: YOGYAKARTA - BANYUWANGI ===');
                 // Pengeluaran untuk AKAP Ekonomi Yogyakarta-Banyuwangi
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci +
-                    pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranTol;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranTol;
 
                 print('=== [DEBUG] PENGELUARAN DETAIL ===');
                 print('Solar: $nominalsolar');
@@ -240,20 +239,6 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                // // Adjust tol berdasarkan sisa pendapatan
-                // if (sisaPendapatan > 0) {
-                //   if (sisaPendapatan < 2500000) {
-                //     tolAdjustment = 140000;
-                //     print('Tol Adjustment: 140.000 (sisa < 2.5jt)');
-                //   } else if (sisaPendapatan > 2500000) {
-                //     tolAdjustment = 270000;
-                //     print('Tol Adjustment: 270.000 (sisa > 2.5jt)');
-                //   }
-                // } else {
-                //   print('Tol Adjustment: Tidak ada penyesuaian (sisa <= 0)');
-                // }
-
-                // pendDisetor = sisaPendapatan - tolAdjustment + pendapatanBagasi - nominalTiketOnline;
                 pendDisetor = sisaPendapatan + pendapatanBagasi - nominalTiketOnline;
                 print('=== [DEBUG] FINAL CALCULATION ===');
                 print('Pendapatan Bersih: $pendBersih');
@@ -264,12 +249,10 @@ class PremiBersihCalculator {
                 print('Pendapatan Disetor: $pendDisetor');
                 break;
 
-              case 'MADURA - YOGYAKARTA':
-              case 'YOGYAKARTA - MADURA':
-                print('=== [DEBUG] PROCESSING: MADURA - YOGYAKARTA ===');
-                // Pengeluaran untuk AKAP Ekonomi Madura-Yogyakarta (termasuk Suramadu)
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci +
-                    pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranSuramadu;
+              case '3471352901':
+                print('=== [DEBUG] PROCESSING: YOG-SMP ===');
+                // Pengeluaran untuk AKAP Ekonomi YOG-SMP
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranTol + pengeluaranSuramadu;
 
                 print('=== [DEBUG] PENGELUARAN DETAIL ===');
                 print('Solar: $nominalsolar');
@@ -278,14 +261,17 @@ class PremiBersihCalculator {
                 print('Parkir: $pengeluaranParkir');
                 print('Perbaikan: $pengeluaranPerbaikan');
                 print('Lain-lain: $pengeluaranLainLain');
+                print('Tol: $pengeluaranTol');
                 print('Suramadu: $pengeluaranSuramadu');
                 print('Total Pengeluaran: $totalPengeluaran');
 
                 pendBersih = pendapatanKotor - totalPengeluaran;
                 print('Pendapatan Bersih (Kotor - Pengeluaran): $pendBersih');
 
+                // Premi berdasarkan pendapatan bersih
                 nominalPremiExtra = pendBersih * persenPremiExtra;
-                nominalPremiKru = pendBersih * persenPremiKru;
+                // nominalPremiKru = pendBersih * persenPremiKru;
+                nominalPremiKru   = pendBersih * (persenPremiKru - persenPremiExtra);
 
                 print('Premi Extra ($persenPremiExtra): $nominalPremiExtra');
                 print('Premi Kru ($persenPremiKru): $nominalPremiKru');
@@ -293,23 +279,11 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                // Adjust tol berdasarkan sisa pendapatan
-                if (sisaPendapatan > 0) {
-                  if (sisaPendapatan < 2500000) {
-                    tolAdjustment = 140000;
-                    print('Tol Adjustment: 140.000 (sisa < 2.5jt)');
-                  } else if (sisaPendapatan > 2500000) {
-                    tolAdjustment = 270000;
-                    print('Tol Adjustment: 270.000 (sisa > 2.5jt)');
-                  }
-                } else {
-                  print('Tol Adjustment: Tidak ada penyesuaian (sisa <= 0)');
-                }
-
-                pendDisetor = sisaPendapatan - tolAdjustment + pendapatanBagasi - nominalTiketOnline;
+                pendDisetor = sisaPendapatan + pendapatanBagasi - nominalTiketOnline;
                 print('=== [DEBUG] FINAL CALCULATION ===');
+                print('Pendapatan Bersih: $pendBersih');
                 print('Sisa Pendapatan: $sisaPendapatan');
-                print('Tol Adjustment: $tolAdjustment');
+                // print('Tol Adjustment: $tolAdjustment');
                 print('Pendapatan Bagasi: $pendapatanBagasi');
                 print('Tiket Online: $nominalTiketOnline');
                 print('Pendapatan Disetor: $pendDisetor');
@@ -318,8 +292,7 @@ class PremiBersihCalculator {
               default:
                 print('=== [DEBUG] PROCESSING: AKAP EKONOMI DEFAULT ===');
                 // Default calculation for AKAP Ekonomi lainnya
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci +
-                    pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
 
                 print('Total Pengeluaran: $totalPengeluaran');
 

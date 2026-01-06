@@ -1,11 +1,9 @@
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 

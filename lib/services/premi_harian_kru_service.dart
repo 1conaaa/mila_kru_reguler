@@ -80,20 +80,46 @@ class PremiHarianKruService {
   Future<List<Map<String, dynamic>>> getPremiHarianKruWithKruBis() async {
     try {
       final db = await _databaseHelper.database;
-      return await db.rawQuery('''
-        SELECT 
-          a.*, 
-          b.nama_lengkap AS nama_kru, 
-          (a.persen_premi_disetor) AS persen_premi 
-        FROM premi_harian_kru AS a
-        JOIN kru_bis AS b ON a.id_user = b.id_personil
-        ORDER BY a.tanggal_simpan DESC
-      ''');
-    } catch (e) {
-      print('❌ Error get premi harian kru with kru bis: $e');
+
+      const String sql = '''
+      SELECT 
+        a.*, 
+        b.nama_lengkap AS nama_kru, 
+        (a.persen_premi_disetor) AS persen_premi 
+      FROM premi_harian_kru AS a
+      JOIN kru_bis AS b ON a.id_user = b.id_personil
+      ORDER BY a.tanggal_simpan DESC
+    ''';
+
+      print("🧾 Menjalankan SQL Query:");
+      print(sql);
+
+      final List<Map<String, dynamic>> result = await db.rawQuery(sql);
+
+      print("📊 Jumlah data dikembalikan: ${result.length}");
+
+      if (result.isEmpty) {
+        print("⚠️ Query berhasil, tetapi data kosong.");
+      } else {
+        print("✅ Data premi harian kru ditemukan.");
+
+        // Print 5 data pertama saja (aman untuk data besar)
+        for (int i = 0; i < result.length && i < 5; i++) {
+          print("➡️ Row ${i + 1}: ${result[i]}");
+        }
+
+        // Print struktur kolom (keys)
+        print("🔑 Kolom tersedia: ${result.first.keys}");
+      }
+
+      return result;
+    } catch (e, stacktrace) {
+      print('❌ Error getPremiHarianKruWithKruBis: $e');
+      print('📍 Stacktrace: $stacktrace');
       rethrow;
     }
   }
+
 
   // Get premi harian kru dengan join ke kru_bis by status
   Future<List<Map<String, dynamic>>> getPremiHarianKruWithKruBisByStatus(String status) async {

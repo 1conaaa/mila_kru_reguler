@@ -3,7 +3,6 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mila_kru_reguler/view/View_PenjualanTiket.dart';
 import 'package:mila_kru_reguler/view/View_HistoryTransaksi.dart';
-import 'package:mila_kru_reguler/view/View_HistoryPembayaran.dart';
 
 import '../main.dart';
 

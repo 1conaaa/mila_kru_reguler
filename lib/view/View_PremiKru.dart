@@ -72,18 +72,29 @@ class _PremiKruState extends State<PremiKru> {
   }
 
   Future<void> _getListPremiKru() async {
-    List<Map<String, dynamic>> premiKruData = await premiHarianKruService.getPremiHarianKruWithKruBis();
+    print("🔍 Memulai query premi harian kru...");
+
+    List<Map<String, dynamic>> premiKruData =
+    await premiHarianKruService.getPremiHarianKruWithKruBis();
+
+    print("📊 Jumlah data hasil query: ${premiKruData.length}");
+
+    if (premiKruData.isEmpty) {
+      print("⚠️ Tidak ada data premi harian kru.");
+    } else {
+      print("✅ Data premi harian kru ditemukan:");
+
+      // Print tiap baris hasil query
+      for (int i = 0; i < premiKruData.length; i++) {
+        print("➡️ Row ${i + 1}: ${premiKruData[i]}");
+      }
+    }
 
     setState(() {
       listPremiHarianKru = premiKruData;
     });
-
-    if (premiKruData.isEmpty) {
-      print("Tidak ada data premi harian kru.");
-    } else {
-      print("Data premi harian kru ditemukan.");
-    }
   }
+
 
   Future<void> _refreshSetoranKruData() async {
     setState(() {
@@ -863,10 +874,10 @@ class _PremiKruState extends State<PremiKru> {
 
                                   // ====== JIKA PREMI ATAS, TAMBAHKAN DETAIL PEMBAGIAN PER KRU ======
                                   if (isPremiAtas && listPremiHarianKru.isNotEmpty) {
-                                    // Row header pembagian
+                                    // Header
                                     rows.add(
-                                      DataRow(
-                                        cells: const [
+                                      const DataRow(
+                                        cells: [
                                           DataCell(Text("")),
                                           DataCell(Text("🔽 Pembagian Premi Atas")),
                                           DataCell(Text("")),
@@ -876,13 +887,14 @@ class _PremiKruState extends State<PremiKru> {
                                       ),
                                     );
 
-                                    // Row untuk data pembagian
                                     rows.add(
                                       DataRow(
                                         cells: [
                                           const DataCell(Text("")),
+
+                                          /// === DATA CELL UTAMA ===
                                           DataCell(
-                                            Container(
+                                            SizedBox(
                                               width: MediaQuery.of(context).size.width * 0.6,
                                               child: FutureBuilder<List<ListPersenPremiKru>>(
                                                 future: PersenPremiKruService.instance.getByKodeTrayek(
@@ -890,123 +902,130 @@ class _PremiKruState extends State<PremiKru> {
                                                   idJenisPremi: 1,
                                                   onDataFetchedFromApi: (apiSuccess) {
                                                     if (apiSuccess && mounted) {
-                                                      Future.delayed(Duration(milliseconds: 200), () => setState(() {}));
+                                                      Future.delayed(
+                                                        const Duration(milliseconds: 200),
+                                                            () => setState(() {}),
+                                                      );
                                                     }
                                                   },
                                                 ),
                                                 builder: (context, snapshot) {
                                                   if (snapshot.connectionState == ConnectionState.waiting) {
                                                     return Row(
-                                                      children: [
-                                                        CircularProgressIndicator(strokeWidth: 2),
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: const [
+                                                        SizedBox(
+                                                          width: 14,
+                                                          height: 14,
+                                                          child: CircularProgressIndicator(strokeWidth: 2),
+                                                        ),
                                                         SizedBox(width: 8),
-                                                        Text("Memuat data..."),
+                                                        Text("Memuat data...", style: TextStyle(fontSize: 12)),
                                                       ],
                                                     );
                                                   }
 
                                                   if (snapshot.hasError) {
-                                                    return Text("Error: ${snapshot.error}");
+                                                    return Text(
+                                                      "Error: ${snapshot.error}",
+                                                      style: const TextStyle(fontSize: 12),
+                                                    );
                                                   }
 
                                                   final persenList = snapshot.data ?? [];
 
                                                   if (persenList.isEmpty) {
                                                     return Column(
+                                                      mainAxisSize: MainAxisSize.min,
                                                       crossAxisAlignment: CrossAxisAlignment.start,
                                                       children: [
-                                                        Text("⚠️ Data tidak ditemukan"),
-                                                        SizedBox(height: 4),
+                                                        const Text("⚠️ Data tidak ditemukan", style: TextStyle(fontSize: 12)),
+                                                        const SizedBox(height: 4),
                                                         ElevatedButton(
+                                                          style: ElevatedButton.styleFrom(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                            textStyle: const TextStyle(fontSize: 11),
+                                                          ),
                                                           onPressed: () async {
                                                             final prefs = await SharedPreferences.getInstance();
                                                             final token = prefs.getString('token');
 
                                                             if (token != null) {
-                                                              final ok = await ApiHelperPersenPremiKru
+                                                              await ApiHelperPersenPremiKru
                                                                   .requestListPersenPremiAPI(token, s.kodeTrayek);
                                                               if (mounted) setState(() {});
                                                             }
                                                           },
-                                                          child: Text("Ambil Data"),
+                                                          child: const Text("Ambil Data"),
                                                         ),
                                                       ],
                                                     );
                                                   }
 
-                                                  double totalPersen =
-                                                  persenList.fold(0.0, (sum, item) => sum + item.nilaiAsDouble);
+                                                  final totalPersen = persenList.fold<double>(
+                                                    0,
+                                                        (sum, item) => sum + item.nilaiAsDouble,
+                                                  );
 
-                                                  return SingleChildScrollView(
-                                                    child: Column(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        // LIST PEMBAGIAN — FIX OVERFLOW
-                                                        ...persenList.map((p) {
-                                                          final persen = p.nilaiAsDouble;
-                                                          final nominal = totalPersen > 0
-                                                              ? (persen / totalPersen) * (s.nilai ?? 0)
-                                                              : 0;
+                                                  /// === LIST PEMBAGIAN (NO OVERFLOW) ===
+                                                  return Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: persenList.map((p) {
+                                                      final persen = p.nilaiAsDouble;
+                                                      final nominal = totalPersen > 0
+                                                          ? (persen / totalPersen) * (s.nilai ?? 0)
+                                                          : 0;
 
-                                                          final namaKru = listPremiHarianKru.firstWhere(
+                                                      final namaKru =
+                                                          listPremiHarianKru.firstWhere(
                                                                 (k) => k["id_posisi_kru"] == p.idPosisiKru,
                                                             orElse: () => {"nama_kru": "Kru #${p.idPosisiKru}"},
                                                           )["nama_kru"] ??
                                                               "Kru #${p.idPosisiKru}";
 
-                                                          return Container(
-                                                            padding: EdgeInsets.symmetric(vertical: 4),
-                                                            decoration: BoxDecoration(
-                                                              border: Border(
-                                                                bottom: BorderSide(color: Colors.grey[300]!),
-                                                              ),
-                                                            ),
-                                                            child: Column(
-                                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                                      return Padding(
+                                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                                        child: Column(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Row(
                                                               children: [
-                                                                // baris nama kru + nilai nominal
-                                                                Row(
-                                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                                  children: [
-                                                                    Expanded(
-                                                                      child: Text(
-                                                                        namaKru,
-                                                                        overflow: TextOverflow.ellipsis,
-                                                                        style: TextStyle(fontSize: 12),
-                                                                      ),
-                                                                    ),
-                                                                    SizedBox(width: 6),
-                                                                    Text(
-                                                                      formatter.format(nominal),
-                                                                      style: TextStyle(
-                                                                        fontSize: 12,
-                                                                        fontWeight: FontWeight.bold,
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-
-                                                                SizedBox(height: 2),
-
-                                                                // persen badge
-                                                                Container(
-                                                                  padding:
-                                                                  EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                                                                  decoration: BoxDecoration(
-                                                                    color: Colors.green[50],
-                                                                    borderRadius: BorderRadius.circular(3),
-                                                                  ),
+                                                                Expanded(
                                                                   child: Text(
-                                                                    "${persen.toStringAsFixed(1)}%",
-                                                                    style: TextStyle(fontSize: 10),
+                                                                    namaKru,
+                                                                    maxLines: 1,
+                                                                    overflow: TextOverflow.ellipsis,
+                                                                    style: const TextStyle(fontSize: 12),
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(width: 6),
+                                                                Text(
+                                                                  formatter.format(nominal),
+                                                                  style: const TextStyle(
+                                                                    fontSize: 12,
+                                                                    fontWeight: FontWeight.bold,
                                                                   ),
                                                                 ),
                                                               ],
                                                             ),
-                                                          );
-                                                        }).toList(),
-                                                      ],
-                                                    ),
+                                                            const SizedBox(height: 2),
+                                                            Container(
+                                                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                                              decoration: BoxDecoration(
+                                                                color: Colors.green[50],
+                                                                borderRadius: BorderRadius.circular(3),
+                                                              ),
+                                                              child: Text(
+                                                                "${persen.toStringAsFixed(1)}%",
+                                                                style: const TextStyle(fontSize: 10),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                    }).toList(),
                                                   );
                                                 },
                                               ),
