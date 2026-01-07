@@ -21,7 +21,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   String searchQuery = ''; // Field untuk menyimpan nilai pencarian
 
   List<String> kotaTujuanList = []; // List untuk kota tujuan unik
-  String selectedKotaTujuan = ''; // atau sesuaikan dengan nilai awal yang sesuai dengan aplikasi Anda
+  String selectedKotaTujuan = 'SEMUA'; // atau sesuaikan dengan nilai awal yang sesuai dengan aplikasi Anda
 
   Map<String, bool> isCheckedPerRute = {};
 
@@ -185,310 +185,426 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   }
 
   Future<void> _getListTransaksi() async {
-    List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getDataPenjualan();
+    debugPrint("🔄 Ambil data transaksi");
+
+    List<Map<String, dynamic>> penjualanData =
+    await PenjualanTiketService.instance.getDataPenjualan();
+
+    final Set<String> kotaTujuanSet = {};
+
+    for (var e in penjualanData) {
+      final rute = e['rute_kota']?.toString();
+      if (rute != null && rute.contains(' - ')) {
+        final parts = rute.split(' - ');
+        final kotaTujuan = parts.last.trim(); // ⬅️ AMBIL TUJUAN
+        kotaTujuanSet.add(kotaTujuan);
+      }
+    }
+
     setState(() {
-      listPenjualan = penjualanData;      kotaTujuanList = penjualanData
-          .map((e) => e['rute_kota'] as String)
-          .toList();
+      listPenjualan = penjualanData;
+      kotaTujuanList = ['SEMUA', ...kotaTujuanSet.toList()];
     });
 
-    if (listPenjualan.isEmpty) {
-      print('Tidak ada data dalam tabel Penjualan Tiket.');
-    } else {
-      print('Data ditemukan dalam tabel Penjualan Tiket. ${kotaTujuanList}');
-    }
+    debugPrint("📍 Kota tujuan unik: $kotaTujuanList");
   }
+
 
   @override
   Widget build(BuildContext context) {
-    // ❗ PERBAIKAN: Jangan deklarasikan ulang selectedKotaTujuan di sini!
-    // String? selectedKotaTujuan;  // Hapus baris ini
+    // ================================
+    // FILTER BERDASARKAN KOTA TUJUAN
+    // ================================
+    final List<Map<String, dynamic>> filteredPenjualan =
+    selectedKotaTujuan == 'SEMUA'
+        ? listPenjualan
+        : listPenjualan.where((e) {
+      final rute = e['rute_kota']?.toString() ?? '';
+      if (!rute.contains(' - ')) return false;
+      final kotaTujuan = rute.split(' - ').last.trim();
+      return kotaTujuan == selectedKotaTujuan;
+    }).toList();
+
+    debugPrint(
+      "🔍 Filter TUJUAN: $selectedKotaTujuan | data: ${filteredPenjualan.length}",
+    );
 
     // ================================
-    // GROUP DATA BERDASARKAN RUTE KOTA
+    // TOTAL PENUMPANG PER KOTA TUJUAN
     // ================================
-    Map<String, List<Map<String, dynamic>>> groupedByRuteKota = {};
-
-    for (var item in listPenjualan) {
-      final ruteKota = item['rute_kota']?.trim() ?? '-';
-
-      groupedByRuteKota.putIfAbsent(ruteKota, () => []);
-      groupedByRuteKota[ruteKota]!.add(item);
-    }
-
-
-    // TOTAL SEMUA PENUMPANG
-    num totalSemuaPenumpang = listPenjualan.fold(
+    final num totalPerKotaTujuan =
+    selectedKotaTujuan == 'SEMUA'
+        ? 0
+        : filteredPenjualan.fold(
       0,
           (total, item) => total + (item['jumlah_tiket'] ?? 0),
     );
 
-    // SISA PENUMPANG (contoh logika: subtotal per rute dikurang kapasitas?)
-    // Jika yang dimaksud sisa penjualan = semua tiket yg status != 'Y'
-    num sisaPenumpang = listPenjualan
-        .where((e) => (e['is_turun'] ?? 0) == 0) // BELUM TURUN
+    debugPrint(
+      "📍 Total tujuan $selectedKotaTujuan : $totalPerKotaTujuan",
+    );
+
+
+    debugPrint("🔄 build() dipanggil");
+
+    // ================================
+    // PREPARE DATA
+    // ================================
+    debugPrint("📦 Total filteredPenjualan: ${filteredPenjualan.length}");
+
+    /// GROUP DATA BERDASARKAN RUTE KOTA
+    final Map<String, List<Map<String, dynamic>>> groupedByRuteKota = {};
+
+    for (final item in filteredPenjualan) {
+      final ruteKota = item['rute_kota']?.trim() ?? '-';
+      groupedByRuteKota.putIfAbsent(ruteKota, () => []);
+      groupedByRuteKota[ruteKota]!.add(item);
+    }
+
+    debugPrint("🗂️ Jumlah grup rute: ${groupedByRuteKota.length}");
+
+    /// TOTAL SEMUA PENUMPANG
+    final num totalSemuaPenumpang = listPenjualan.fold(
+      0,
+          (total, item) => total + (item['jumlah_tiket'] ?? 0),
+    );
+    debugPrint("👥 Total semua penumpang: $totalSemuaPenumpang");
+
+    /// SISA PENUMPANG (BELUM TURUN)
+    final num sisaPenumpang = listPenjualan
+        .where((e) => (e['is_turun'] ?? 0) == 0)
         .fold(0, (tot, item) => tot + (item['jumlah_tiket'] ?? 0));
 
+    debugPrint("⏳ Sisa penumpang (belum turun): $sisaPenumpang");
+
+    // ================================
+    // UI
+    // ================================
     return Scaffold(
       appBar: AppBar(
-        title: Text('Data Penjualan Tiket'),
+        title: const Text('Data Penjualan Tiket'),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: Icon(Icons.cloud_upload, color: Colors.green, size: 30),
-            onPressed: _pushDataPenjualan,
+            icon: const Icon(Icons.cloud_upload, color: Colors.green, size: 30),
             tooltip: 'Kirim Data',
+            onPressed: () {
+              debugPrint("☁️ Tombol Kirim Data ditekan");
+              _pushDataPenjualan();
+            },
           ),
         ],
-        // bottom: PreferredSize(
-        //   preferredSize: Size.fromHeight(90),
-        //   child: Padding(
-        //     padding: EdgeInsets.all(10),
-        //     child: DropdownButtonFormField<String>(
-        //       isExpanded: true,
-        //       value: selectedKotaTujuan.isEmpty ? null : selectedKotaTujuan,
-        //       decoration: InputDecoration(
-        //         labelText: 'Pilih Kota Tujuan',
-        //         border: OutlineInputBorder(),
-        //         prefixIcon: Icon(Icons.location_city),
-        //       ),
-        //       items: kotaTujuanList.map((String kota) {
-        //         return DropdownMenuItem<String>(
-        //           value: kota,
-        //           child: Text(kota, overflow: TextOverflow.ellipsis),
-        //         );
-        //       }).toList(),
-        //       onChanged: (value) {
-        //         setState(() => selectedKotaTujuan = value ?? '');
-        //         if (value != null) _searchRuteKota(value);
-        //       },
-        //     ),
-        //   ),
-        // ),
       ),
 
-    body: SafeArea(
-    child: Stack(
-    children: [
-    AbsorbPointer(
-    absorbing: _isPushingData,
-    child: SingleChildScrollView(
-    padding: EdgeInsets.only(
-    bottom: MediaQuery.of(context).padding.bottom + 20,
-    ),
-    child: Column(
-    children: [
-    ...groupedByRuteKota.entries.map((entry) {
-                    String ruteKota = entry.key;
-                    List<Map<String, dynamic>> penjualanPerRute = entry.value;
+      body: SafeArea(
+        child: Stack(
+          children: [
+            AbsorbPointer(
+              absorbing: _isPushingData,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).padding.bottom + 20,
+                ),
+                child: Column(
+                  children: [
+                    // ================================
+                    // DROPDOWN FILTER KOTA TUJUAN
+                    // ================================
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on, size: 18, color: Colors.blueGrey),
+                          const SizedBox(width: 8),
 
-                    num subtotalJumlahTiket = penjualanPerRute.fold(
-                      0,
-                          (total, pj) => total + (pj['jumlah_tiket'] ?? 0),
-                    );
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            columns: [
-                              DataColumn(label: Text('Jml')),
-                              DataColumn(label: Text('Rute')),
-                              DataColumn(label: Text('Nominal')),
-                              DataColumn(label: Text('Status')),
-                            ],
-                            rows: penjualanPerRute.map((item) {
-                              return DataRow(
-                                cells: [
-                                  DataCell(Text(item['jumlah_tiket'].toString())),
-                                  DataCell(Text(item['rute_kota'].toString())),
-                                  DataCell(
-                                    Text(formatter.format(item['jumlah_tagihan'])),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              value: selectedKotaTujuan,
+                              isDense: true,
+                              decoration: InputDecoration(
+                                contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                labelText: 'Filter Kota Tujuan',
+                              ),
+                              items: kotaTujuanList.map((kota) {
+                                return DropdownMenuItem(
+                                  value: kota,
+                                  child: Text(
+                                    kota,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  DataCell(Text(item['status'].toString())),
-                                ],
-                              );
-                            }).toList(),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                debugPrint("📌 Dropdown kota dipilih: $value");
+                                setState(() {
+                                  selectedKotaTujuan = value ?? 'SEMUA';
+                                });
+                              },
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+
+                    // ================================
+                    // TOTAL PER KOTA TUJUAN (FILTER)
+                    // ================================
+                    if (selectedKotaTujuan != 'SEMUA')
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.green),
                         ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              "TOTAL TUJUAN $selectedKotaTujuan",
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            Text(
+                              totalPerKotaTujuan.toString(),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                        Divider(),
+                    // ================================
+                    // LIST DATA PER RUTE
+                    // ================================
+                    ...groupedByRuteKota.entries.map((entry) {
+                      final String ruteKota = entry.key;
+                      final List<Map<String, dynamic>> penjualanPerRute = entry.value;
 
-                        Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                    Builder(
-                    builder: (context) {
-                    // CEK APAKAH SEMUA SUDAH TURUN
-                    final bool allSudahTurun =
-                    penjualanPerRute.every((item) => (item['is_turun'] ?? 0) == 1);
+                      debugPrint(
+                        "➡️ Render rute: $ruteKota | item: ${penjualanPerRute.length}",
+                      );
 
-                    return GestureDetector(
-                      onTap: allSudahTurun ? null : () async {
-                    bool? confirm = await showDialog(
-                    context: context,
-                    builder: (context) {
-                    return AlertDialog(
-                    title: Text("Konfirmasi"),
-                    content: Text(
-                    "Apakah kamu yakin semua penumpang di rute ini sudah turun?",
-                    ),
-                    actions: [
-                    TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text("Batal"),
-                    ),
-                    ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: Text("Iya"),
-                    ),
-                    ],
-                    );
-                    },
-                    );
+                      final num subtotalJumlahTiket = penjualanPerRute.fold(
+                        0,
+                            (total, pj) => total + (pj['jumlah_tiket'] ?? 0),
+                      );
 
-                    // Jika user tekan "Iya"
-                    if (confirm == true) {
-                    setState(() {
-                      isCheckedPerRute[ruteKota] =
-                          penjualanPerRute.every((item) => item['is_turun'] == 1);
-                    });
+                      final bool allSudahTurun = penjualanPerRute.every(
+                            (item) => (item['is_turun'] ?? 0) == 1,
+                      );
 
-                    await PenjualanTiketService.instance.updateIsTurunByRute(
-                    ruteKota,
-                    1,
-                    );
+                      debugPrint(
+                        "   └─ subtotal: $subtotalJumlahTiket | allSudahTurun: $allSudahTurun",
+                      );
 
-                    print("UPDATE is_turun -> 1 untuk rute: $ruteKota");
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
 
-                    // Refresh data dari database biar UI sesuai
-                    await _getListTransaksi();
-                    }
-                    },
-                    child: Opacity(
-                    opacity: allSudahTurun ? 0.4 : 1.0,
-                    child: Container(
-                    padding: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                    color: allSudahTurun
-                    ? Colors.red.withOpacity(0.2)
-                        : Colors.green.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                    color: allSudahTurun ? Colors.red : Colors.green,
-                    ),
-                    ),
-                    child: Icon(
-                    allSudahTurun ? Icons.close : Icons.check,
-                    color: allSudahTurun ? Colors.red : Colors.green,
-                    size: 16,
-                    ),
-                    ),
-                    ),
-                    );
-                    },
-                    ),
-
-                    SizedBox(width: 10),
-                    Text("Jml. Penumpang: $subtotalJumlahTiket"),
-                    SizedBox(width: 16),
-                    ],
-                    ),
-                    ],
-                    );
-                  }).toList(),
-
-                  SizedBox(height: 20),
-
-                  // ============================
-                  // TOTAL SEMUA PENUMPANG
-                  // ============================
-                  Container(
-                    margin: EdgeInsets.all(12),
-                    padding: EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.blueAccent),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "TOTAL SEMUA PENUMPANG",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blueAccent,
+                          /// TABLE
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              columns: const [
+                                DataColumn(label: Text('Jml')),
+                                DataColumn(label: Text('Rute')),
+                                DataColumn(label: Text('Nominal')),
+                                DataColumn(label: Text('Status')),
+                              ],
+                              rows: penjualanPerRute.map((item) {
+                                return DataRow(
+                                  cells: [
+                                    DataCell(Text(item['jumlah_tiket'].toString())),
+                                    DataCell(Text(item['rute_kota'].toString())),
+                                    DataCell(
+                                      Text(formatter.format(item['jumlah_tagihan'])),
+                                    ),
+                                    DataCell(Text(item['status'].toString())),
+                                  ],
+                                );
+                              }).toList(),
+                            ),
                           ),
-                        ),
-                        Text(
-                          totalSemuaPenumpang.toString(),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blueAccent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
 
-                  // ============================
-                  // SISA PENUMPANG (BARU)
-                  // ============================
-                  Container(
-                    margin: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                    padding: EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.orange),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          "SISA PENUMPANG",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange,
-                          ),
-                        ),
-                        Text(
-                          sisaPenumpang.toString(),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.orange,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                          const Divider(),
 
-                  SizedBox(height: 25),
-                ],
+                          /// ACTION + SUBTOTAL
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              GestureDetector(
+                                onTap: allSudahTurun
+                                    ? null
+                                    : () async {
+                                  debugPrint("🟢 Klik cek turun rute: $ruteKota");
+
+                                  final bool? confirm =
+                                  await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      title: const Text("Konfirmasi"),
+                                      content: const Text(
+                                        "Apakah kamu yakin semua penumpang di rute ini sudah turun?",
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () {
+                                            debugPrint("❌ Konfirmasi dibatalkan");
+                                            Navigator.pop(context, false);
+                                          },
+                                          child: const Text("Batal"),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () {
+                                            debugPrint("✅ Konfirmasi disetujui");
+                                            Navigator.pop(context, true);
+                                          },
+                                          child: const Text("Iya"),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    debugPrint(
+                                      "📝 Update is_turun=1 untuk rute: $ruteKota",
+                                    );
+
+                                    await PenjualanTiketService.instance
+                                        .updateIsTurunByRute(
+                                      ruteKota,
+                                      1,
+                                    );
+
+                                    debugPrint("🔄 Refresh data transaksi");
+                                    await _getListTransaksi();
+                                  }
+                                },
+                                child: Opacity(
+                                  opacity: allSudahTurun ? 0.4 : 1,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: allSudahTurun
+                                          ? Colors.red.withOpacity(0.2)
+                                          : Colors.green.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: allSudahTurun
+                                            ? Colors.red
+                                            : Colors.green,
+                                      ),
+                                    ),
+                                    child: Icon(
+                                      allSudahTurun
+                                          ? Icons.close
+                                          : Icons.check,
+                                      size: 16,
+                                      color: allSudahTurun
+                                          ? Colors.red
+                                          : Colors.green,
+                                    ),
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(width: 10),
+                              Text("Jml. Penumpang: $subtotalJumlahTiket"),
+                              const SizedBox(width: 16),
+                            ],
+                          ),
+                        ],
+                      );
+                    }).toList(),
+
+                    const SizedBox(height: 20),
+
+                    // ================================
+                    // TOTAL & SISA
+                    // ================================
+                    _buildTotalBox(
+                      title: "TOTAL SEMUA PENUMPANG",
+                      value: totalSemuaPenumpang,
+                      color: Colors.blue,
+                    ),
+
+                    _buildTotalBox(
+                      title: "SISA PENUMPANG",
+                      value: sisaPenumpang,
+                      color: Colors.orange,
+                    ),
+
+                    const SizedBox(height: 25),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // ❗ Overlay Progress Upload
-          if (_isPushingData)
-            Container(
-              color: Colors.grey.withOpacity(0.5),
-              child: Center(
-                child: CircularProgressIndicator(value: _pushDataProgress),
+            /// OVERLAY LOADING
+            if (_isPushingData)
+              Container(
+                color: Colors.grey.withOpacity(0.5),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: _pushDataProgress,
+                  ),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-     ),
     );
   }
 
-
+  /// ================================
+  /// WIDGET BANTU
+  /// ================================
+  Widget _buildTotalBox({
+    required String title,
+    required num value,
+    required Color color,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            value.toString(),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

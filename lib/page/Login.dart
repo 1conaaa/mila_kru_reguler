@@ -105,22 +105,19 @@ class _LoginState extends State<Login> {
   Future<void> _login() async {
     if (_isLoading || _isInitializing) return;
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     String username = _usernameController.text.trim();
     String password = _passwordController.text.trim();
 
     try {
-      // ========== DEBUG RESPONSE ==========
       print("=== DEBUG LOGIN API ===");
       print("Username : $username");
       print("Password : (disembunyikan)");
       print("====================================");
 
       final response = await http.post(
-        Uri.parse('https://apimila.milaberkah.com/api/login?username=$username&password=$password'),
+        Uri.parse('https://apimila.milaberkah.com/api/login'),
         body: {
           'username': username,
           'password': password,
@@ -131,36 +128,37 @@ class _LoginState extends State<Login> {
       print("Raw Body    : ${response.body}");
       print("====================================");
 
-      setState(() {
-        _isLoading = false;
-      });
-
-      // ========== CEK STATUS CODE ==========
-      if (response.statusCode != 200) {
-        _showDialog(context, 'Login gagal! Server tidak merespons dengan benar.');
-        return;
-      }
-
-      // ========== PARSE JSON DENGAN TRY/CATCH ==========
+      // ===== PARSE JSON DENGAN TRY/CATCH =====
       ApiResponseUser apiResponseUser;
       try {
         apiResponseUser = ApiResponseUser.fromJson(jsonDecode(response.body));
       } catch (e) {
         print("[ERROR] Parsing JSON gagal: $e");
-        _showDialog(context, "Login gagal: Format data tidak valid!\n$e");
+        setState(() => _isLoading = false);
+        _showDialog(context, "Login gagal: Username atau password salah!");
         return;
       }
 
-      // ========== CEK LOGIN SUCCESS ==========
+      // ===== CEK LOGIN SUCCESS =====
       if (apiResponseUser.success != 1) {
+        setState(() => _isLoading = false);
         _showDialog(context, 'Username atau password salah.');
         return;
       }
 
-      // =================== SIMPAN DATA =====================
-      SharedPreferences prefs = await SharedPreferences.getInstance();
+      // ===== CEK JADWAL TUGAS =====
       User user = apiResponseUser.user;
+      if (user.idBus == null || user.idBus == 0) {
+        setState(() => _isLoading = false);
+        _showDialog(
+          context,
+          'Login berhasil, tetapi Anda belum dijadwalkan bertugas. Silakan hubungi admin.',
+        );
+        return;
+      }
 
+      // ===== SIMPAN DATA SHARED PREFERENCES =====
+      SharedPreferences prefs = await SharedPreferences.getInstance();
       print("=== DEBUG: Menyimpan Data SharedPreferences ===");
 
       Map<String, dynamic> dataUserToSave = {
@@ -197,7 +195,6 @@ class _LoginState extends State<Login> {
 
       for (var entry in dataUserToSave.entries) {
         print("[DEBUG] Simpan ${entry.key} = ${entry.value}");
-
         if (entry.value is int) {
           await prefs.setInt(entry.key, entry.value);
         } else {
@@ -205,9 +202,10 @@ class _LoginState extends State<Login> {
         }
       }
 
-      print("=== DEBUG: Penyimpanan selesai ===");
+      await prefs.setBool('isLoggedIn', true);
+      print("[DEBUG] isLoggedIn diset ke true");
 
-      // ========== SIMPAN USER KE SQLITE ==========
+      // ===== SIMPAN USER KE SQLITE =====
       try {
         await _userService.insertUser(user.toMap());
         print('[SUCCESS] User data saved to SQLite');
@@ -215,17 +213,19 @@ class _LoginState extends State<Login> {
         print('[ERROR] Gagal simpan ke SQLite: $e');
       }
 
-      // ========== PINDAH HALAMAN ==========
+      setState(() => _isLoading = false);
+
+      // ===== PINDAH HALAMAN =====
       Navigator.pushReplacementNamed(context, '/');
 
-      // ========== TAMPILKAN DIALOG ==========
+      // ===== TAMPILKAN DIALOG SELAMAT TUGAS =====
       _showDialog(
         context,
         'Salam ${user.namaLengkap}, Anda sudah terdaftar bertugas pada Bis (${user.idBus})-${user.noPol} '
             'Trayek ${user.namaTrayek}. Selamat bertugas. Bismillah.',
       );
 
-      // ========== LOAD DATA LANJUTAN ==========
+      // ===== LOAD DATA LANJUTAN =====
       String token = apiResponseUser.token;
       int idBus = user.idBus;
       int idGarasi = user.idGarasi;
@@ -258,7 +258,6 @@ class _LoginState extends State<Login> {
             kataFix.add(kata[i]);
           }
         }
-
         String kelasBusFinal = kataFix.join("");
 
         await ApiHelperMetodePembayaran.fetchAndStoreMetodePembayaran(token);
@@ -270,6 +269,7 @@ class _LoginState extends State<Login> {
       } else {
         print('Data penjualan ditemukan, tidak memuat ulang API.');
       }
+
     } catch (e) {
       print("[EXCEPTION] $e");
       setState(() => _isLoading = false);

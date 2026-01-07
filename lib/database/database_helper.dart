@@ -511,7 +511,7 @@ class DatabaseHelper {
       (
         SELECT nama_kota
         FROM list_kota
-        WHERE id_kota_berangkat = a.id_kota_berangkat
+        WHERE id_kota_tujuan = a.id_kota_berangkat
         LIMIT 1
       ) AS kota_berangkat,
 
@@ -865,7 +865,6 @@ class DatabaseHelper {
       whereArgs: [idTagTransaksi],
     );
   }
-
 
 }
 

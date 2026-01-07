@@ -253,7 +253,7 @@ class _HomeState extends State<Home> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Berandas'),
+        title: const Text('Beranda'),
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         // 🆕 Nonaktifkan leading button selama loading

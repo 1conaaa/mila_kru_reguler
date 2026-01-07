@@ -336,7 +336,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
   Future<void> _getListKota() async {
     try {
-      List<Map<String, dynamic>> kotaData = await databaseHelper.getListKota();
+      List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan();
       setState(() {
         listKota = kotaData; // Pastikan 'listKota' adalah list yang sesuai
       });
@@ -550,7 +550,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
     bytes += generator.qrcode("https://www.milaberkah.com/");
     bytes += generator.text(
-      'Semoga Allah SWT melindungi kita dalam perjalanan ini.',
+      'Semoga selamat sampai tujuan.',
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.hr();
@@ -731,7 +731,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(labelText: 'Kota Berangkat'),
                 items: listKota.map((kota) {
-                  String valueText = '${kota['id_kota_tujuan']} - ${kota['jarak']}';
+                  String valueText = '${kota['id_kota_berangkat']} - ${kota['jarak']}';
                   return DropdownMenuItem<String>(
                     child: Text(kota['nama_kota']),
                     value: valueText,
@@ -753,7 +753,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(labelText: 'Kota Tujuan'),
                 items: listKota.map((kota) {
-                  String valueText = '${kota['id_kota_tujuan']} - ${kota['jarak']}';
+                  String valueText = '${kota['id_kota_berangkat']} - ${kota['jarak']}';
                   return DropdownMenuItem<String>(
                     child: Text(kota['nama_kota']),
                     value: valueText,
@@ -819,7 +819,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                         ),
                       ),
                       SizedBox(height: 20),
-                      // (Jika mau, bisa aktifkan tombol gallery lagi)
                     ],
                   ),
                   SizedBox(width: 20),

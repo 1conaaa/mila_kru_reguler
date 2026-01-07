@@ -14,7 +14,12 @@ class Logout extends StatelessWidget {
   Future<void> _clearData(BuildContext context) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
-      prefs.clear(); // Bisa sekalian clear semua key SharedPreferences
+
+      // ✅ Reset flag login
+      await prefs.setBool('isLoggedIn', false);
+
+      // Optional: clear data lain
+      // prefs.clear(); // jika ingin clear semua key
 
       DatabaseHelper databaseHelper = DatabaseHelper.instance;
       await databaseHelper.initDatabase();

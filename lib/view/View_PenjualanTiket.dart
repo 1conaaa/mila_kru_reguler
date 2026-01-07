@@ -650,7 +650,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       bytes += generator.qrcode("https://www.milaberkah.com/");
       bytes += generator.text('Barang hilang atau rusak resiko penumpang sendiri.', styles: PosStyles(align: PosAlign.center, bold: false));
       bytes += generator.text('Tiket ini, bukti transaksi yang sah dan mohon simpan tiket ini selama perjalanan Anda.', styles: PosStyles(align: PosAlign.center, bold: false));
-      bytes += generator.text('Semoga Allah SWT melindungi kita dalam perjalanan ini.', styles: PosStyles(align: PosAlign.center, bold: false));
+      bytes += generator.text('Semoga selamat sampai tujuan.', styles: PosStyles(align: PosAlign.center, bold: false));
       bytes += generator.hr();
 
       return bytes;
