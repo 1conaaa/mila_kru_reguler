@@ -754,11 +754,11 @@ class _PremiKruState extends State<PremiKru> {
                 tooltip: "Kirim Data",
                 onPressed: _pushDataPremiHarianKru,
               ),
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                tooltip: "Refresh",
-                onPressed: _refreshSetoranKruData,
-              ),
+              // IconButton(
+              //   icon: const Icon(Icons.refresh),
+              //   tooltip: "Refresh",
+              //   onPressed: _refreshSetoranKruData,
+              // ),
             ],
           ),
 

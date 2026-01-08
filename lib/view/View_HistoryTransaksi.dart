@@ -49,7 +49,22 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
       print('Error saat memanggil getDataRuteKota: $e');
     }
   }
+  void _markLocalDataTurunByTujuan(String kotaTujuan) {
+    setState(() {
+      listPenjualan = listPenjualan.map((item) {
+        final rute = item['rute_kota']?.toString() ?? '';
 
+        if (item['is_turun'] == 0 && rute.endsWith(' - $kotaTujuan')) {
+          return {
+            ...item,
+            'is_turun': 1,
+          };
+        }
+
+        return item;
+      }).toList();
+    });
+  }
 
   void _pushDataPenjualan() async {
     print("=== PUSH DATA PENJUALAN DIMULAI ===");
@@ -229,9 +244,20 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
       "🔍 Filter TUJUAN: $selectedKotaTujuan | data: ${filteredPenjualan.length}",
     );
 
+    // ==========================================
+    // 2️⃣ FLAG STATUS (INI YANG KAMU TANYAKAN)
+    // ==========================================
+    final bool allTujuanSudahTurun =
+        selectedKotaTujuan != 'SEMUA' &&
+            filteredPenjualan.isNotEmpty &&
+            filteredPenjualan.every(
+                  (e) => (e['is_turun'] ?? 0) == 1,
+            );
+
     // ================================
     // TOTAL PENUMPANG PER KOTA TUJUAN
     // ================================
+
     final num totalPerKotaTujuan =
     selectedKotaTujuan == 'SEMUA'
         ? 0
@@ -354,34 +380,164 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                     // TOTAL PER KOTA TUJUAN (FILTER)
                     // ================================
                     if (selectedKotaTujuan != 'SEMUA')
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        padding: const EdgeInsets.all(12),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.green),
+                          color: allTujuanSudahTurun
+                              ? Colors.red.withOpacity(0.08)
+                              : Colors.green.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: allTujuanSudahTurun ? Colors.red : Colors.green,
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              "TOTAL TUJUAN $selectedKotaTujuan",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
+                            Icon(
+                              allTujuanSudahTurun ? Icons.check_circle : Icons.groups,
+                              color: allTujuanSudahTurun ? Colors.red : Colors.green,
+                              size: 26,
+                            ),
+                            const SizedBox(width: 12),
+
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "TOTAL PENUMPANG TUJUAN",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[700],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    selectedKotaTujuan,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color:
+                                      allTujuanSudahTurun ? Colors.red : Colors.green,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            Text(
-                              totalPerKotaTujuan.toString(),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
+
+                            Container(
+                              padding:
+                              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: allTujuanSudahTurun
+                                    ? Colors.redAccent
+                                    : Colors.green,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                totalPerKotaTujuan.toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
+                        ),
+                      ),
+
+                    if (selectedKotaTujuan != 'SEMUA')
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 300),
+                          opacity: allTujuanSudahTurun ? 0.5 : 1,
+                          child: ElevatedButton.icon(
+                            icon: Icon(
+                              allTujuanSudahTurun
+                                  ? Icons.lock
+                                  : Icons.check_circle_outline,
+                            ),
+                            label: Text(
+                              allTujuanSudahTurun
+                                  ? "Semua Penumpang Sudah Turun"
+                                  : "Konfirmasi Semua Penumpang Tujuan $selectedKotaTujuan",
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                              allTujuanSudahTurun ? Colors.grey : Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: allTujuanSudahTurun ? 0 : 3,
+                            ),
+                            onPressed: allTujuanSudahTurun
+                                ? null
+                                : () async {
+                              final bool? confirm =
+                              await showDialog<bool>(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: const Text("Konfirmasi"),
+                                  content: Text(
+                                    "Semua penumpang tujuan $selectedKotaTujuan "
+                                        "akan ditandai sudah turun.\n\n"
+                                        "Tindakan ini tidak dapat dibatalkan.",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text("Batal"),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: const Text("Iya"),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                await PenjualanTiketService.instance
+                                    .updateIsTurunByKotaTujuanLocal(
+                                  selectedKotaTujuan,
+                                  1,
+                                );
+
+                                // 🔥 UPDATE STATE LOKAL (REALTIME)
+                                setState(() {
+                                  listPenjualan = listPenjualan.map((e) {
+                                    if ((e['is_turun'] ?? 0) == 0 &&
+                                        e['rute_kota'] != null &&
+                                        e['rute_kota']
+                                            .toString()
+                                            .endsWith(selectedKotaTujuan)) {
+                                      return {
+                                        ...e,
+                                        'is_turun': 1,
+                                      };
+                                    }
+                                    return e;
+                                  }).toList();
+                                });
+                              }
+                            },
+                          ),
                         ),
                       ),
 
@@ -483,13 +639,20 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                     );
 
                                     await PenjualanTiketService.instance
-                                        .updateIsTurunByRute(
-                                      ruteKota,
-                                      1,
-                                    );
+                                        .updateIsTurunByRute(ruteKota, 1);
 
-                                    debugPrint("🔄 Refresh data transaksi");
-                                    await _getListTransaksi();
+                                    setState(() {
+                                      listPenjualan = listPenjualan.map((e) {
+                                        if (e['rute_kota'] == ruteKota && (e['is_turun'] ?? 0) == 0) {
+                                          return {
+                                            ...e,
+                                            'is_turun': 1,
+                                          };
+                                        }
+                                        return e;
+                                      }).toList();
+                                    });
+
                                   }
                                 },
                                 child: Opacity(

@@ -414,4 +414,26 @@ class PenjualanTiketService {
     );
   }
 
+  Future<int> updateIsTurunByKotaTujuanLocal(
+      String kotaTujuan,
+      int newValue,
+      ) async {
+    final db = await database;
+
+    return await db.update(
+      'penjualan_tiket',
+      {'is_turun': newValue},
+      where: '''
+      is_turun = 0
+      AND kota_tujuan = (
+        SELECT id_kota_tujuan
+        FROM list_kota
+        WHERE nama_kota = ?
+      )
+    ''',
+      whereArgs: [kotaTujuan],
+    );
+  }
+
+
 }
