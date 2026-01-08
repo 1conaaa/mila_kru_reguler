@@ -381,7 +381,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                     // ================================
                     if (selectedKotaTujuan != 'SEMUA')
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: 250),
                         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -404,11 +404,11 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                         child: Row(
                           children: [
                             Icon(
-                              allTujuanSudahTurun ? Icons.check_circle : Icons.groups,
+                              allTujuanSudahTurun ? Icons.check_circle : Icons.warning_amber,
                               color: allTujuanSudahTurun ? Colors.red : Colors.green,
-                              size: 26,
+                              size: 25,
                             ),
-                            const SizedBox(width: 12),
+                            const SizedBox(width: 10),
 
                             Expanded(
                               child: Column(
@@ -461,7 +461,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 300),
+                          duration: const Duration(milliseconds: 250),
                           opacity: allTujuanSudahTurun ? 0.5 : 1,
                           child: ElevatedButton.icon(
                             icon: Icon(
