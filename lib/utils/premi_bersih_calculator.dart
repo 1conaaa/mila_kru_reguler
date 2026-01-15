@@ -185,8 +185,9 @@ class PremiBersihCalculator {
 
     // Variabel umum
     final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
-    final double pendapatanKotor = (pendKeseluruhan-pendapatanBagasi) - operan;
+    // final double pendapatanKotor = (pendKeseluruhan-pendapatanBagasi) - operan;
     // final double pendapatanKotor = pendKeseluruhan - operan;
+    final double pendapatanKotor = (nominalTiketReguler) - operan;
 
     print('=== [DEBUG] BASE CALCULATIONS ===');
     print('Pendapatan Keseluruhan: $pendKeseluruhan');
@@ -239,7 +240,7 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                pendDisetor = sisaPendapatan + pendapatanBagasi - nominalTiketOnline;
+                pendDisetor = (sisaPendapatan + pendapatanBagasi) - nominalTiketOnline;
                 print('=== [DEBUG] FINAL CALCULATION ===');
                 print('Pendapatan Bersih: $pendBersih');
                 print('Sisa Pendapatan: $sisaPendapatan');

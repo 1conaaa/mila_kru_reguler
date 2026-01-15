@@ -210,23 +210,52 @@ class PremiHarianKruService {
   Future<void> insertBulkPremiHarianKru(List<PremiHarianKru> premiList) async {
     try {
       final db = await _databaseHelper.database;
+      print("🗄️ DB isOpen: ${db.isOpen}");
+
+      print("📥 Mulai bulk insert premi harian kru");
+      print("📊 Total data diterima: ${premiList.length}");
+
       final batch = db.batch();
 
+      int index = 1;
       for (final premi in premiList) {
+        final mapData = premi.toMap();
+
+        print("--------------------------------------------------");
+        print("➡️ Data #$index yang akan disimpan:");
+        mapData.forEach((key, value) {
+          print("   • $key : $value");
+        });
+
         batch.insert(
           'premi_harian_kru',
-          premi.toMap(),
+          mapData,
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
+
+        index++;
       }
 
-      await batch.commit();
-      print('✅ ${premiList.length} data premi harian kru berhasil disimpan');
-    } catch (e) {
-      print('❌ Error bulk insert premi harian kru: $e');
+      final results = await batch.commit(noResult: false);
+
+      print("--------------------------------------------------");
+      print("✅ Batch commit selesai");
+      print("📊 Jumlah operasi DB: ${results.length}");
+
+      for (int i = 0; i < results.length; i++) {
+        print("   ✔️ Insert result #${i + 1}: ${results[i]}");
+      }
+
+      print("🎉 ${premiList.length} data premi harian kru berhasil disimpan");
+    } catch (e, stackTrace) {
+      print("❌ Error bulk insert premi harian kru");
+      print("   Error: $e");
+      print("   StackTrace:");
+      print(stackTrace);
       rethrow;
     }
   }
+
 
   // Check if premi harian kru exists
   Future<bool> isPremiHarianKruExists(int idTransaksi, int idUser, int idGroup, String tanggalSimpan) async {

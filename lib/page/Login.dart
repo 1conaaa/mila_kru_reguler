@@ -148,7 +148,7 @@ class _LoginState extends State<Login> {
 
       // ===== CEK JADWAL TUGAS =====
       User user = apiResponseUser.user;
-      if (user.idBus == null || user.idBus == 0) {
+      if (user.idBus == 0) {
         setState(() => _isLoading = false);
         _showDialog(
           context,

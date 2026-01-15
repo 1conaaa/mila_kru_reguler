@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:mila_kru_reguler/api/ApiPersenPremiKru..dart';
 import 'package:mila_kru_reguler/models/PersenPremiKru.dart';
 import 'package:mila_kru_reguler/services/persen_premi_kru_service.dart';
 
@@ -927,13 +926,15 @@ class _PremiKruState extends State<PremiKru> {
                                                 SizedBox(
                                                   width: MediaQuery.of(context).size.width * 0.6,
                                                   child: FutureBuilder<List<ListPersenPremiKru>>(
-                                                    future: PersenPremiKruService.instance
-                                                        .getByKodeTrayek(
+                                                    future: PersenPremiKruService.instance.getByKodeTrayek(
                                                       s.kodeTrayek ?? "",
                                                       idJenisPremi: 1,
                                                     ),
                                                     builder: (context, ps) {
+                                                      print("📥 FutureBuilder status: ${ps.connectionState}");
+
                                                       if (!ps.hasData) {
+                                                        print("⏳ Menunggu data pembagian premi...");
                                                         return const SizedBox(
                                                           height: 20,
                                                           child: CircularProgressIndicator(strokeWidth: 2),
@@ -941,33 +942,51 @@ class _PremiKruState extends State<PremiKru> {
                                                       }
 
                                                       final persenList = ps.data!;
+                                                      print("📊 Jumlah data pembagian premi: ${persenList.length}");
+
                                                       if (persenList.isEmpty) {
+                                                        print("⚠️ Data pembagian premi kosong");
                                                         return const Text(
                                                           "⚠️ Data pembagian belum tersedia",
                                                           style: TextStyle(fontSize: 12),
                                                         );
                                                       }
 
+                                                      /// Hitung total persen
                                                       final totalPersen = persenList.fold<double>(
                                                         0,
                                                             (sum, e) => sum + e.nilaiAsDouble,
                                                       );
 
+                                                      print("🧮 Total persen premi: $totalPersen");
+                                                      print("💰 Nilai premi dasar (s.nilai): ${s.nilai}");
+
                                                       return Column(
                                                         crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: persenList.map((p) {
+                                                        children: persenList.asMap().entries.map((entry) {
+                                                          final index = entry.key;
+                                                          final p = entry.value;
+
+                                                          print("--------------------------------------------------");
+                                                          print("➡️ Item #${index + 1}");
+                                                          print("   • ID Posisi Kru : ${p.idPosisiKru}");
+                                                          print("   • Persen        : ${p.nilaiAsDouble}");
+
                                                           final nominal = totalPersen > 0
-                                                              ? (p.nilaiAsDouble / totalPersen) *
-                                                              (s.nilai ?? 0)
+                                                              ? (p.nilaiAsDouble / totalPersen) * (s.nilai ?? 0)
                                                               : 0;
 
-                                                          final namaKru =
-                                                          listPremiHarianKru.firstWhere(
+                                                          debugPrint("   • Nominal Hitung: $nominal");
+
+                                                          final kruData = listPremiHarianKru.firstWhere(
                                                                 (k) => k["id_posisi_kru"] == p.idPosisiKru,
                                                             orElse: () => {
                                                               "nama_kru": "Kru #${p.idPosisiKru}"
                                                             },
-                                                          )["nama_kru"];
+                                                          );
+
+                                                          final namaKru = kruData["nama_kru"];
+                                                          print("   • Nama Kru      : $namaKru");
 
                                                           return Padding(
                                                             padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1003,6 +1022,7 @@ class _PremiKruState extends State<PremiKru> {
                                           ),
                                         );
                                       }
+
 
                                       return rows;
                                     }).toList(),

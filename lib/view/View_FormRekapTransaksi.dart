@@ -1389,6 +1389,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         if (nominalPremiHarian > 0) {
           final premiHarian = PremiHarianKru(
             idTransaksi: int.tryParse(idTransaksi.replaceAll('BUS.', '')) ?? 0,
+            kodeTrayek: kodeTrayek, // ✅ FIX UTAMA
+            idJenisPremi: 1,        // ✅ WAJIB (karena Anda query pakai ini)
             idUser: idPersonil,
             idGroup: idGroup,
             persenPremiDisetor: persenPremi,
@@ -1396,6 +1398,15 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             tanggalSimpan: formattedDate,
             status: 'N',
           );
+
+          print('   🧾 Data premi yang akan disimpan:');
+          print('      - id_transaksi : ${premiHarian.idTransaksi}');
+          print('      - kode_trayek  : ${premiHarian.kodeTrayek}');
+          print('      - id_jenis     : ${premiHarian.idJenisPremi}');
+          print('      - id_user      : ${premiHarian.idUser}');
+          print('      - id_group     : ${premiHarian.idGroup}');
+          print('      - persen       : ${premiHarian.persenPremiDisetor}');
+          print('      - nominal      : ${premiHarian.nominalPremiDisetor}');
 
           premiHarianList.add(premiHarian);
           print('   ✅ Premi harian disiapkan untuk $namaLengkap: Rp$nominalPremiHarian');
@@ -1407,6 +1418,15 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       // 9. Simpan semua data premi harian kru
       if (premiHarianList.isNotEmpty) {
         try {
+          print('================ VALIDASI DATA SEBELUM INSERT ================');
+
+          for (var i = 0; i < premiHarianList.length; i++) {
+            final p = premiHarianList[i];
+            print('➡️ Row #${i + 1}');
+            print('   kode_trayek  : ${p.kodeTrayek}');
+            print('   id_jenis     : ${p.idJenisPremi}');
+          }
+
           await premiHarianService.insertBulkPremiHarianKru(premiHarianList);
           print('✅ ${premiHarianList.length} data premi harian kru berhasil disimpan');
         } catch (e) {
