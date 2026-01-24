@@ -31,8 +31,7 @@ class _RekapTransaksiState extends State<RekapTransaksi> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    String connectivityInfo =
-    isOnline ? 'Terhubung ke Internet' : 'Tidak Terhubung ke Internet';
+    String connectivityInfo = isOnline ? 'Terhubung ke Internet' : 'Tidak Terhubung ke Internet';
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
       builder:
