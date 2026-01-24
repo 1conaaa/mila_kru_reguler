@@ -138,7 +138,7 @@ class PremiBersihCalculator {
     final double nominalTiketReguler = extractedValues['nominalTiketReguler']!;
     final double nominalTiketOnline = extractedValues['nominalTiketOnline']!;
     final double pendapatanBagasi = extractedValues['pendapatanBagasi']!;
-    final double pengeluaranTol = extractedValues['pengeluaranTol']!;
+    double pengeluaranTol = extractedValues['pengeluaranTol']!;
     final double nominalsolar = extractedValues['nominalsolar']!;
     final double pengeluaranCuci = extractedValues['pengeluaranCuci']!;
     final double pengeluaranLainLain = extractedValues['pengeluaranLainLain']!;
@@ -214,7 +214,7 @@ class PremiBersihCalculator {
               case '3471351002':
                 print('=== [DEBUG] PROCESSING: YOGYAKARTA - BANYUWANGI ===');
                 // Pengeluaran untuk AKAP Ekonomi Yogyakarta-Banyuwangi
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranTol;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
 
                 print('=== [DEBUG] PENGELUARAN DETAIL ===');
                 print('Solar: $nominalsolar');
@@ -223,7 +223,6 @@ class PremiBersihCalculator {
                 print('Parkir: $pengeluaranParkir');
                 print('Perbaikan: $pengeluaranPerbaikan');
                 print('Lain-lain: $pengeluaranLainLain');
-                print('Tol: $pengeluaranTol');
                 print('Total Pengeluaran: $totalPengeluaran');
 
                 pendBersih = pendapatanKotor - totalPengeluaran;
@@ -240,7 +239,15 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                pendDisetor = (sisaPendapatan + pendapatanBagasi) - nominalTiketOnline;
+                if (sisaPendapatan > 2500000) {
+                  pengeluaranTol = 270000;
+                } else if (sisaPendapatan > 2500000) {
+                  pengeluaranTol = 140000;
+                }
+                print('Tol: $pengeluaranTol');
+
+                pendDisetor = (sisaPendapatan + pendapatanBagasi) - (nominalTiketOnline + pengeluaranTol);
+                print('($sisaPendapatan + $pendapatanBagasi) - ($nominalTiketOnline + $pengeluaranTol)');
                 print('=== [DEBUG] FINAL CALCULATION ===');
                 print('Pendapatan Bersih: $pendBersih');
                 print('Sisa Pendapatan: $sisaPendapatan');
@@ -253,7 +260,7 @@ class PremiBersihCalculator {
               case '3471352901':
                 print('=== [DEBUG] PROCESSING: YOG-SMP ===');
                 // Pengeluaran untuk AKAP Ekonomi YOG-SMP
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranTol + pengeluaranSuramadu;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranSuramadu;
 
                 print('=== [DEBUG] PENGELUARAN DETAIL ===');
                 print('Solar: $nominalsolar');
@@ -262,7 +269,6 @@ class PremiBersihCalculator {
                 print('Parkir: $pengeluaranParkir');
                 print('Perbaikan: $pengeluaranPerbaikan');
                 print('Lain-lain: $pengeluaranLainLain');
-                print('Tol: $pengeluaranTol');
                 print('Suramadu: $pengeluaranSuramadu');
                 print('Total Pengeluaran: $totalPengeluaran');
 
@@ -280,7 +286,15 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                pendDisetor = sisaPendapatan + pendapatanBagasi - nominalTiketOnline;
+                if (sisaPendapatan > 2500000) {
+                  pengeluaranTol = 270000;
+                } else if (sisaPendapatan > 2500000) {
+                  pengeluaranTol = 140000;
+                }
+                print('Tol: $pengeluaranTol');
+
+                pendDisetor = (sisaPendapatan + pendapatanBagasi) - (nominalTiketOnline - pengeluaranTol);
+
                 print('=== [DEBUG] FINAL CALCULATION ===');
                 print('Pendapatan Bersih: $pendBersih');
                 print('Sisa Pendapatan: $sisaPendapatan');

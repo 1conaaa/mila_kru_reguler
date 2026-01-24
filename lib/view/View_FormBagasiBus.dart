@@ -199,7 +199,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     Database db = await dbHelper.database;
 
     // Hitung jumlahTagihan dari controller
-    double jumlahTagihan = double.tryParse(_hargaKmController.text) ?? 0.0;
+    double jumlahTagihan = tagihan;
 
     // Jika gambar diambil, kompres gambar terlebih dahulu
     if (_image != null) {
@@ -232,7 +232,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         'id_kota_tujuan': idkotaAkhir,
         'qty_barang': _qtyBarangController.text,
         'harga_km': jumlahTagihan, // Gunakan jumlahTagihan yang sudah dihitung
-        'jml_harga': jumlahTagihan.toString(), // Simpan sebagai string
+        'jml_harga': jumlahTagihan, // ✅ SIMPAN NUMERIC
         'nama_pengirim': _namaPengirimController.text,
         'no_tlp_pengirim': _noTlpPengirimController.text,
         'nama_penerima': _namaPenerimaController.text,
@@ -564,30 +564,36 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         // Parsing ID jenis paket dan harga paket
         List<String> parts = selectedJenisPaket.split(' - ');
         int idJenisPaket = int.tryParse(parts[0]) ?? 1;
-        double hargaPaket = double.tryParse(parts[2]) ?? 0.0; // harga_paket ada di index 2
+        double hargaPaket = double.tryParse(parts[2]) ?? 0.0;
 
         print('ID Jenis Paket: $idJenisPaket');
         print('Harga Paket: $hargaPaket');
         print('Qty Barang: $qtyBarang');
 
-        // Hitung jumlah tagihan langsung dari harga paket × quantity
+        // Hitung jumlah tagihan
         double jumlahTagihan = hargaPaket * qtyBarang;
 
         setState(() {
-          _hargaKmController.text = jumlahTagihan.toStringAsFixed(0);
+          tagihan = jumlahTagihan; // ✅ TAMBAHAN PENTING (ANGKA ASLI)
+
+          _hargaKmController.text =
+              NumberFormat.decimalPattern('id')
+                  .format(jumlahTagihan.toInt()); // ✅ FORMAT RUPIAH
         });
 
-        print('Jumlah Tagihan: $jumlahTagihan');
+        print('Jumlah Tagihan (numeric): $tagihan');
 
       } catch (e) {
         print('Error calculating tagihan: $e');
         setState(() {
+          tagihan = 0;
           _hargaKmController.text = '0';
         });
       }
     } else {
       print('Jenis paket belum dipilih');
       setState(() {
+        tagihan = 0;
         _hargaKmController.text = '0';
       });
     }
@@ -701,7 +707,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
               SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(labelText: 'Pilih Jenis Paket'),
-                value: selectedJenisPaket,
+                initialValue: selectedJenisPaket,
                 items: jenisPaket.map((item) {
                   String combinedValue =
                       '${item['id']} - ${item['persen']} - ${item['harga_paket']}';
@@ -785,7 +791,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
               SizedBox(height: 20),
               TextField(
                 controller: _hargaKmController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Tagihan',
                   prefixText: 'Rp ',
                 ),
@@ -796,10 +802,13 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                 ],
                 textAlign: TextAlign.center,
                 onChanged: (value) {
+                  final clean = value.replaceAll(RegExp(r'[^0-9]'), '');
                   setState(() {
-                    final angka = value.replaceAll(RegExp(r'[^0-9]'), '');
-                    tagihan = double.tryParse(angka) ?? 0.0;
+                    tagihan = double.tryParse(clean) ?? 0;
                   });
+
+                  print('INPUT: $value');
+                  print('TAGIHAN NUMERIC: $tagihan');
                 },
               ),
               SizedBox(height: 20),

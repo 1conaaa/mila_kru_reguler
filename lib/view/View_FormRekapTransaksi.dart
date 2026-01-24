@@ -267,14 +267,11 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           persenPremikruController.text = persenPremikru ?? '0';
 
           // 🔥 FIX UTAMA (ANTI CRASH)
-          coaPendapatanBusController.text =
-              firstUser['coa_pendapatan_bus']?.toString() ?? '';
+          coaPendapatanBusController.text = firstUser['coa_pendapatan_bus']?.toString() ?? '';
 
-          coaPengeluaranBusController.text =
-              firstUser['coa_pengeluaran_bus']?.toString() ?? '';
+          coaPengeluaranBusController.text = firstUser['coa_pengeluaran_bus']?.toString() ?? '';
 
-          coaUtangPremiController.text =
-              firstUser['coa_utang_premi']?.toString() ?? '';
+          coaUtangPremiController.text = firstUser['coa_utang_premi']?.toString() ?? '';
         });
 
 
@@ -1438,12 +1435,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
 
       // Debug: tampilkan semua setoran yang akan disimpan
       print('--- DETAIL SETORAN YANG AKAN DISIMPAN ---');
-
-      print('--- DETAIL SETORAN YANG AKAN DISIMPAN ---');
       for (var i = 0; i < semuaSetoran.length; i++) {
         final setoran = semuaSetoran[i];
-        // final label = setoran.idTagTransaksi == 15 ? ' - Biaya Tol (DIHITUNG OTOMATIS)' : '';
-        // print('$i. ${setoran.idTagTransaksi}: Rp${setoran.nilai} (jumlah: ${setoran.jumlah})$label');
+        final label = setoran.idTagTransaksi == 15 ? ' - Biaya Tol (DIHITUNG OTOMATIS)' : '';
+        print('$i. ${setoran.idTagTransaksi}: Rp${setoran.nilai} (jumlah: ${setoran.jumlah})$label');
         print('$i. ${setoran.idTagTransaksi}: Rp${setoran.nilai} (jumlah: ${setoran.jumlah})');
       }
 

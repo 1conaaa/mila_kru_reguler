@@ -215,7 +215,7 @@ class PenjualanTiketService {
         FROM (
           SELECT SUM(harga_kantor) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
           FROM penjualan_tiket
-          WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan', 'online') AND status = 'Y' AND id_metode_bayar = '1'
+          WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan', 'operan','sepi','tni','pelajar', 'online') AND status = 'Y' AND id_metode_bayar = '1'
           GROUP BY rit
           UNION ALL
           SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit

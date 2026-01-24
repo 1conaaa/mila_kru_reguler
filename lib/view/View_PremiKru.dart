@@ -873,9 +873,7 @@ class _PremiKruState extends State<PremiKru> {
                                                   : null,
                                             )),
                                             DataCell(Text(
-                                              s.nilai != null
-                                                  ? formatter.format(s.nilai)
-                                                  : "-",
+                                              formatter.format(s.nilai),
                                               style: isTag61
                                                   ? TextStyle(
                                                 fontSize: 16,

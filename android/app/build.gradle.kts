@@ -31,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId = "com.milaberkah.mila_kru_reguler"
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 35
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

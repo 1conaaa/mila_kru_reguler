@@ -1,0 +1,74 @@
+import 'package:flutter/cupertino.dart';
+import 'package:mila_kru_reguler/models/tag_transaksi.dart';
+
+class ControllerUtils {
+  static void fillIncomeControllers({
+    required Map<int, TextEditingController> controllers,
+    required Map<int, TextEditingController> jumlahControllers,
+    required double totalPendapatanRegulerValue,
+    required int jumlahTiketRegulerValue,
+    required double totalPendapatanNonRegulerValue,
+    required int jumlahTiketOnlineValue,
+    required double totalPendapatanBagasiValue,
+    required int jumlahBarangBagasiValue,
+  }) {
+    print('=== MENGISI CONTROLLER PENDAPATAN ===');
+
+    if (controllers.containsKey(1)) {
+      controllers[1]!.text = totalPendapatanRegulerValue.toInt().toString();
+      print('✓ _controllers[1] diisi: ${totalPendapatanRegulerValue.toInt()}');
+    }
+    if (jumlahControllers.containsKey(1)) {
+      jumlahControllers[1]!.text = jumlahTiketRegulerValue.toString();
+      print('✓ _jumlahControllers[1] diisi: $jumlahTiketRegulerValue');
+    }
+
+    if (controllers.containsKey(2)) {
+      controllers[2]!.text = totalPendapatanNonRegulerValue.toInt().toString();
+      print('✓ _controllers[2] diisi: ${totalPendapatanNonRegulerValue.toInt()}');
+    }
+    if (jumlahControllers.containsKey(2)) {
+      jumlahControllers[2]!.text = jumlahTiketOnlineValue.toString();
+      print('✓ _jumlahControllers[2] diisi: $jumlahTiketOnlineValue');
+    }
+
+    if (controllers.containsKey(3)) {
+      controllers[3]!.text = totalPendapatanBagasiValue.toInt().toString();
+      print('✓ _controllers[3] diisi: ${totalPendapatanBagasiValue.toInt()}');
+    }
+    if (jumlahControllers.containsKey(3)) {
+      jumlahControllers[3]!.text = jumlahBarangBagasiValue.toString();
+      print('✓ _jumlahControllers[3] diisi: $jumlahBarangBagasiValue');
+    }
+
+    print('=== SELESAI MENGISI CONTROLLER ===');
+  }
+
+  static bool requiresQuantity(TagTransaksi tag, List<TagTransaksi> tagPendapatan) {
+    if (tagPendapatan.any((pendapatan) => pendapatan.id == tag.id)) {
+      return true;
+    }
+
+    List<String> tagsWithJumlah = ['Biaya Solar'];
+    return tagsWithJumlah.contains(tag.nama);
+  }
+
+  static bool requiresLiterSolar(TagTransaksi tag) {
+    List<String> tagsWithLiterSolar = ['Biaya Solar'];
+    return tagsWithLiterSolar.contains(tag.nama);
+  }
+
+  static bool requiresImage(TagTransaksi tag) {
+    List<String> tagsWithImage = [
+      'Biaya Solar',
+      'Biaya Perbaikan',
+      'Biaya Tol',
+      'Biaya Operasional Surabaya'
+    ];
+    return tagsWithImage.contains(tag.nama);
+  }
+
+  static bool isExpense(TagTransaksi tag, List<TagTransaksi> tagPengeluaran) {
+    return tagPengeluaran.any((pengeluaran) => pengeluaran.id == tag.id);
+  }
+}
