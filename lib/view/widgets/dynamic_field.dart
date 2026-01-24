@@ -19,7 +19,6 @@ class DynamicField extends StatelessWidget {
   final bool Function(TagTransaksi) requiresJumlah;
   final bool Function(TagTransaksi) requiresLiterSolar;
 
-  /// CALLBACK WAJIB - Diperbaiki signature-nya
   final Function(TagTransaksi, String) onFieldChanged;
   final Function(TagTransaksi, XFile) onImageUpload;
   final Function(TagTransaksi) onRemoveImage;
@@ -46,17 +45,22 @@ class DynamicField extends StatelessWidget {
   bool isNonEditable(TagTransaksi tag) {
     final name = tag.nama?.toLowerCase() ?? '';
 
-    return
-        name.contains("premi atas") ||
+    return name.contains("premi atas") ||
         name.contains("premi bawah") ||
         name.contains("pendapatan bersih") ||
         name.contains("pendapatan disetor");
   }
 
-
   @override
   Widget build(BuildContext context) {
-    print("=== [DEBUG] DynamicField Render === Tag ID: ${tag.id}, Nama: ${tag.nama}");
+    /// 🚫 SEMBUNYIKAN TAG ID = 15
+    if (tag.id == 15) {
+      print("=== [DEBUG] Tag ID 15 disembunyikan ===");
+      return const SizedBox.shrink();
+    }
+
+    print(
+        "=== [DEBUG] DynamicField Render === Tag ID: ${tag.id}, Nama: ${tag.nama}");
 
     return Column(
       children: [
@@ -68,7 +72,8 @@ class DynamicField extends StatelessWidget {
             jumlahControllers: jumlahControllers,
             readOnly: true,
             onChanged: (TagTransaksi changedTag, String value) {
-              print("DEBUG: FieldWithJumlah changed → Tag ${changedTag.id}, Value: $value");
+              print(
+                  "DEBUG: FieldWithJumlah changed → Tag ${changedTag.id}, Value: $value");
               onFieldChanged(changedTag, value);
             },
           )
@@ -80,9 +85,10 @@ class DynamicField extends StatelessWidget {
             controllers: controllers,
             literSolarControllers: literSolarControllers,
             requiresLiterSolar: requiresLiterSolar,
-            readOnly: isNonEditable(tag),    // <<< INI PENTING!
+            readOnly: isNonEditable(tag),
             onChanged: (TagTransaksi changedTag, String value) {
-              print("DEBUG: FieldWithLiterSolar changed → Tag ${changedTag.id}, Value: $value");
+              print(
+                  "DEBUG: FieldWithLiterSolar changed → Tag ${changedTag.id}, Value: $value");
               onFieldChanged(changedTag, value);
             },
           )
@@ -93,9 +99,10 @@ class DynamicField extends StatelessWidget {
               tag: tag,
               controllers: controllers,
               jumlahControllers: jumlahControllers,
-              readOnly: isNonEditable(tag),   // <<< PENTING !!!
+              readOnly: isNonEditable(tag),
               onChanged: (TagTransaksi changedTag, String value) {
-                print("DEBUG: Default FieldWithJumlah → Tag ${changedTag.id}, Value: $value");
+                print(
+                    "DEBUG: Default FieldWithJumlah → Tag ${changedTag.id}, Value: $value");
                 onFieldChanged(changedTag, value);
               },
             )
@@ -107,12 +114,13 @@ class DynamicField extends StatelessWidget {
               controllers: controllers,
               readOnly: isNonEditable(tag),
               onChanged: (TagTransaksi changedTag, String value) {
-                print("DEBUG: SingleField changed → Tag ${changedTag.id}, Value: $value");
+                print(
+                    "DEBUG: SingleField changed → Tag ${changedTag.id}, Value: $value");
                 onFieldChanged(changedTag, value);
               },
             ),
 
-        // IMAGE UPLOAD (Jika dibutuhkan)
+        // IMAGE UPLOAD
         if (requiresImage(tag))
           ImageUploadSection(
             tag: tag,

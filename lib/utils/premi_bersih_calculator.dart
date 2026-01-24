@@ -120,7 +120,6 @@ class PremiBersihCalculator {
   }
 
   /// Kalkulasi kompleks berdasarkan aturan bisnis
-  /// Kalkulasi kompleks berdasarkan aturan bisnis
   static Map<String, dynamic> _calculateComplexPremi({
     required Map<String, double> extractedValues,
     required User userData,
