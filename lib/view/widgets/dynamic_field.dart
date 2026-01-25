@@ -105,7 +105,7 @@ class _DynamicFieldState extends State<DynamicField> {
   Widget build(BuildContext context) {
     /// 🔹 ATURAN KHUSUS TRAYEK
     const Map<int, Set<String>> hiddenTagsByTrayek = {
-      15: {'3471352901'},
+      15: {'3471352901','3471351002', '3471351001'},
       59: {'3471351002', '3471351001'},
     };
 
