@@ -717,8 +717,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         return;
       }
 
-      final double jarak =
-          (dataJarak.first['jarak'] as num?)?.toDouble() ?? 0.0;
+      final double jarak = (dataJarak.first['jarak'] as num?)?.toDouble() ?? 0.0;
 
       if (jarak <= 0) {
         print('❌ Jarak tidak valid: $jarak');
@@ -752,20 +751,17 @@ class _PenjualanFormState extends State<PenjualanForm> {
         hargaTarikanPerTiket = 0;
       }
 
-      int hargaTarikanPerTiketBulat =
-      pembulatanRibuan(hargaTarikanPerTiket);
+      int hargaTarikanPerTiketBulat = pembulatanRibuan(hargaTarikanPerTiket);
 
       // -------------------------
       // TOTAL TARIKAN
       // -------------------------
-      int hargaTarikanFinal =
-          hargaTarikanPerTiketBulat * jumlahTiket;
+      int hargaTarikanFinal = hargaTarikanPerTiketBulat * jumlahTiket;
 
       // -------------------------
       // HITUNG HARGA KANTOR
       // -------------------------
-      final String? persenStr =
-      prefs.getString('persenSusukanKru');
+      final String? persenStr = prefs.getString('persenSusukanKru');
 
       double persenKru = 0.0;
       if (persenStr != null) {
@@ -777,8 +773,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
       final double persen = persenKru / 100;
 
-      double hargaKantorHitung =
-          hargaTarikanFinal - (hargaTarikanFinal * persen);
+      double hargaKantorHitung = hargaTarikanFinal - (hargaTarikanFinal * persen);
 
       int hargaKantorBulat = hargaKantorHitung.toInt();
 
@@ -793,10 +788,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
         _hargaKantorCalculated = hargaKantorBulat.toDouble();
         jumlahTagihan = hargaTarikanFinal.toDouble();
 
-        hargaKantorController.text =
-            formatter.format(hargaKantorBulat);
-        tagihanController.text =
-            formatter.format(hargaTarikanFinal);
+        hargaKantorController.text = formatter.format(hargaKantorBulat);
+        tagihanController.text = formatter.format(hargaTarikanFinal);
       });
 
       print('✅ HITUNGAN BERHASIL');

@@ -174,8 +174,11 @@ class _PremiKruState extends State<PremiKru> {
         return;
       }
 
+      final String formattedDate =
+      DateFormat('yyyy-MM-dd HH:mm:ss').format(_selectedDate!);
+
       final rowsList = filtered.map((d) => {
-        "tgl_transaksi": d.tglTransaksi,
+        "tgl_transaksi": formattedDate, // ✅ PAKAI DATE PICKER
         "km_pulang": d.kmPulang ?? "",
         "rit": d.rit,
         "no_pol": d.noPol,
@@ -846,9 +849,7 @@ class _PremiKruState extends State<PremiKru> {
                                       final isPremiAtas = s.idTagTransaksi == 27;
                                       final isTag61 = s.idTagTransaksi == 61;
 
-                                      final namaTag = isPremiAtas
-                                          ? "Premi Atas"
-                                          : _getNamaTagFromList(s.idTagTransaksi, tagList);
+                                      final namaTag = isPremiAtas ? "Premi Atas" : _getNamaTagFromList(s.idTagTransaksi, tagList);
 
                                       /// ---------- ROW UTAMA ----------
                                       rows.add(

@@ -282,14 +282,14 @@ class PenjualanTiketService {
            SUM(x.jumlah_tiket) AS jumlah_tiket, 
            SUM(x.rit) AS rit
     FROM (
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
+      SELECT SUM(harga_kantor) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
       WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y'
       UNION ALL
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
+      SELECT SUM(harga_kantor) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
@@ -305,14 +305,14 @@ class PenjualanTiketService {
            SUM(x.jumlah_tiket) AS jumlah_tiket, 
            SUM(x.rit) AS rit
     FROM (
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
+      SELECT SUM(harga_kantor) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
       WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y'
       UNION ALL
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
+      SELECT SUM(harga_kantor) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket

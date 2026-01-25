@@ -456,8 +456,7 @@ class _FormRekapTransaksiState
 
   void _onSimpanPressed() async {
     // 1️⃣ Buat notifier progress (TIDAK pakai Provider)
-    final ValueNotifier<String> progressMessage =
-    ValueNotifier<String>('Memulai pengecekan...');
+    final ValueNotifier<String> progressMessage = ValueNotifier<String>('Memulai pengecekan...');
 
     // 2️⃣ Tampilkan ProgressDialog
     showDialog(
@@ -472,22 +471,18 @@ class _FormRekapTransaksiState
 
     try {
       // ================= STEP 1 =================
-      DebugUtils.printSaveProgress(
-          'STEP 1', 'Memanggil getPenjualanByStatus(\'N\')');
+      DebugUtils.printSaveProgress('STEP 1', 'Memanggil getPenjualanByStatus(\'N\')');
 
-      progressMessage.value =
-      '1/5 — Mengecek transaksi penjualan yang belum dikirim...';
+      progressMessage.value = '1/5 — Mengecek transaksi penjualan yang belum dikirim...';
       await Future.delayed(const Duration(milliseconds: 200));
 
-      final List<Map<String, dynamic>> penjualanData =
-      await _rekapHandler.checkUnsentTransactions();
+      final List<Map<String, dynamic>> penjualanData = await _rekapHandler.checkUnsentTransactions();
 
       DebugUtils.printSaveProgress(
           'STEP 1 RESULT',
           'ditemukan ${penjualanData.length} baris (status N)');
 
-      progressMessage.value =
-      '1/5 — Ditemukan ${penjualanData.length} transaksi belum dikirim';
+      progressMessage.value = '1/5 — Ditemukan ${penjualanData.length} transaksi belum dikirim';
       await Future.delayed(const Duration(milliseconds: 150));
 
       // ================= STEP 1a =================
@@ -581,7 +576,6 @@ class _FormRekapTransaksiState
     }
   }
 
-
   bool _isPengeluaran(TagTransaksi tag) {
     return ControllerUtils.isExpense(tag, tagPengeluaran);
   }
@@ -617,75 +611,74 @@ class _FormRekapTransaksiState
     final setoranService = SetoranKruService();
     final premiService = PremiPosisiKruService();
     final premiHarianService = PremiHarianKruService();
+
     final now = DateTime.now();
     final formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
 
     try {
-      String kelasLayanan = _rekapService.getKelasLayanan(keydataPremiextra);
-
-      DebugUtils.printSaveProgress('=== [DEBUG] KELAS LAYANAN ===','keydataPremiextra: $keydataPremiextra, kelasLayanan: $kelasLayanan');
-
-      List<Map<String, dynamic>> users = await _userService.getUsersRaw();
+      /// ================= VALIDASI USER =================
+      final users = await _userService.getUsersRaw();
       if (users.isEmpty) {
-        print('Tidak ada data user');
-        return;
+        throw Exception('User tidak ditemukan');
       }
 
-      Map<String, dynamic> firstUser = users[0];
-
-      DebugUtils.printSaveProgress('=== MULAI SIMPAN REKAP ===','Tanggal Transaksi: $formattedDate, KM Pulang: ${kmMasukGarasiController.text}');
-
-      final ritValue = ritController.text;
+      /// ================= VALIDASI RIT =================
+      final ritValue = ritController.text.trim();
       if (ritValue.isEmpty) {
-        print('❌ Error: Rit harus diisi');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rit harus diisi')),
-        );
-        return;
+        throw Exception('Rit harus diisi');
       }
 
+      /// ================= ID TRANSAKSI =================
       final idTransaksi = _rekapService.generateTransactionId(idUser);
-      DebugUtils.printSaveProgress('🆔 ID Transaksi Generated', idTransaksi);
 
-      List<SetoranKru> semuaSetoran = [];
+      DebugUtils.printSaveProgress(
+        '=== MULAI SIMPAN REKAP ===',
+        'Tanggal: $formattedDate | Rit: $ritValue | ID: $idTransaksi',
+      );
 
-      // Collect income setoran
-      semuaSetoran.addAll(SaveRekapUtils.collectIncomeSetoran(
-        tagPendapatan: tagPendapatan,
-        controllers: _controllers,
-        jumlahControllers: _jumlahControllers,
-        formattedDate: formattedDate,
-        kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-        ritValue: ritValue,
-        noPol: noPol,
-        idBus: idBus,
-        kodeTrayek: kodeTrayek,
-        idUser: idUser,
-        idGroup: idGroup,
-        idTransaksi: idTransaksi,
-        coaPendapatan: coaPendapatanBusController.text.trim(),
-      ));
+      final List<SetoranKru> semuaSetoran = [];
 
-      // Collect expense setoran
-      semuaSetoran.addAll(SaveRekapUtils.collectExpenseSetoran(
-        tagPengeluaran: tagPengeluaran,
-        controllers: _controllers,
-        literSolarControllers: _literSolarControllers,
-        uploadedImages: _uploadedImages,
-        formattedDate: formattedDate,
-        kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
-        ritValue: ritValue,
-        noPol: noPol,
-        idBus: idBus,
-        kodeTrayek: kodeTrayek,
-        idUser: idUser,
-        idGroup: idGroup,
-        idTransaksi: idTransaksi,
-        coaPengeluaran: coaPengeluaranBusController.text,
-      ));
+      /// ================= HELPER TAG KALKULASI =================
+      void _addCalculatedSetoran({
+        required int tagId,
+        required double nilai,
+        required String coa,
+      }) {
+        if (nilai <= 0) {
+          debugPrint('⏭️ SKIP TAG $tagId | nilai <= 0');
+          return;
+        }
 
-      // ... (collect premi dan bersih setoran)
+        semuaSetoran.add(
+          SetoranKru(
+            tglTransaksi: formattedDate,
+            kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+            // ✅ RIT = STRING
+            rit: ritValue,
 
+            // ✅ PASTIKAN STRING (BUKAN NULL)
+            noPol: noPol ?? '',
+            idBus: idBus,
+            kodeTrayek: kodeTrayek ?? '',
+            idPersonil: idUser,
+            idGroup: idGroup,
+            jumlah: 1,
+            idTransaksi: idTransaksi,
+            coa: coa,
+            nilai: nilai,
+            idTagTransaksi: tagId,
+            status: 'N',
+            keterangan: 'AUTO SYSTEM',
+            // ✅ WAJIB DITAMBAHKAN
+            createdAt: formattedDate,
+            updatedAt: formattedDate,
+          ),
+        );
+
+        debugPrint('✅ TAG KALKULASI DITAMBAHKAN | tag=$tagId | nilai=$nilai');
+      }
+
+      /// ================= HITUNG PREMI =================
       final calculationResult = _rekapService.calculatePremiBersih(
         tagPendapatan: tagPendapatan,
         tagPengeluaran: tagPengeluaran,
@@ -708,8 +701,73 @@ class _FormRekapTransaksiState
         tolAdjustment: calculationResult.tolAdjustment,
       );
 
-      final List<PremiPosisiKru> premiList = await premiService.getAllPremiPosisiKru();
-      final List<Map<String, dynamic>> kruBisList = await _rekapHandler.getKruBisData();
+      /// ================= SETORAN MANUAL =================
+      semuaSetoran.addAll(
+        SaveRekapUtils.collectIncomeSetoran(
+          tagPendapatan: tagPendapatan,
+          controllers: _controllers,
+          jumlahControllers: _jumlahControllers,
+          formattedDate: formattedDate,
+          kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+          ritValue: ritValue,
+          noPol: noPol,
+          idBus: idBus,
+          kodeTrayek: kodeTrayek,
+          idUser: idUser,
+          idGroup: idGroup,
+          idTransaksi: idTransaksi,
+          coaPendapatan: coaPendapatanBusController.text.trim(),
+        ),
+      );
+
+      semuaSetoran.addAll(
+        SaveRekapUtils.collectExpenseSetoran(
+          tagPengeluaran: tagPengeluaran,
+          controllers: _controllers,
+          literSolarControllers: _literSolarControllers,
+          uploadedImages: _uploadedImages,
+          formattedDate: formattedDate,
+          kmPulang: double.tryParse(kmMasukGarasiController.text) ?? 0,
+          ritValue: ritValue,
+          noPol: noPol,
+          idBus: idBus,
+          kodeTrayek: kodeTrayek,
+          idUser: idUser,
+          idGroup: idGroup,
+          idTransaksi: idTransaksi,
+          coaPengeluaran: coaPengeluaranBusController.text.trim(),
+          tolAdjustment: calculationResult.tolAdjustment,
+        ),
+      );
+
+      /// ================= SETORAN OTOMATIS (WAJIB) =================
+      _addCalculatedSetoran(
+        tagId: 27,
+        nilai: calculationResult.nominalPremiExtra,
+        coa: coaPendapatanBusController.text.trim(),
+      );
+
+      _addCalculatedSetoran(
+        tagId: 32,
+        nilai: calculationResult.nominalPremiKru,
+        coa: coaPendapatanBusController.text.trim(),
+      );
+
+      _addCalculatedSetoran(
+        tagId: 60,
+        nilai: calculationResult.pendapatanBersih,
+        coa: coaPendapatanBusController.text.trim(),
+      );
+
+      _addCalculatedSetoran(
+        tagId: 61,
+        nilai: calculationResult.pendapatanDisetor,
+        coa: coaPendapatanBusController.text.trim(),
+      );
+
+      /// ================= SIMPAN PREMI HARIAN =================
+      final premiList = await premiService.getAllPremiPosisiKru();
+      final kruBisList = await _rekapHandler.getKruBisData();
 
       final premiHarianList = await SaveRekapUtils.calculateDailyPremi(
         kruBisList: kruBisList,
@@ -722,20 +780,10 @@ class _FormRekapTransaksiState
       );
 
       if (premiHarianList.isNotEmpty) {
-        try {
-          await premiHarianService.insertBulkPremiHarianKru(premiHarianList);
-          print('✅ ${premiHarianList.length} data premi harian kru berhasil disimpan');
-        } catch (e) {
-          print('❌ Gagal menyimpan premi harian kru: $e');
-        }
+        await premiHarianService.insertBulkPremiHarianKru(premiHarianList);
       }
 
-      print('--- DETAIL SETORAN YANG AKAN DISIMPAN ---');
-      for (var i = 0; i < semuaSetoran.length; i++) {
-        final setoran = semuaSetoran[i];
-        print('$i. ${setoran.idTagTransaksi}: Rp${setoran.nilai} (jumlah: ${setoran.jumlah})');
-      }
-
+      /// ================= SIMPAN SETORAN =================
       await setoranService.simpanSetoranLengkap(
         setoranList: semuaSetoran,
         nominalPremiKru: calculationResult.nominalPremiKru,
@@ -746,14 +794,15 @@ class _FormRekapTransaksiState
         kodeTrayek: kodeTrayek ?? '',
       );
 
-      print('=== SELESAI SIMPAN REKAP ===');
-      print('✅ Setoran dasar: ${semuaSetoran.length} transaksi');
-      print('✅ Premi harian kru: ${premiHarianList.length} data');
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data rekap berhasil disimpan - ${semuaSetoran.length} transaksi setoran + ${premiHarianList.length} premi kru')),
+        SnackBar(
+          content: Text(
+            'Rekap berhasil disimpan (${semuaSetoran.length} setoran)',
+          ),
+        ),
       );
 
+      /// ================= RESET FORM =================
       FormResetUtils.resetAllControllers(
         controllers: _controllers,
         jumlahControllers: _jumlahControllers,
@@ -763,13 +812,14 @@ class _FormRekapTransaksiState
           ritController,
         ],
       );
-
     } catch (e, stackTrace) {
-      print('❌ Error menyimpan data rekap: $e');
-      print(stackTrace);
+      debugPrint('❌ ERROR SIMPAN REKAP: $e');
+      debugPrintStack(stackTrace: stackTrace);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan data rekap: ${e.toString()}')),
+        SnackBar(content: Text('Gagal menyimpan rekap: $e')),
       );
     }
   }
+
 }

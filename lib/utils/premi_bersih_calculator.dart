@@ -73,7 +73,6 @@ class PremiBersihCalculator {
     );
   }
 
-
   /// Ekstrak nilai dari controllers berdasarkan ID tag
   static Map<String, double> _extractValuesFromControllers({
     required Map<int, TextEditingController> controllers,
@@ -198,7 +197,7 @@ class PremiBersihCalculator {
     double pendDisetor = 0.0;
     double totalPengeluaran = 0.0;
     double sisaPendapatan = 0.0;
-    double tolAdjustment = pengeluaranTol;
+    double tolAdjustment = 0;
 
     // Logika berdasarkan kelas bus, jenis trayek, dan nama trayek
     switch (userData.kelasBus) {
@@ -238,19 +237,20 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                if (sisaPendapatan > 2500000) {
-                  pengeluaranTol = 270000;
-                } else if (sisaPendapatan > 2500000) {
-                  pengeluaranTol = 140000;
+                if (sisaPendapatan >= 2500000) {
+                  tolAdjustment = 270000;
+                } else {
+                  tolAdjustment = 140000;
                 }
-                print('Tol: $pengeluaranTol');
 
-                pendDisetor = (sisaPendapatan + pendapatanBagasi) - (nominalTiketOnline + pengeluaranTol);
-                print('($sisaPendapatan + $pendapatanBagasi) - ($nominalTiketOnline + $pengeluaranTol)');
+                print('Tol: $tolAdjustment');
+
+                pendDisetor = (sisaPendapatan + pendapatanBagasi) - (nominalTiketOnline + tolAdjustment);
+                print('($sisaPendapatan + $pendapatanBagasi) - ($nominalTiketOnline + $tolAdjustment)');
                 print('=== [DEBUG] FINAL CALCULATION ===');
                 print('Pendapatan Bersih: $pendBersih');
                 print('Sisa Pendapatan: $sisaPendapatan');
-                // print('Tol Adjustment: $tolAdjustment');
+                print('Tol Adjustment: $tolAdjustment');
                 print('Pendapatan Bagasi: $pendapatanBagasi');
                 print('Tiket Online: $nominalTiketOnline');
                 print('Pendapatan Disetor: $pendDisetor');
@@ -260,16 +260,6 @@ class PremiBersihCalculator {
                 print('=== [DEBUG] PROCESSING: YOG-SMP ===');
                 // Pengeluaran untuk AKAP Ekonomi YOG-SMP
                 totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranSuramadu;
-
-                print('=== [DEBUG] PENGELUARAN DETAIL ===');
-                print('Solar: $nominalsolar');
-                print('Makelar: $pengeluaranMakelar');
-                print('Cuci: $pengeluaranCuci');
-                print('Parkir: $pengeluaranParkir');
-                print('Perbaikan: $pengeluaranPerbaikan');
-                print('Lain-lain: $pengeluaranLainLain');
-                print('Suramadu: $pengeluaranSuramadu');
-                print('Total Pengeluaran: $totalPengeluaran');
 
                 pendBersih = pendapatanKotor - totalPengeluaran;
                 print('Pendapatan Bersih (Kotor - Pengeluaran): $pendBersih');
@@ -285,19 +275,31 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                if (sisaPendapatan > 2500000) {
-                  pengeluaranTol = 270000;
-                } else if (sisaPendapatan > 2500000) {
-                  pengeluaranTol = 140000;
+                if (sisaPendapatan >= 2500000) {
+                  tolAdjustment = 270000;
+                } else {
+                  tolAdjustment = 140000;
                 }
-                print('Tol: $pengeluaranTol');
 
-                pendDisetor = (sisaPendapatan + pendapatanBagasi) - (nominalTiketOnline - pengeluaranTol);
+                print('Tol: $tolAdjustment');
+
+                print('=== [DEBUG] PENGELUARAN DETAIL ===');
+                print('Solar: $nominalsolar');
+                print('Makelar: $pengeluaranMakelar');
+                print('Cuci: $pengeluaranCuci');
+                print('Parkir: $pengeluaranParkir');
+                print('Perbaikan: $pengeluaranPerbaikan');
+                print('Lain-lain: $pengeluaranLainLain');
+                print('Suramadu: $pengeluaranSuramadu');
+                print('Total Pengeluaran: $totalPengeluaran');
+                print('Tol: $tolAdjustment');
+
+                pendDisetor = (sisaPendapatan + pendapatanBagasi) - (nominalTiketOnline + tolAdjustment);
 
                 print('=== [DEBUG] FINAL CALCULATION ===');
                 print('Pendapatan Bersih: $pendBersih');
                 print('Sisa Pendapatan: $sisaPendapatan');
-                // print('Tol Adjustment: $tolAdjustment');
+                print('Tol Adjustment: $tolAdjustment');
                 print('Pendapatan Bagasi: $pendapatanBagasi');
                 print('Tiket Online: $nominalTiketOnline');
                 print('Pendapatan Disetor: $pendDisetor');
@@ -329,49 +331,9 @@ class PremiBersihCalculator {
               case 'KALIANGET - JEMBER':
               case 'AMBULU - PONOROGO':
               case 'PONOROGO - AMBULU':
-                print('=== [DEBUG] PROCESSING: ${userData.namaTrayek} ===');
-                // Pengeluaran untuk AKDP Ekonomi
-                totalPengeluaran = nominalsolar + pengeluaranTol + pengeluaranCuci +
-                    pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
-
-                print('=== [DEBUG] PENGELUARAN DETAIL ===');
-                print('Solar: $nominalsolar');
-                print('Tol: $pengeluaranTol');
-                print('Cuci: $pengeluaranCuci');
-                print('Parkir: $pengeluaranParkir');
-                print('Perbaikan: $pengeluaranPerbaikan');
-                print('Lain-lain: $pengeluaranLainLain');
-                print('Total Pengeluaran: $totalPengeluaran');
-
-                pendBersih = pendapatanKotor - totalPengeluaran;
-                nominalPremiExtra = pendBersih * persenPremiExtra;
-                nominalPremiKru = pendBersih * persenPremiKru;
-                pendDisetor = pendBersih - nominalPremiExtra + pendapatanBagasi - nominalTiketOnline;
-
-                print('=== [DEBUG] FINAL CALCULATION ===');
-                print('Pendapatan Bersih: $pendBersih');
-                print('Premi Extra: $nominalPremiExtra');
-                print('Premi Kru: $nominalPremiKru');
-                print('Pendapatan Disetor: $pendDisetor');
                 break;
-
               default:
-                print('=== [DEBUG] PROCESSING: AKDP EKONOMI DEFAULT ===');
-                // Default calculation for AKDP Ekonomi
-                totalPengeluaran = nominalsolar + pengeluaranTol + pengeluaranCuci +
-                    pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
-
-                print('Total Pengeluaran: $totalPengeluaran');
-
-                pendBersih = pendapatanKotor - totalPengeluaran;
-                nominalPremiExtra = pendBersih * persenPremiExtra;
-                nominalPremiKru = pendBersih * persenPremiKru;
-                pendDisetor = pendBersih - nominalPremiExtra + pendapatanBagasi - nominalTiketOnline;
-
-                print('Pendapatan Bersih: $pendBersih');
-                print('Premi Extra: $nominalPremiExtra');
-                print('Premi Kru: $nominalPremiKru');
-                print('Pendapatan Disetor: $pendDisetor');
+                break;
             }
             break;
         }
@@ -385,125 +347,15 @@ class PremiBersihCalculator {
             switch (userData.namaTrayek) {
               case 'JEMBER - SURABAYA':
               case 'SURABAYA - JEMBER':
-                print('=== [DEBUG] PROCESSING: ${userData.namaTrayek} ===');
-                // Pengeluaran untuk Non Ekonomi AKDP Jember-Surabaya
-                totalPengeluaran = nominalsolar + pengeluaranTpr + pengeluaranParkir +
-                    pengeluaranCuci + pengeluaranOperasionalSby +
-                    pengeluaranPerbaikan + pengeluaranTol + uangMakan;
-
-                print('=== [DEBUG] PENGELUARAN DETAIL ===');
-                print('Solar: $nominalsolar');
-                print('TPR: $pengeluaranTpr');
-                print('Parkir: $pengeluaranParkir');
-                print('Cuci: $pengeluaranCuci');
-                print('Operasional Sby: $pengeluaranOperasionalSby');
-                print('Perbaikan: $pengeluaranPerbaikan');
-                print('Tol: $pengeluaranTol');
-                print('Uang Makan: $uangMakan');
-                print('Total Pengeluaran: $totalPengeluaran');
-
-                pendBersih = pendapatanKotor - totalPengeluaran;
-                nominalPremiExtra = pendBersih * persenPremiExtra;
-                nominalPremiKru = pendBersih * persenPremiKru;
-                sisaPendapatan = pendBersih - nominalPremiExtra;
-                pendDisetor = sisaPendapatan + pendapatanBagasi - nominalTiketOnline;
-
-                print('=== [DEBUG] FINAL CALCULATION ===');
-                print('Pendapatan Bersih: $pendBersih');
-                print('Premi Extra: $nominalPremiExtra');
-                print('Premi Kru: $nominalPremiKru');
-                print('Sisa Pendapatan: $sisaPendapatan');
-                print('Pendapatan Disetor: $pendDisetor');
                 break;
-
               case 'JEMBER - YOGYAKARTA':
               case 'YOGYAKARTA - JEMBER':
-                print('=== [DEBUG] PROCESSING: ${userData.namaTrayek} ===');
-                // Khusus Jember-Yogyakarta menggunakan uang saku tetap
-                totalPengeluaran = uangSakuSupir + uangSakuKondektur + pengeluaranTol + nominalsolar;
-
-                print('=== [DEBUG] PENGELUARAN DETAIL ===');
-                print('Uang Saku Supir: $uangSakuSupir');
-                print('Uang Saku Kondektur: $uangSakuKondektur');
-                print('Tol: $pengeluaranTol');
-                print('Solar: $nominalsolar');
-                print('Total Pengeluaran: $totalPengeluaran');
-
-                pendBersih = pendapatanKotor - totalPengeluaran;
-                nominalPremiExtra = 0; // Tidak ada premi untuk rute ini
-                nominalPremiKru = 0;
-                pendDisetor = pendBersih + pendapatanBagasi - nominalTiketOnline;
-
-                print('=== [DEBUG] FINAL CALCULATION ===');
-                print('Pendapatan Bersih: $pendBersih');
-                print('Premi Extra: $nominalPremiExtra (TIDAK ADA PREMI)');
-                print('Premi Kru: $nominalPremiKru (TIDAK ADA PREMI)');
-                print('Pendapatan Disetor: $pendDisetor');
                 break;
-
               default:
-                print('=== [DEBUG] PROCESSING: AKDP NON EKONOMI DEFAULT ===');
-                // Default calculation for Non Ekonomi AKDP
-                totalPengeluaran = nominalsolar + pengeluaranTpr + pengeluaranParkir +
-                    pengeluaranCuci + pengeluaranOperasionalSby +
-                    pengeluaranPerbaikan + pengeluaranTol + uangMakan;
-
-                print('Total Pengeluaran: $totalPengeluaran');
-
-                pendBersih = pendapatanKotor - totalPengeluaran;
-                nominalPremiExtra = pendBersih * persenPremiExtra;
-                nominalPremiKru = pendBersih * persenPremiKru;
-                pendDisetor = pendBersih - nominalPremiExtra + pendapatanBagasi - nominalTiketOnline;
-
-                print('Pendapatan Bersih: $pendBersih');
-                print('Premi Extra: $nominalPremiExtra');
-                print('Premi Kru: $nominalPremiKru');
-                print('Pendapatan Disetor: $pendDisetor');
             }
             break;
 
           case 'AKAP':
-            print('=== [DEBUG] PROCESSING: AKAP NON EKONOMI (PREMI PATAS) ===');
-            // Premi Patas untuk Non Ekonomi AKAP
-            totalPengeluaran = uangSakuSupir + uangSakuKondektur + pengeluaranParkir +
-                pengeluaranOperasionalSby + uangMakan + pengeluaranCuci +
-                pengeluaranMakelar + pengeluaranPerbaikan;
-
-            print('=== [DEBUG] PENGELUARAN DETAIL ===');
-            print('Uang Saku Supir: $uangSakuSupir');
-            print('Uang Saku Kondektur: $uangSakuKondektur');
-            print('Parkir: $pengeluaranParkir');
-            print('Operasional Sby: $pengeluaranOperasionalSby');
-            print('Uang Makan: $uangMakan');
-            print('Cuci: $pengeluaranCuci');
-            print('Makelar: $pengeluaranMakelar');
-            print('Perbaikan: $pengeluaranPerbaikan');
-            print('Total Pengeluaran: $totalPengeluaran');
-
-            pendBersih = pendapatanKotor - totalPengeluaran;
-            print('Pendapatan Bersih: $pendBersih');
-
-            // Ketentuan khusus premi patas
-            if (pendBersih > 2000000) {
-              // Mendapat premi patas
-              nominalPremiExtra = pendBersih * persenPremiExtra;
-              nominalPremiKru = pendBersih * persenPremiKru;
-              print('STATUS: MENDAPAT PREMI PATAS (pendapatan > 2jt)');
-            } else {
-              // Hanya mendapat uang saku
-              nominalPremiExtra = 0;
-              nominalPremiKru = 0;
-              print('STATUS: HANYA UANG SAKU (pendapatan ≤ 2jt)');
-            }
-
-            sisaPendapatan = pendBersih - nominalPremiExtra;
-            pendDisetor = sisaPendapatan + pendapatanBagasi - nominalTiketOnline;
-
-            print('=== [DEBUG] FINAL CALCULATION ===');
-            print('Premi Extra: $nominalPremiExtra');
-            print('Premi Kru: $nominalPremiKru');
-            print('Sisa Pendapatan: $sisaPendapatan');
-            print('Pendapatan Disetor: $pendDisetor');
             break;
         }
         break;

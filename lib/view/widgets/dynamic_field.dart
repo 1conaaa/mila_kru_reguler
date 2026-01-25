@@ -7,6 +7,15 @@ import 'package:mila_kru_reguler/view/widgets/field_with_jumlah.dart';
 import 'package:mila_kru_reguler/view/widgets/field_with_liter_solar.dart';
 import 'package:mila_kru_reguler/view/widgets/image_upload_section.dart';
 
+num parseNum(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value;
+  if (value is String && value.trim().isNotEmpty) {
+    return num.tryParse(value) ?? 0;
+  }
+  return 0;
+}
+
 class DynamicField extends StatefulWidget {
   final TagTransaksi tag;
   final bool showJumlah;
@@ -51,78 +60,79 @@ class _DynamicFieldState extends State<DynamicField> {
   final UserService _userService = UserService();
 
   /// DATA USER
-  int? idUser, idGroup, idCompany, idGarasi, idBus;
-  String? noPol, kodeTrayek, namaTrayek, jenisTrayek, kelasBus;
-  String? keydataPremiextra, keydataPremikru;
-  double? premiExtra, persenPremikru;
+  String? kodeTrayek;
+  Set<int> tagPengeluaranSet = {};
+
+  /// TAG PENDAPATAN (HARUS SELALU TAMPIL)
+  static const Set<int> tagPendapatanSet = {1, 2, 3};
 
   @override
   void initState() {
     super.initState();
-    _getUserData();
+    _loadUserData();
   }
 
-  Future<void> _getUserData() async {
+  Future<void> _loadUserData() async {
     final users = await _userService.getUsersRaw();
-
     if (!mounted || users.isEmpty) return;
 
     final u = users.first;
 
-    setState(() {
-      idUser = u['id_user'];
-      idGroup = u['id_group'];
-      idCompany = u['id_company'];
-      idGarasi = u['id_garasi'];
-      idBus = u['id_bus'];
-      noPol = u['no_pol'];
-      kodeTrayek = u['kode_trayek'];
-      namaTrayek = u['nama_trayek'];
-      jenisTrayek = u['jenis_trayek'];
-      kelasBus = u['kelas_bus'];
+    final rawTagPengeluaran = u['tag_transaksi_pengeluaran']?.toString() ?? '';
 
-      keydataPremiextra = u['keydata_premiextra'];
-      premiExtra = (u['premi_extra'] as num?)?.toDouble();
-      keydataPremikru = u['keydata_premikru'];
-      persenPremikru = (u['persen_premikru'] as num?)?.toDouble();
+    final parsedSet = rawTagPengeluaran
+        .split(',')
+        .map((e) => int.tryParse(e.trim()))
+        .whereType<int>()
+        .toSet();
+
+    setState(() {
+      tagPengeluaranSet = parsedSet;
+      kodeTrayek = u['kode_trayek']?.toString();
     });
+
+    print("=== TAG PENGELUARAN AKTIF: $tagPengeluaranSet ===");
   }
 
   bool isNonEditable(TagTransaksi tag) {
     final name = tag.nama?.toLowerCase() ?? '';
-    return name.contains("premi atas") ||
-        name.contains("premi bawah") ||
-        name.contains("pendapatan bersih") ||
-        name.contains("pendapatan disetor");
+    return name.contains('premi') ||
+        name.contains('bersih') ||
+        name.contains('disetor');
   }
 
   @override
   Widget build(BuildContext context) {
-    /// 🚫 ATURAN TAG YANG DISEMBUNYIKAN PER TRAYEK
+    /// 🔹 ATURAN KHUSUS TRAYEK
     const Map<int, Set<String>> hiddenTagsByTrayek = {
-      15: {
-        '3471352901',
-      },
-      59: {
-        '3471351002',
-        '3471351001',
-      },
+      15: {'3471352901'},
+      59: {'3471351002', '3471351001'},
     };
 
     final int tagId = widget.tag.id;
     final String? trayek = kodeTrayek;
 
-    final bool shouldHideTag = trayek != null && hiddenTagsByTrayek.containsKey(tagId) && hiddenTagsByTrayek[tagId]!.contains(trayek);
+    /// 1️⃣ FILTER TAG PENGELUARAN (BUKAN PENDAPATAN)
+    if (!tagPendapatanSet.contains(tagId)) {
+      if (tagPengeluaranSet.isNotEmpty &&
+          !tagPengeluaranSet.contains(tagId)) {
+        debugPrint(
+          "=== [HIDE] Tag $tagId bukan bagian dari tagTransaksiPengeluaran ===",
+        );
+        return const SizedBox.shrink();
+      }
+    }
 
-    if (shouldHideTag) {
-      print("=== [DEBUG] Tag ID $tagId disembunyikan | kodeTrayek=$trayek ===",);
+    /// 2️⃣ FILTER KHUSUS TRAYEK
+    if (trayek != null &&
+        hiddenTagsByTrayek[tagId]?.contains(trayek) == true) {
+      debugPrint(
+        "=== [HIDE] Tag $tagId disembunyikan oleh trayek $trayek ===",
+      );
       return const SizedBox.shrink();
     }
 
-    print("=== [DEBUG] DynamicField Render === "
-          "Tag ID: ${widget.tag.id}, Nama: ${widget.tag.nama}, "
-          "kodeTrayek: $trayek",);
-
+    /// 3️⃣ RENDER FIELD
     return Column(
       children: [
         if (widget.showJumlah && widget.requiresJumlah(widget.tag))
@@ -169,5 +179,4 @@ class _DynamicFieldState extends State<DynamicField> {
       ],
     );
   }
-
 }

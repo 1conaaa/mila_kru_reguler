@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
@@ -14,47 +15,112 @@ class SetoranKruService {
   Future<int> insertSetoran(SetoranKru setoran) async {
     final db = await _dbHelper.database;
 
-    // Debug: tampilkan data yang akan dimasukkan
-    print('--- INSERT SETORAN ---');
-    print('Data setoran: ${setoran.toMap()}');
+    /// ================= VALIDASI DASAR =================
+    if (setoran.idTagTransaksi == null) {
+      throw Exception('❌ idTagTransaksi TIDAK BOLEH NULL');
+    }
+
+    if (setoran.nilai == null) {
+      throw Exception('❌ nilai NULL | tag=${setoran.idTagTransaksi}');
+    }
+
+    /// TAG HASIL KALKULASI
+    final isCalculatedTag = [27, 32, 60, 61].contains(setoran.idTagTransaksi);
+
+    /// Untuk tag non-kalkulasi → nilai 0 dilewati
+    if (!isCalculatedTag && setoran.nilai == 0) {
+      print('⏭️ SKIP INSERT | nilai=0 | tag=${setoran.idTagTransaksi}',);
+      return 0;
+    }
+
+    /// ================= CEK DUPLIKASI (KUNCI SOLUSI) =================
+    final exists = await existsSetoranKru(setoran);
+
+    if (exists) {
+      print('⚠️ SETORAN SUDAH ADA → SKIP INSERT | tag=${setoran.idTagTransaksi}',);
+      return 0;
+    }
+
+    final map = setoran.toMap();
+
+    /// ================= LOG AWAL =================
+    print('''
+              📝 INSERT SETORAN
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              Tag ID      : ${setoran.idTagTransaksi}
+              Nilai       : ${setoran.nilai}
+              Rit         : ${setoran.rit}
+              No Pol      : ${setoran.noPol}
+              Kode Trayek : ${setoran.kodeTrayek}
+              Personil   : ${setoran.idPersonil}
+              Group      : ${setoran.idGroup}
+              Tanggal     : ${setoran.tglTransaksi}
+              Calculated  : $isCalculatedTag
+              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+              ''');
 
     try {
+      /// ================= INSERT =================
       final result = await db.insert(
         't_setoran_kru',
-        setoran.toMap(),
-        conflictAlgorithm: ConflictAlgorithm.replace,
+        map,
+        conflictAlgorithm: ConflictAlgorithm.abort,
       );
 
-      // Debug: tampilkan hasil insert
-      print('Insert berhasil, row ID: $result');
-
-      // Debug: tampilkan semua isi tabel setelah insert
-      final allSetoran = await getAllSetoran();
-      print('--- ISI TABLE t_setoran_kru ---');
-      for (var s in allSetoran) {
-        print(s.toMap());
-      }
+      print(
+        '✅ INSERT BERHASIL | rowId=$result | tag=${setoran.idTagTransaksi}',
+      );
 
       return result;
     } catch (e, stackTrace) {
-      // Debug: tampilkan error jika gagal insert
-      print('Gagal insert setoran: $e');
-      print(stackTrace);
+      /// ================= ERROR LOG =================
+      print('''
+            ❌ GAGAL INSERT SETORAN
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            Error : $e
+            Data  : $map
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ''');
 
-      // Debug: tampilkan semua isi tabel setelah gagal insert
-      try {
-        final allSetoran = await getAllSetoran();
-        print('--- ISI TABLE t_setoran_kru (SETELAH GAGAL INSERT) ---');
-        for (var s in allSetoran) {
-          print(s.toMap());
-        }
-      } catch (e2) {
-        print('Gagal menampilkan isi tabel: $e2');
-      }
+      debugPrintStack(stackTrace: stackTrace);
 
       rethrow;
     }
   }
+
+
+  Future<bool> existsSetoranKru(SetoranKru setoran) async {
+    final db = await _dbHelper.database;
+
+    final result = await db.rawQuery(
+      '''
+    SELECT 1 FROM t_setoran_kru
+    WHERE rit = ?
+      AND no_pol = ?
+      AND id_bus = ?
+      AND kode_trayek = ?
+      AND id_personil = ?
+      AND id_group = ?
+      AND id_tag_transaksi = ?
+    LIMIT 1
+    ''',
+      [
+        setoran.rit,
+        setoran.noPol,
+        setoran.idBus,
+        setoran.kodeTrayek,
+        setoran.idPersonil,
+        setoran.idGroup,
+        setoran.idTagTransaksi,
+      ],
+    );
+
+    return result.isNotEmpty;
+  }
+
+
+
+
 
   // Method untuk menghitung dan menyimpan premi bawah setiap kru
   Future<void> hitungDanSimpanPremiBawahKru({
@@ -174,7 +240,7 @@ class SetoranKruService {
 
     try {
       // 1. Simpan semua setoran dasar
-      print('--- [DEBUG] SIMPAN SETORAN DASAR ---');
+      print('--- [DEBUG] SIMPAN SETORAN DASAR xxx ---');
       for (var setoran in setoranList) {
         await insertSetoran(setoran);
       }

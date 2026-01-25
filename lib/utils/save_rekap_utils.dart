@@ -124,74 +124,84 @@ class SaveRekapUtils {
     required int idGroup,
     required String idTransaksi,
     required String coaPengeluaran,
+    required double tolAdjustment, // ✅ BARU
   }) {
     List<SetoranKru> setoranList = [];
 
     for (var tag in tagPengeluaran) {
       double nilai = 0;
       int jumlah = 1;
-      String? keterangan = null;
+      String? keterangan;
 
       final fotoPath = uploadedImages[tag.id];
       final fotoName = fotoPath != null ? fotoPath.split('/').last : null;
 
-      print('--------------------------------------------------');
-      print('🔍 CEK DATA TAG: ${tag.nama} (ID: ${tag.id})');
-      print('📸 Foto Path: $fotoPath');
-      print('📄 Foto Name: $fotoName');
-      print('--------------------------------------------------');
-
+      // =========================
+      // TAG 16 → SOLAR
+      // =========================
       if (tag.id == 16) {
-        final nominalSolarText = controllers[tag.id]?.text ?? '0';
-        final nominalSolar = double.tryParse(
-            nominalSolarText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
+        final nominalText = controllers[tag.id]?.text ?? '0';
+        nilai = double.tryParse(
+          nominalText.replaceAll('.', '').replaceAll(',00', ''),
+        ) ?? 0;
 
-        final literSolarText = literSolarControllers[tag.id]?.text ?? '0';
-        final literSolar = double.tryParse(literSolarText) ?? 0;
+        final literText = literSolarControllers[tag.id]?.text ?? '0';
+        jumlah = double.tryParse(literText)?.toInt() ?? 1;
 
-        print('--- BIAYA SOLAR (TAG 16) ---');
-        print('Nominal Text: $nominalSolarText');
-        print('Nominal Solar: $nominalSolar');
-        print('Liter Solar Text: $literSolarText');
-        print('Liter Solar Parsed: $literSolar');
-
-        nilai = nominalSolar;
-        jumlah = literSolar.toInt();
-        keterangan = literSolar > 0 ? 'Solar: $literSolar liter' : null;
-      } else {
-        final valueText = controllers[tag.id]?.text ?? '0';
-        nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
+        keterangan = jumlah > 0 ? 'Solar: $jumlah liter' : null;
       }
 
-      if (nilai > 0) {
-        final setoran = createSetoran(
-          tglTransaksi: formattedDate,
-          kmPulang: kmPulang,
-          rit: ritValue,
-          noPol: noPol,
-          idBus: idBus,
-          kodeTrayek: kodeTrayek,
-          idPersonil: idUser,
-          idGroup: idGroup,
-          jumlah: jumlah,
-          idTransaksi: idTransaksi,
-          coa: coaPengeluaran,
-          nilai: nilai,
-          idTagTransaksi: tag.id,
-          keterangan: keterangan,
-          fupload: fotoPath,
-          fileName: fotoName,
+      // =========================
+      // TAG 15 → TOL (AUTO)
+      // =========================
+      else if (tag.id == 15) {
+        nilai = tolAdjustment;
+        jumlah = 1;
+        keterangan = 'Tol Adjustment (Auto)';
+      }
+
+      // =========================
+      // TAG LAIN
+      // =========================
+      else {
+        final valueText = controllers[tag.id]?.text ?? '0';
+        nilai = double.tryParse(
+          valueText.replaceAll('.', '').replaceAll(',00', ''),
+        ) ?? 0;
+      }
+
+      // =========================
+      // SIMPAN (ID 15 DIPAKSA MASUK)
+      // =========================
+      if (nilai > 0 || tag.id == 15) {
+        setoranList.add(
+          createSetoran(
+            tglTransaksi: formattedDate,
+            kmPulang: kmPulang,
+            rit: ritValue,
+            noPol: noPol,
+            idBus: idBus,
+            kodeTrayek: kodeTrayek,
+            idPersonil: idUser,
+            idGroup: idGroup,
+            jumlah: jumlah,
+            idTransaksi: idTransaksi,
+            coa: coaPengeluaran,
+            nilai: nilai,
+            idTagTransaksi: tag.id,
+            keterangan: keterangan,
+            fupload: fotoPath,
+            fileName: fotoName,
+          ),
         );
 
-        setoranList.add(setoran);
-        print('✅ Pengeluaran disimpan: ${tag.nama}');
-      } else {
-        print('⚠️ SKIP → ${tag.nama} (nilai = 0)');
+        print('✅ DISIMPAN TAG ${tag.id}: Rp$nilai');
       }
     }
 
     return setoranList;
   }
+
 
   static Future<List<PremiHarianKru>> calculateDailyPremi({
     required List<Map<String, dynamic>> kruBisList,

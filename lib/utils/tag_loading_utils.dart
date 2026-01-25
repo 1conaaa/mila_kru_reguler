@@ -5,12 +5,6 @@ import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 
 class TagLoadingUtils {
-  static const Set<String> _trayekTanpaBiayaTol = {
-    '3471351001',
-    '3471351002',
-    '3471352901',
-  };
-
   static List<TagTransaksi> filterTagByTrayek({
     required List<TagTransaksi> tags,
     required User userData,
@@ -20,11 +14,6 @@ class TagLoadingUtils {
     print('Jenis Trayek: ${userData.jenisTrayek}');
     print('Kode Trayek: ${userData.kodeTrayek}');
     print('Nama Trayek: ${userData.namaTrayek}');
-    // 🔕 Sembunyikan Biaya Tol (ID 15) untuk trayek tertentu
-    if (_trayekTanpaBiayaTol.contains(userData.kodeTrayek)) {
-      return tags.where((tag) => tag.id != 15).toList();
-    }
-
     return tags;
   }
 
@@ -47,10 +36,10 @@ class TagLoadingUtils {
     // 🔹 BUAT OBJECT USER (WAJIB UNTUK FILTER)
     final User userData = User.fromMap(firstUser);
 
-    final String? tagPendapatanStr =
-    firstUser['tag_transaksi_pendapatan']?.toString();
-    final String? tagPengeluaranStr =
-    firstUser['tag_transaksi_pengeluaran']?.toString();
+    final String? tagPendapatanStr = firstUser['tag_transaksi_pendapatan']?.toString();
+    final String? tagPengeluaranStr = firstUser['tag_transaksi_pengeluaran']?.toString();
+
+    print("tagPengeluaranStr : $tagPengeluaranStr");
 
     if ((tagPendapatanStr == null || tagPendapatanStr.isEmpty) &&
         (tagPengeluaranStr == null || tagPengeluaranStr.isEmpty)) {

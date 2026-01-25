@@ -56,7 +56,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
     print('tagPendapatan: ${tagPendapatan.map((e) => '${e.id}-${e.nama}').toList()}');
     print('keydataPremiextra: $keydataPremiextra'); // Debug keydataPremiextra
 
-    print('controllers content:');
+    print('controllers content x:');
     controllers.forEach((key, controller) {
       print('  $key: "${controller.text}"');
     });
