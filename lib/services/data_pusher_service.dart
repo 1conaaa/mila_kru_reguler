@@ -32,8 +32,7 @@ class DataPusherService {
     // 🔥 LANGSUNG GENERATE ID TRANSAKSI (TANPA API lastidtransaksi)
     // Format: KEUBIS<timestamp_millisecond>
     // ============================================================
-    final String idTransaksiGenerated =
-        "KEUBIS${idBus}${DateTime.now().millisecondsSinceEpoch}";
+    final String idTransaksiGenerated = "KEUBIS${idBus}${DateTime.now().millisecondsSinceEpoch}";
     print("🔰 ID Transaksi Generate (local): $idTransaksiGenerated");
 
     // Simpan jika ingin dipakai di halaman lain

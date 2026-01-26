@@ -143,101 +143,42 @@ class _PremiKruState extends State<PremiKru> {
       return;
     }
 
+    if (_isPushingData) return;
+
     setState(() {
       _isPushingData = true;
       _uploadProgress = 0.0;
     });
 
     try {
-      print("=== [PUSH PREMI HARIAN KRU] START ===");
-      print("Tanggal dipilih (DatePicker): $_selectedDate");
+      print("====================================");
+      print("🚀 PUSH DATA PREMI & SETORAN DIMULAI");
+      print("Tanggal: $_selectedDate");
+      print("====================================");
 
-      // ===============================
-      // FORMAT TANGGAL → AMBIL HARI DARI DATE PICKER
-      // ===============================
-      final String formattedDate =
-      DateFormat('yyyy-MM-dd 00:00:00').format(_selectedDate!);
-
-      print("Tanggal transaksi dikirim ke server: $formattedDate");
-
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final idTransaksi = prefs.getString('idTransaksi');
-
-      if (token == null || idTransaksi == null || idTransaksi.isEmpty) {
-        throw Exception('Token atau ID Transaksi tidak valid.');
-      }
-
-      final allSetoran = await setoranKruService.getAllSetoran();
-      final unsent = allSetoran.where((e) => e.status == "N").toList();
-
-      print("Total setoran ditemukan: ${allSetoran.length}");
-      print("Total setoran status N: ${unsent.length}");
-
-      if (unsent.isEmpty) {
-        print("❕ Tidak ada data setoran kru untuk dikirim.");
-        return;
-      }
-
-      final rowsList = unsent.map((d) {
-        print(
-            "→ ROW PREPARE | ID_TAG=${d.idTagTransaksi} | RIT=${d.rit} | NOPOL=${d.noPol}");
-        return {
-          "tgl_transaksi": formattedDate, // ✅ FIX: pakai date picker
-          "km_pulang": d.kmPulang ?? "",
-          "rit": d.rit,
-          "no_pol": d.noPol,
-          "id_bus": d.idBus,
-          "kode_trayek": d.kodeTrayek,
-          "id_personil": d.idPersonil,
-          "id_group": d.idGroup,
-          "jumlah": d.jumlah ?? "",
-          "coa": d.coa ?? "",
-          "nilai": d.nilai,
-          "id_tag_transaksi": d.idTagTransaksi,
-          "status": d.status,
-          "keterangan": d.keterangan ?? "",
-        };
-      }).toList();
-
-      print("=== KIRIM DATA KE SERVER ===");
-
-      final response = await kirimSetoranKruMobile(
-        idTransaksi: idTransaksi,
-        token: token,
-        rows: rowsList,
-        files: unsent,
+      await dataPusherService.pushDataPremiHarianKru(
+        selectedDate: _selectedDate!,
+        onProgress: (progress) {
+          setState(() => _uploadProgress = progress);
+          print("📊 Progress upload: ${(progress * 100).toStringAsFixed(1)}%");
+        },
+        onSuccess: () {
+          print("✅ PUSH DATA BERHASIL");
+        },
       );
 
-      print("RESPON SERVER: $response");
+      // =============================
+      // 🔄 REFRESH DATA UI
+      // =============================
+      await _getListPremiKru();
+      await _refreshSetoranKruData();
 
-      // ===============================
-      // FIX UTAMA: RESPONSE SERVER
-      // ===============================
-      final bool isSuccess =
-          response['status'] == true || response['success'] == true;
-
-      if (!isSuccess) {
-        print("❌ SERVER RESPONSE GAGAL → STATUS TIDAK DIUPDATE");
-        return;
-      }
-
-      print("=== UPDATE STATUS LOKAL KE Y DIMULAI ===");
-
-      for (final s in unsent) {
-        await setoranKruService.updateSetoran(
-          s.copyWith(status: "Y"),
-        );
-
-        print(
-          "✔ STATUS Y | ID_TAG=${s.idTagTransaksi} | RIT=${s.rit} | NOPOL=${s.noPol}",
-        );
-      }
-
-      print("=== UPDATE STATUS SELESAI ===");
-      print("=== [PUSH PREMI HARIAN KRU] SUCCESS ===");
+      print("====================================");
+      print("✅ PUSH DATA PREMI & SETORAN SELESAI");
+      print("====================================");
     } catch (e, s) {
-      print("❌ ERROR PUSH DATA: $e");
+      print("❌ ERROR PUSH DATA");
+      print(e);
       print(s);
       _showAlertDialog(context, "Gagal push data: $e");
     } finally {
@@ -339,8 +280,6 @@ class _PremiKruState extends State<PremiKru> {
       rethrow;
     }
   }
-
-
 
   //----------------------------------------------------------------------
   // PILIH TANGGAL
@@ -801,11 +740,6 @@ class _PremiKruState extends State<PremiKru> {
                 tooltip: "Kirim Data",
                 onPressed: _pushDataPremiHarianKru,
               ),
-              // IconButton(
-              //   icon: const Icon(Icons.refresh),
-              //   tooltip: "Refresh",
-              //   onPressed: _refreshSetoranKruData,
-              // ),
             ],
           ),
 
