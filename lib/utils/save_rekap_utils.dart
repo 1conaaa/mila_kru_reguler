@@ -2,10 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
-import 'package:mila_kru_reguler/models/user.dart';
-import 'package:mila_kru_reguler/services/setoranKru_service.dart';
-import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
-import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
 import 'package:mila_kru_reguler/models/premi_harian_kru_model.dart';
 import 'package:mila_kru_reguler/models/premi_posisi_kru_model.dart';
 

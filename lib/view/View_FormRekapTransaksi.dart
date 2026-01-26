@@ -3,11 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:mila_kru_reguler/database/database_helper.dart';
-import 'package:mila_kru_reguler/models/premi_harian_kru_model.dart';
-import 'package:mila_kru_reguler/models/premi_posisi_kru_model.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
 import 'package:mila_kru_reguler/models/user.dart';
-import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
 import 'package:mila_kru_reguler/services/premi_posisi_kru_service.dart';
 import 'package:mila_kru_reguler/services/setoranKru_service.dart';
@@ -29,7 +26,6 @@ import 'package:mila_kru_reguler/services/rekap_transaksi_service.dart';
 import 'package:mila_kru_reguler/view/widgets/rekap_transaksi_form.dart';
 import 'package:mila_kru_reguler/view/widgets/image_upload_dialog.dart';
 import 'package:mila_kru_reguler/view/widgets/progress_dialog.dart';
-import 'package:mila_kru_reguler/models/calculation_result.dart';
 import 'package:image_picker/image_picker.dart';
 
 

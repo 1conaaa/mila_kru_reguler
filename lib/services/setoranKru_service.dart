@@ -15,15 +15,6 @@ class SetoranKruService {
   Future<int> insertSetoran(SetoranKru setoran) async {
     final db = await _dbHelper.database;
 
-    /// ================= VALIDASI DASAR =================
-    if (setoran.idTagTransaksi == null) {
-      throw Exception('❌ idTagTransaksi TIDAK BOLEH NULL');
-    }
-
-    if (setoran.nilai == null) {
-      throw Exception('❌ nilai NULL | tag=${setoran.idTagTransaksi}');
-    }
-
     /// TAG HASIL KALKULASI
     final isCalculatedTag = [27, 32, 60, 61].contains(setoran.idTagTransaksi);
 

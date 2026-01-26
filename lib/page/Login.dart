@@ -194,7 +194,7 @@ class _LoginState extends State<Login> {
         } else if (value is double) {
           await prefs.setDouble(e.key, value);
         } else {
-          await prefs.setString(e.key, value?.toString() ?? '');
+          await prefs.setString(e.key, value.toString() ?? '');
         }
       }
 

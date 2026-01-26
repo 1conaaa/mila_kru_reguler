@@ -149,67 +149,96 @@ class _PremiKruState extends State<PremiKru> {
     });
 
     try {
-      await dataPusherService.pushDataPremiHarianKru(
-        selectedDate: _selectedDate!,
-        onProgress: _updateUploadProgress,
-        onSuccess: () {
-          _getListPremiKru();
-          _refreshSetoranKruData();
-        },
-      );
+      print("=== [PUSH PREMI HARIAN KRU] START ===");
+      print("Tanggal dipilih (DatePicker): $_selectedDate");
+
+      // ===============================
+      // FORMAT TANGGAL → AMBIL HARI DARI DATE PICKER
+      // ===============================
+      final String formattedDate =
+      DateFormat('yyyy-MM-dd 00:00:00').format(_selectedDate!);
+
+      print("Tanggal transaksi dikirim ke server: $formattedDate");
 
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-      final String? idTransaksi = prefs.getString('idTransaksi');
+      final idTransaksi = prefs.getString('idTransaksi');
 
       if (token == null || idTransaksi == null || idTransaksi.isEmpty) {
         throw Exception('Token atau ID Transaksi tidak valid.');
       }
 
       final allSetoran = await setoranKruService.getAllSetoran();
-      final filtered = allSetoran.where((e) => e.status == "N").toList();
+      final unsent = allSetoran.where((e) => e.status == "N").toList();
 
-      if (filtered.isEmpty) {
-        print("Tidak ada data setoran kru untuk dikirim.");
+      print("Total setoran ditemukan: ${allSetoran.length}");
+      print("Total setoran status N: ${unsent.length}");
+
+      if (unsent.isEmpty) {
+        print("❕ Tidak ada data setoran kru untuk dikirim.");
         return;
       }
 
-      final String formattedDate =
-      DateFormat('yyyy-MM-dd HH:mm:ss').format(_selectedDate!);
-
-      final rowsList = filtered.map((d) => {
-        "tgl_transaksi": formattedDate, // ✅ PAKAI DATE PICKER
-        "km_pulang": d.kmPulang ?? "",
-        "rit": d.rit,
-        "no_pol": d.noPol,
-        "id_bus": d.idBus,
-        "kode_trayek": d.kodeTrayek,
-        "id_personil": d.idPersonil,
-        "id_group": d.idGroup,
-        "jumlah": d.jumlah ?? "",
-        "coa": d.coa ?? "",
-        "nilai": d.nilai,
-        "id_tag_transaksi": d.idTagTransaksi,
-        "status": d.status,
-        "keterangan": d.keterangan ?? "",
+      final rowsList = unsent.map((d) {
+        print(
+            "→ ROW PREPARE | ID_TAG=${d.idTagTransaksi} | RIT=${d.rit} | NOPOL=${d.noPol}");
+        return {
+          "tgl_transaksi": formattedDate, // ✅ FIX: pakai date picker
+          "km_pulang": d.kmPulang ?? "",
+          "rit": d.rit,
+          "no_pol": d.noPol,
+          "id_bus": d.idBus,
+          "kode_trayek": d.kodeTrayek,
+          "id_personil": d.idPersonil,
+          "id_group": d.idGroup,
+          "jumlah": d.jumlah ?? "",
+          "coa": d.coa ?? "",
+          "nilai": d.nilai,
+          "id_tag_transaksi": d.idTagTransaksi,
+          "status": d.status,
+          "keterangan": d.keterangan ?? "",
+        };
       }).toList();
 
-      Future<void> updateStatusCallback(String idTransaksi) async {
-        for (var s in filtered) {
-          await setoranKruService.updateSetoran(s.copyWith(status: "Y"));
-        }
-      }
+      print("=== KIRIM DATA KE SERVER ===");
 
       final response = await kirimSetoranKruMobile(
         idTransaksi: idTransaksi,
         token: token,
         rows: rowsList,
-        files: filtered,
-        onSuccessCallback: updateStatusCallback,
+        files: unsent,
       );
 
-      print("Setoran kru berhasil dikirim: $response");
-    } catch (e) {
+      print("RESPON SERVER: $response");
+
+      // ===============================
+      // FIX UTAMA: RESPONSE SERVER
+      // ===============================
+      final bool isSuccess =
+          response['status'] == true || response['success'] == true;
+
+      if (!isSuccess) {
+        print("❌ SERVER RESPONSE GAGAL → STATUS TIDAK DIUPDATE");
+        return;
+      }
+
+      print("=== UPDATE STATUS LOKAL KE Y DIMULAI ===");
+
+      for (final s in unsent) {
+        await setoranKruService.updateSetoran(
+          s.copyWith(status: "Y"),
+        );
+
+        print(
+          "✔ STATUS Y | ID_TAG=${s.idTagTransaksi} | RIT=${s.rit} | NOPOL=${s.noPol}",
+        );
+      }
+
+      print("=== UPDATE STATUS SELESAI ===");
+      print("=== [PUSH PREMI HARIAN KRU] SUCCESS ===");
+    } catch (e, s) {
+      print("❌ ERROR PUSH DATA: $e");
+      print(s);
       _showAlertDialog(context, "Gagal push data: $e");
     } finally {
       setState(() {
@@ -218,6 +247,7 @@ class _PremiKruState extends State<PremiKru> {
       });
     }
   }
+
 
   //----------------------------------------------------------------------
   // MULTIPART API KIRIM SETORAN
@@ -228,74 +258,89 @@ class _PremiKruState extends State<PremiKru> {
     required String token,
     required List<Map<String, dynamic>> rows,
     required List<SetoranKru> files,
-    required Function(String) onSuccessCallback,
+    Function(String)? onSuccessCallback,
   }) async {
-    const String apiUrl = "https://apimila.milaberkah.com/api/simpansetorankrumobile";
+    const apiUrl =
+        "https://apimila.milaberkah.com/api/simpansetorankrumobile";
 
     try {
-      var request = http.MultipartRequest("POST", Uri.parse(apiUrl));
+      print("=== API REQUEST: SIMPAN SETORAN KRU ===");
+
+      final request =
+      http.MultipartRequest("POST", Uri.parse(apiUrl));
       request.headers["Authorization"] = "Bearer $token";
       request.fields["id_transaksi"] = idTransaksi;
 
-      // Filter hanya status N
       final unsentRows = rows.where((r) => r["status"] == "N").toList();
+      final unsentFiles = files.where((f) => f.status == "N").toList();
+
+      print("Rows dikirim: ${unsentRows.length}");
+      print("Files dikirim: ${unsentFiles.length}");
 
       if (unsentRows.isEmpty) {
-        return {"success": true, "message": "Tidak ada data baru", "skipped": true};
+        return {
+          "status": true,
+          "message": "Tidak ada data baru",
+          "skipped": true
+        };
       }
 
-      // Tambahkan id transaksi & cleaning null
-      List<Map<String, dynamic>> cleanedRows = [];
-
-      for (var row in unsentRows) {
-        Map<String, dynamic> clean = {};
+      final cleanedRows = unsentRows.map((row) {
+        final clean = <String, dynamic>{};
         row.forEach((k, v) {
           if (v != null) clean[k] = v;
         });
         clean["id_transaksi"] = idTransaksi;
-        cleanedRows.add(clean);
-      }
+        return clean;
+      }).toList();
 
       request.fields["rows"] = jsonEncode(cleanedRows);
 
-      // FILE ATTACH
-      int fileCounter = 0;
-
-      for (int i = 0; i < files.length; i++) {
-        final d = files[i];
-
+      for (int i = 0; i < unsentFiles.length; i++) {
+        final d = unsentFiles[i];
         if (d.fupload != null && d.fupload!.isNotEmpty) {
           final file = File(d.fupload!);
-
           if (await file.exists()) {
-            final multipartFile = await http.MultipartFile.fromPath(
-              "file_name_$i",
-              d.fupload!,
+            request.files.add(
+              await http.MultipartFile.fromPath(
+                "file_name_$i",
+                d.fupload!,
+              ),
             );
-            request.files.add(multipartFile);
-            fileCounter++;
           }
         }
       }
 
-      var streamedResponse = await request.send().timeout(
-        Duration(seconds: 30),
-      );
+      final streamedResponse =
+      await request.send().timeout(const Duration(seconds: 30));
+      final response =
+      await http.Response.fromStream(streamedResponse);
 
-      var response = await http.Response.fromStream(streamedResponse);
+      print("HTTP STATUS: ${response.statusCode}");
+      print("BODY: ${response.body}");
+
       final responseData = jsonDecode(response.body);
 
-      if (response.statusCode == 200 && responseData["success"] == true) {
-        await onSuccessCallback(idTransaksi);
+      final bool isSuccess =
+          responseData['status'] == true ||
+              responseData['success'] == true;
+
+      if (response.statusCode == 200 && isSuccess) {
+        if (onSuccessCallback != null) {
+          await onSuccessCallback(idTransaksi);
+        }
         return responseData;
       }
 
-      throw Exception("Error API: ${response.body}");
-    } catch (e) {
-      print("Error kirimSetoranKruMobile: $e");
+      throw Exception("API ERROR: ${response.body}");
+    } catch (e, s) {
+      print("❌ Error kirimSetoranKruMobile: $e");
+      print(s);
       rethrow;
     }
   }
+
+
 
   //----------------------------------------------------------------------
   // PILIH TANGGAL
