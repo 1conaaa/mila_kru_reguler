@@ -216,7 +216,7 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12),
                         ),
-                        initialValue: selectedKategori,
+                        value: selectedKategori,
                         items: const [
                           DropdownMenuItem(value: '1', child: Text('Operasi')),
                           DropdownMenuItem(value: '2', child: Text('Kerusakan')),

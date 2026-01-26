@@ -1255,29 +1255,54 @@ class _PenjualanFormState extends State<PenjualanForm> {
       // TENTUKAN HARGA KANTOR YANG AKAN DIGUNAKAN
       double hargaKantorFinal = 0.0;
 
-      if (_hargaKantorCalculated > 0) {
+      print('🔎 DEBUG HARGA KANTOR');
+      print('   kategori tiket         : $selectedKategoriTiket');
+      print('   _hargaKantorCalculated : $_hargaKantorCalculated');
+      print('   hargaKantorParam       : $hargaKantorParam');
+      print('   controller.text (raw)  : "${hargaKantorController.text}"');
+
+      if (selectedKategoriTiket == 'gratis') {
+        hargaKantorFinal = 0.0;
+        print('🎟️ [GRATIS] hargaKantorFinal diset ke 0');
+      }
+      else if (_hargaKantorCalculated > 0) {
         hargaKantorFinal = _hargaKantorCalculated;
-        print('✅ Menggunakan _hargaKantorCalculated: $hargaKantorFinal');
-      } else if (hargaKantorParam > 0) {
+        print('✅ [GLOBAL] Pakai _hargaKantorCalculated: $hargaKantorFinal');
+      }
+      else if (hargaKantorParam > 0) {
         hargaKantorFinal = hargaKantorParam;
-        print('✅ Menggunakan hargaKantorParam: $hargaKantorFinal');
-      } else {
-        // Coba parse dari controller
-        String cleanedText = hargaKantorController.text.replaceAll('.', '');
+        print('✅ [PARAM] Pakai hargaKantorParam: $hargaKantorFinal');
+      }
+      else {
+        String cleanedText = hargaKantorController.text
+            .replaceAll('Rp', '')
+            .replaceAll('.', '')
+            .trim();
+
+        print('🧹 controller.text (cleaned): "$cleanedText"');
+
         hargaKantorFinal = double.tryParse(cleanedText) ?? 0.0;
-        print('✅ Menggunakan harga dari controller: $hargaKantorFinal');
+        print('✅ [INPUT] Pakai harga dari controller: $hargaKantorFinal');
       }
 
+      print('🎯 HASIL AKHIR hargaKantorFinal: $hargaKantorFinal');
+
       // VALIDASI HARGA KANTOR
-      if (hargaKantorFinal <= 0) {
-        print('❌ ERROR: hargaKantorFinal masih 0 atau negatif: $hargaKantorFinal');
+      if (selectedKategoriTiket != 'gratis' && hargaKantorFinal <= 0) {
+        print('❌ ERROR: hargaKantorFinal tidak valid untuk tiket berbayar: $hargaKantorFinal');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: Harga kantor tidak valid ($hargaKantorFinal)'),
+            content: Text('Error: Harga kantor harus lebih dari 0'),
             backgroundColor: Colors.red,
           ),
         );
         return;
+      }
+
+      // Untuk tiket gratis, pastikan harga 0
+      if (selectedKategoriTiket == 'gratis') {
+        hargaKantorFinal = 0.0;
+        print('🎟️ Tiket gratis → harga_kantor dipaksa 0');
       }
 
       // EKSTRAK DATA DARI STRING KOTA
@@ -1445,7 +1470,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           labelText: 'Kategori Tiket',
                           border: OutlineInputBorder(),
                         ),
-                        initialValue: selectedKategoriTiket,
+                        value: selectedKategoriTiket,
                         items: [
                           DropdownMenuItem<String>(
                             child: Text('Pilih'),
@@ -1515,7 +1540,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                 labelText: 'Pilih Rit',
                                 border: OutlineInputBorder(),
                               ),
-                              initialValue: selectedPilihRit,
+                              value: selectedPilihRit,
                               items: [
                                 DropdownMenuItem<String>(
                                   child: Text('Rit-1'),
@@ -2080,7 +2105,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                             labelText: 'Metode Pembayaran',
                             border: OutlineInputBorder(),
                           ),
-                          initialValue: selectedMetodePembayaran,
+                          value: selectedMetodePembayaran,
                           items: listMetodePembayaran.map((item) {
                             return DropdownMenuItem<String>(
                               value: item['id'].toString(),
