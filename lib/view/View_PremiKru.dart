@@ -156,16 +156,17 @@ class _PremiKruState extends State<PremiKru> {
       print("Tanggal: $_selectedDate");
       print("====================================");
 
-      await dataPusherService.pushDataPremiHarianKru(
+      final String idTransaksi = await dataPusherService.pushDataPremiHarianKru(
         selectedDate: _selectedDate!,
         onProgress: (progress) {
           setState(() => _uploadProgress = progress);
           print("📊 Progress upload: ${(progress * 100).toStringAsFixed(1)}%");
         },
-        onSuccess: () {
-          print("✅ PUSH DATA BERHASIL");
-        },
       );
+
+      print("✅ PUSH DATA BERHASIL");
+      print("🔰 ID TRANSAKSI: $idTransaksi");
+
 
       // =============================
       // 🔄 REFRESH DATA UI
@@ -186,98 +187,6 @@ class _PremiKruState extends State<PremiKru> {
         _isPushingData = false;
         _uploadProgress = 0.0;
       });
-    }
-  }
-
-
-  //----------------------------------------------------------------------
-  // MULTIPART API KIRIM SETORAN
-  //----------------------------------------------------------------------
-
-  Future<Map<String, dynamic>> kirimSetoranKruMobile({
-    required String idTransaksi,
-    required String token,
-    required List<Map<String, dynamic>> rows,
-    required List<SetoranKru> files,
-    Function(String)? onSuccessCallback,
-  }) async {
-    const apiUrl =
-        "https://apimila.milaberkah.com/api/simpansetorankrumobile";
-
-    try {
-      print("=== API REQUEST: SIMPAN SETORAN KRU ===");
-
-      final request =
-      http.MultipartRequest("POST", Uri.parse(apiUrl));
-      request.headers["Authorization"] = "Bearer $token";
-      request.fields["id_transaksi"] = idTransaksi;
-
-      final unsentRows = rows.where((r) => r["status"] == "N").toList();
-      final unsentFiles = files.where((f) => f.status == "N").toList();
-
-      print("Rows dikirim: ${unsentRows.length}");
-      print("Files dikirim: ${unsentFiles.length}");
-
-      if (unsentRows.isEmpty) {
-        return {
-          "status": true,
-          "message": "Tidak ada data baru",
-          "skipped": true
-        };
-      }
-
-      final cleanedRows = unsentRows.map((row) {
-        final clean = <String, dynamic>{};
-        row.forEach((k, v) {
-          if (v != null) clean[k] = v;
-        });
-        clean["id_transaksi"] = idTransaksi;
-        return clean;
-      }).toList();
-
-      request.fields["rows"] = jsonEncode(cleanedRows);
-
-      for (int i = 0; i < unsentFiles.length; i++) {
-        final d = unsentFiles[i];
-        if (d.fupload != null && d.fupload!.isNotEmpty) {
-          final file = File(d.fupload!);
-          if (await file.exists()) {
-            request.files.add(
-              await http.MultipartFile.fromPath(
-                "file_name_$i",
-                d.fupload!,
-              ),
-            );
-          }
-        }
-      }
-
-      final streamedResponse =
-      await request.send().timeout(const Duration(seconds: 30));
-      final response =
-      await http.Response.fromStream(streamedResponse);
-
-      print("HTTP STATUS: ${response.statusCode}");
-      print("BODY: ${response.body}");
-
-      final responseData = jsonDecode(response.body);
-
-      final bool isSuccess =
-          responseData['status'] == true ||
-              responseData['success'] == true;
-
-      if (response.statusCode == 200 && isSuccess) {
-        if (onSuccessCallback != null) {
-          await onSuccessCallback(idTransaksi);
-        }
-        return responseData;
-      }
-
-      throw Exception("API ERROR: ${response.body}");
-    } catch (e, s) {
-      print("❌ Error kirimSetoranKruMobile: $e");
-      print(s);
-      rethrow;
     }
   }
 

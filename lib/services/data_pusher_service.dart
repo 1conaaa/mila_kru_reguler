@@ -13,111 +13,111 @@ class DataPusherService {
   final SetoranKruService _setoranKruService = SetoranKruService();
 
   /// Push data premi harian kru dan setoran kru ke API
-  Future<void> pushDataPremiHarianKru({
-    required DateTime selectedDate,
-    required Function(double) onProgress,
-    required Function() onSuccess,
-  }) async {
-    final String tanggal_transaksi = DateFormat('yyyy-MM-dd').format(selectedDate);
-    print("Data dikirim untuk tanggal: $tanggal_transaksi");
+  Future<String> pushDataPremiHarianKru({required DateTime selectedDate,required Function(double) onProgress,}) async {
+      final String tanggalTransaksi = DateFormat('yyyy-MM-dd').format(selectedDate);
 
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token');
-    final int? idBus = prefs.getInt('idBus');
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String? token = prefs.getString('token');
+      final int? idBus = prefs.getInt('idBus');
 
-    // Get last transaction ID
-    // final String idTransaksiGenerated = await _getLastTransactionId(token);
+      if (token == null || idBus == null) {
+        throw Exception("Token atau ID Bus tidak tersedia");
+      }
 
-    // ============================================================
-    // 🔥 LANGSUNG GENERATE ID TRANSAKSI (TANPA API lastidtransaksi)
-    // Format: KEUBIS<timestamp_millisecond>
-    // ============================================================
-    final String idTransaksiGenerated = "KEUBIS${idBus}${DateTime.now().millisecondsSinceEpoch}";
-    print("🔰 ID Transaksi Generate (local): $idTransaksiGenerated");
+      // =============================
+      // 🔥 GENERATE ID TRANSAKSI
+      // =============================
+      final String idTransaksiGenerated = "KEUBIS$idBus${DateTime.now().millisecondsSinceEpoch}";
 
-    // Simpan jika ingin dipakai di halaman lain
-    await prefs.setString('idTransaksi', idTransaksiGenerated);
+      print("🔰 ID Transaksi Generate: $idTransaksiGenerated");
 
-    // Send premi harian kru data (will update progress)
-    await _sendPremiHarianKruData(
-      tanggal_transaksi: tanggal_transaksi,
-      idTransaksiGenerated: idTransaksiGenerated,
-      token: token,
-      onProgress: onProgress,
-    );
+      await prefs.setString('idTransaksi', idTransaksiGenerated);
 
-    // Send setoran kru data (multipart)
-    await _sendSetoranKruData(
-      tanggal_transaksi: tanggal_transaksi,
-      idTransaksiGenerated: idTransaksiGenerated,
-      token: token,
-    );
-
-    onSuccess();
-  }
-
-  /// Get last transaction ID from API
-  Future<String> _getLastTransactionId(String? token) async {
-    try {
-      const String apiUrlLastId = 'https://apimila.milaberkah.com/api/lastidtransaksi';
-      const String queryParamsLastId = '?kode_transaksi=KEUBIS';
-      final String apiUrlWithParams = apiUrlLastId + queryParamsLastId;
-
-      final responseLastId = await http.get(
-        Uri.parse(apiUrlWithParams),
-        headers: token != null && token.isNotEmpty ? {'Authorization': 'Bearer $token'} : {},
+      // =============================
+      // 🚀 SEND PREMI
+      // =============================
+      await _sendPremiHarianKruData(
+        tanggal_transaksi: tanggalTransaksi,
+        idTransaksiGenerated: idTransaksiGenerated,
+        token: token,
+        onProgress: onProgress,
       );
 
-      print("API Last ID: $apiUrlWithParams (status ${responseLastId.statusCode})");
+      // =============================
+      // 🚚 SEND SETORAN
+      // =============================
+      await _sendSetoranKruData(
+        tanggal_transaksi: tanggalTransaksi,
+        idTransaksiGenerated: idTransaksiGenerated,
+        token: token,
+      );
 
-      if (responseLastId.statusCode == 200 || responseLastId.statusCode == 201) {
-        final dynamic jsonResponseLastId = json.decode(responseLastId.body);
-        print('JSON Response last id: $jsonResponseLastId');
+      return idTransaksiGenerated;
+  }
 
-        if (jsonResponseLastId != null && jsonResponseLastId['success'] == true) {
-          final dynamic lastid = jsonResponseLastId['lastid'];
-          if (lastid != null && lastid is Map && lastid['id_transaksi'] != null) {
-            final String idTransaksi = lastid['id_transaksi'].toString();
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setString('idTransaksi', idTransaksi);
-            print('ID Transaksi (server): $idTransaksi');
 
-            // asumsi prefix 'KEUBIS' + number
-            if (idTransaksi.length > 6) {
-              try {
-                final String numericPart = idTransaksi.substring(6);
-                int idNum = int.parse(numericPart);
-                idNum++;
-                final String generated = 'KEUBIS' + idNum.toString();
-                print('1.ID Transaksi Generate: $generated');
-                return generated;
-              } catch (e) {
-                print('Parsing last id failed: $e');
-                // fallthrough to fallback
+    /// Get last transaction ID from API
+    Future<String> _getLastTransactionId(String? token) async {
+      try {
+        const String apiUrlLastId = 'https://apimila.milaberkah.com/api/lastidtransaksi';
+        const String queryParamsLastId = '?kode_transaksi=KEUBIS';
+        final String apiUrlWithParams = apiUrlLastId + queryParamsLastId;
+
+        final responseLastId = await http.get(
+          Uri.parse(apiUrlWithParams),
+          headers: token != null && token.isNotEmpty ? {'Authorization': 'Bearer $token'} : {},
+        );
+
+        print("API Last ID: $apiUrlWithParams (status ${responseLastId.statusCode})");
+
+        if (responseLastId.statusCode == 200 || responseLastId.statusCode == 201) {
+          final dynamic jsonResponseLastId = json.decode(responseLastId.body);
+          print('JSON Response last id: $jsonResponseLastId');
+
+          if (jsonResponseLastId != null && jsonResponseLastId['success'] == true) {
+            final dynamic lastid = jsonResponseLastId['lastid'];
+            if (lastid != null && lastid is Map && lastid['id_transaksi'] != null) {
+              final String idTransaksi = lastid['id_transaksi'].toString();
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString('idTransaksi', idTransaksi);
+              print('ID Transaksi (server): $idTransaksi');
+
+              // asumsi prefix 'KEUBIS' + number
+              if (idTransaksi.length > 6) {
+                try {
+                  final String numericPart = idTransaksi.substring(6);
+                  int idNum = int.parse(numericPart);
+                  idNum++;
+                  final String generated = 'KEUBIS' + idNum.toString();
+                  print('1.ID Transaksi Generate: $generated');
+                  return generated;
+                } catch (e) {
+                  print('Parsing last id failed: $e');
+                  // fallthrough to fallback
+                }
               }
             }
           }
         }
-      }
 
-      // fallback generation (persistent counter in prefs)
-      print('Using fallback transaction ID generation');
-      final prefs = await SharedPreferences.getInstance();
-      int fallbackCounter = prefs.getInt('fallback_keubis_counter') ?? 0;
-      fallbackCounter++;
-      await prefs.setInt('fallback_keubis_counter', fallbackCounter);
-      final String idTransaksiGenerated = 'KEUBIS' + fallbackCounter.toString();
-      print('2.ID Transaksi Generate: $idTransaksiGenerated');
-      return idTransaksiGenerated;
-    } catch (e) {
-      print('Error getting last transaction ID: $e');
-      final prefs = await SharedPreferences.getInstance();
-      int fallbackCounter = prefs.getInt('fallback_keubis_counter') ?? 0;
-      fallbackCounter++;
-      await prefs.setInt('fallback_keubis_counter', fallbackCounter);
-      return 'KEUBIS' + fallbackCounter.toString();
+        // fallback generation (persistent counter in prefs)
+        print('Using fallback transaction ID generation');
+        final prefs = await SharedPreferences.getInstance();
+        int fallbackCounter = prefs.getInt('fallback_keubis_counter') ?? 0;
+        fallbackCounter++;
+        await prefs.setInt('fallback_keubis_counter', fallbackCounter);
+        final String idTransaksiGenerated = 'KEUBIS' + fallbackCounter.toString();
+        print('2.ID Transaksi Generate: $idTransaksiGenerated');
+        return idTransaksiGenerated;
+      } catch (e) {
+        print('Error getting last transaction ID: $e');
+        final prefs = await SharedPreferences.getInstance();
+        int fallbackCounter = prefs.getInt('fallback_keubis_counter') ?? 0;
+        fallbackCounter++;
+        await prefs.setInt('fallback_keubis_counter', fallbackCounter);
+        return 'KEUBIS' + fallbackCounter.toString();
+      }
     }
-  }
 
   /// Send premi harian kru data to API
   Future<void> _sendPremiHarianKruData({
@@ -206,8 +206,7 @@ class DataPusherService {
     try {
       // Get setoran kru data with status 'N'
       final List<SetoranKru> setoranKruData = await _setoranKruService.getAllSetoran();
-      final List<SetoranKru> setoranKruToSend =
-      setoranKruData.where((setoran) => setoran.status == 'N').toList();
+      final List<SetoranKru> setoranKruToSend = setoranKruData.where((setoran) => setoran.status == 'N').toList();
 
       if (setoranKruToSend.isEmpty) {
         print('Tidak ada data setoran kru dengan status \'N\'');
@@ -393,16 +392,15 @@ class DataPusherService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         try {
           final Map<String, dynamic> responseData = json.decode(response.body);
-          if (responseData['success'] == true) {
+          if (responseData['status'] == true) {
             print('✅ Berhasil mengirim data setoran kru');
             print('📝 Pesan: ${responseData['message']}');
-            print('🔑 ID Transaksi: ${responseData['id_transaksi']}');
-            print('📊 Data inserted: ${responseData['data_id_dimasukkan']}');
+            print('🔑 ID Transaksi: ${responseData['id_transaksi'] ?? idTransaksiGenerated}');
 
             await _updateSetoranKruStatus(setoranKruToSend);
             return true;
           } else {
-            print('❌ Server returned success=false');
+            print('❌ Server returned status=false');
             print('📝 Pesan: ${responseData['message'] ?? responseData}');
             if (responseData['errors'] != null) print('❌ Errors: ${responseData['errors']}');
             if (responseData['data_yang_error'] != null) print('❌ Data yang error: ${responseData['data_yang_error']}');

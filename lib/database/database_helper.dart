@@ -10,20 +10,13 @@ class DatabaseHelper {
   DatabaseHelper._();
 
   Future<Database> get database async {
-    if (_database != null) {
-      if (_database!.isOpen) {
-        print('🟢 Database masih terbuka');
-        return _database!;
-      } else {
-        print('⚠️ Database tertutup, membuka ulang...');
-      }
+    if (_database != null && _database!.isOpen) {
+      return _database!;
     }
 
     _database = await _initDatabase();
-    print('✅ Database berhasil dibuka');
     return _database!;
   }
-
 
   // Tambahkan method initDatabase yang hilang
   Future<void> initDatabase() async {
@@ -31,24 +24,20 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    print('📂 Inisialisasi database dimulai');
-
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_26012026-1.db';
-
-    print('📁 Path database: $path');
+    String path = '${documentsDirectory.path}/bisapp_31122025-3.db';
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 3, // Update the version number
       onCreate: (db, version) async {
-        print('🆕 Membuat database versi $version');
-        await _createTables(db, version);
+        await _createTables(db, version); // Call the updated _createTables function
       },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        print('🔄 Upgrade database $oldVersion → $newVersion');
+      onUpgrade: (db, oldVersion, newVersion) {
+        // Handle database migration if needed
       },
     );
+
   }
 
   Future<void> _createTables(Database db, int version) async {
@@ -488,6 +477,25 @@ class DatabaseHelper {
     );
   }
 
+  // Future<List<Map<String, dynamic>>> getAllTransaksiBagasi() async {
+  //   final db = await database;
+  //
+  //   // Menggunakan rawQuery untuk menjalankan query JOIN
+  //   return await db.rawQuery('''
+  //     SELECT
+  //       a.id,a.tgl_order,a.id_jenis_paket,a.id_order,a.rit,a.no_pol,a.id_bus,
+  //       a.kode_trayek,a.id_personil,a.id_group,a.id_kota_berangkat,a.id_kota_tujuan,
+  //       a.qty_barang,a.harga_km,a.jml_harga,a.nama_pengirim,a.no_tlp_pengirim,
+  //       a.nama_penerima,a.no_tlp_penerima,a.keterangan,b.jenis_paket,b.deskripsi,b.persen,
+  //       c.nama_kota AS kota_berangkat,d.nama_kota AS kota_tujuan,a.keterangan,a.fupload,a.file_name,a.status
+  //     FROM
+  //       t_order_bagasi AS a
+  //       INNER JOIN m_jenis_paket AS b ON a.id_jenis_paket=b.id
+  //       LEFT JOIN list_kota AS c ON a.id_kota_berangkat = c.id_kota_tujuan
+  //       LEFT JOIN list_kota AS d ON a.id_kota_tujuan = d.id_kota_tujuan
+  //   ''');
+  // }
+
   Future<List<Map<String, dynamic>>> getAllTransaksiBagasi() async {
     final db = await database;
 
@@ -669,6 +677,12 @@ class DatabaseHelper {
     return results;
   }
 
+
+  // Future<List<Map<String, dynamic>>> getListKota() async {
+  //   final db = await database;
+  //   return await db.query('list_kota');
+  // }
+
   Future<List<Map<String, dynamic>>> getListKota() async {
     final db = await database;
     return await db.rawQuery('''
@@ -827,22 +841,15 @@ class DatabaseHelper {
   }
 
   Future<List<Map<String, dynamic>>> getAllTagTransaksi() async {
-    try {
-      final db = await database;
-      print('🧾 Query: getAllTagTransaksi');
+    final db = await database;
 
-      final result = await db.rawQuery('''
-      SELECT id, kategori_transaksi, nama
-      FROM m_tag_transaksi
+    // Menggunakan rawQuery untuk menjalankan query JOIN
+    return await db.rawQuery('''
+      SELECT 
+        a.id,a.kategori_transaksi,a.nama
+      FROM
+        m_tag_transaksi a 
     ''');
-
-      print('📊 Total tag transaksi: ${result.length}');
-      return result;
-    } catch (e, s) {
-      print('❌ Error getAllTagTransaksi: $e');
-      print(s);
-      return [];
-    }
   }
 
   Future<int> updateFotoSetoran(int idTagTransaksi, String? path, String? fileName) async {

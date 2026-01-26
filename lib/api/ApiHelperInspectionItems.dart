@@ -4,8 +4,7 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 
 class ApiHelperInspectionItems {
   static Future<void> addListInspectionItemsAPI(String token) async {
-    final response = await http.get(
-      Uri.parse('https://apimila.milaberkah.com/api/inspectionitems'),
+    final response = await http.get(Uri.parse('https://apimila.milaberkah.com/api/inspectionitems'),
       headers: {
         'Authorization': 'Bearer $token',
       },
