@@ -1042,8 +1042,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       // 3. Kumpulkan setoran pengeluaran
       for (var tag in tagPengeluaran) {
         double nilai = 0;
-        int jumlah = 1;
-        String? keterangan = null;
+        int jumlah = 0; // ✅ DEFAULT: SELALU 0
+        String? keterangan;
         final coaPengeluaran = coaPengeluaranBusController.text;
 
         final fotoPath = _uploadedImages[tag.id];
@@ -1061,7 +1061,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           // ---------------------------------------------
           final nominalSolarText = _controllers[tag.id]?.text ?? '0';
           final nominalSolar = double.tryParse(
-              nominalSolarText.replaceAll('.', '').replaceAll(',00', '')) ??
+            nominalSolarText.replaceAll('.', '').replaceAll(',00', ''),
+          ) ??
               0;
 
           final literSolarText = _literSolarControllers[tag.id]?.text ?? '0';
@@ -1074,17 +1075,22 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           print('Liter Solar Parsed: $literSolar');
 
           nilai = nominalSolar;
-          jumlah = literSolar.toInt();
+          jumlah = literSolar.toInt(); // ✅ HANYA TAG 16
           keterangan = literSolar > 0 ? 'Solar: $literSolar liter' : null;
 
           print('HASIL → Nilai: $nilai | Jumlah: $jumlah | Ket: $keterangan');
-
         } else {
           // ---------------------------------------------
           //           BIAYA LAINNYA
           // ---------------------------------------------
           final valueText = _controllers[tag.id]?.text ?? '0';
-          nilai = double.tryParse(valueText.replaceAll('.', '').replaceAll(',00', '')) ?? 0;
+          nilai = double.tryParse(
+            valueText.replaceAll('.', '').replaceAll(',00', ''),
+          ) ??
+              0;
+
+          jumlah = 0; // ✅ PAKSA 0 (sesuai requirement)
+          keterangan = null;
 
           print('--- BIAYA LAINNYA ---');
           print('coa Pengeluaran: $coaPengeluaran');
@@ -1096,7 +1102,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         //           FILTER: hanya nilai > 0
         // ---------------------------------------------
         if (nilai > 0) {
-
           print('📌 AKAN DISIMPAN → ${tag.nama}');
           print('  • Nilai: $nilai');
           print('  • Jumlah: $jumlah');
@@ -1113,7 +1118,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
             kodeTrayek: kodeTrayek ?? '',
             idPersonil: idUser,
             idGroup: idGroup,
-            jumlah: jumlah,
+            jumlah: jumlah, // ✅ SUDAH AMAN
             idTransaksi: idTransaksi,
             coa: coaPengeluaran ?? '',
             nilai: nilai,
@@ -1129,7 +1134,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
           semuaSetoran.add(setoran);
           print('✅ Pengeluaran disimpan: ${tag.nama}');
           print('--------------------------------------------------\n');
-
         } else {
           print('⚠️ SKIP → ${tag.nama} (nilai = 0)');
           print('--------------------------------------------------\n');
