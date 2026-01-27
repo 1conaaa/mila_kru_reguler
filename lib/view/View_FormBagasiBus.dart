@@ -19,9 +19,6 @@ import 'package:provider/provider.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart'; // BluetoothPrinterService
 import 'package:permission_handler/permission_handler.dart';
 
-
-
-
 class FormBagasiBus extends StatefulWidget {
   @override
   _FormBagasiBusState createState() => _FormBagasiBusState();
@@ -34,6 +31,8 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   Map<int, double> persen = {}; // Untuk menyimpan nilai persen sebagai double
   String? selectedJenisPaket; // Ubah tipe data menjadi String?
   final UserService _userService = UserService(); // Tambahkan ini
+
+  bool _isLoading = false;
 
   // Definisikan variabel yang belum ada
   int qtyBarang = 0;
@@ -133,6 +132,33 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     super.dispose();
   }
 
+  void _showLoading() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              'Menyimpan data...',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _hideLoading() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+  }
+
+
   // Fungsi untuk mengambil gambar dari kamera atau galeri
   Future<void> _ambilGambar(bool fromCamera) async {
     // Memastikan izin sudah diberikan sebelum melanjutkan
@@ -191,6 +217,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   }
 
   Future<void> _submitForm(int idjenisPaket, int idkotaAwal, int idkotaAkhir) async {
+
+    setState(() => _isLoading = true);
+    _showLoading();
+
     DateTime now = DateTime.now();
     String formattedIdOrder = DateFormat('yyyyMMddHHmmss').format(now);
     String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
@@ -263,12 +293,25 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       }
 
       Fluttertoast.showToast(msg: toastMessage);
+      // ===============================
+      // 🔁 PINDAH KE FORM BAGASI BUS
+      // ===============================
+      if (context.mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FormBagasiBus(),
+          ),
+        );
+      }
+
     } catch (error) {
       print("Error inserting data: $error");
       Fluttertoast.showToast(msg: "Gagal menyimpan data");
+    } finally {
+      _hideLoading();
+      setState(() => _isLoading = false);
     }
-
-    Navigator.pop(context); // Kembali ke halaman sebelumnya
   }
 
   Future<void> _loadLastKotaTerakhir() async {

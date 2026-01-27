@@ -130,8 +130,7 @@ class DataPusherService {
     final String noPol = prefs.getString('noPol') ?? '';
     final String kodeTrayek = prefs.getString('kode_trayek') ?? '';
 
-    final List<Map<String, dynamic>> premiKruData =
-    await _premiHarianKruService.getPremiHarianKruWithKruBisByStatus('N');
+    final List<Map<String, dynamic>> premiKruData = await _premiHarianKruService.getPremiHarianKruWithKruBisByStatus('N');
 
     if (premiKruData.isEmpty) {
       print('Tidak ada data premi harian kru dengan status \'N\'');
@@ -151,7 +150,9 @@ class DataPusherService {
       final int id_group = row['id_group'] ?? 0;
       final double persen_premi_disetor = (row['persen_premi_disetor'] ?? 0).toDouble();
       final double nominal_premi_disetor = (row['nominal_premi_disetor'] ?? 0).toDouble();
-      final String tanggal_simpan = row['tanggal_simpan'] ?? tanggal_transaksi;
+      // ⛔ JANGAN pakai tanggal dari DB
+      // ✅ PAKSA tanggal dari date picker
+      final String tanggalKirim = tanggal_transaksi;
 
       // Update progress before send
       onProgress(dataSent / totalDataPremiKru);
@@ -164,7 +165,7 @@ class DataPusherService {
           '&id_group=$id_group'
           '&persen=$persen_premi_disetor'
           '&nominal=$nominal_premi_disetor'
-          '&tgl_transaksi=${Uri.encodeFull(tanggal_simpan)}';
+          '&tgl_transaksi=${Uri.encodeFull(tanggalKirim)}';
 
       final String apiUrlWithParams = apiUrl + queryParams;
       print('API Request (premi): $apiUrlWithParams');
@@ -219,6 +220,7 @@ class DataPusherService {
         setoranKruToSend: setoranKruToSend,
         idTransaksiGenerated: idTransaksiGenerated,
         token: token,
+        tanggalTransaksi: tanggal_transaksi, // ✅ TAMBAHKAN
       );
 
       if (!success) {
@@ -234,6 +236,7 @@ class DataPusherService {
     required List<SetoranKru> setoranKruToSend,
     required String idTransaksiGenerated,
     required String? token,
+    required String tanggalTransaksi, // ✅ BARU
   }) async {
     try {
       const String endpoint = 'https://apimila.milaberkah.com/api/simpansetorankrumobile';
@@ -265,7 +268,7 @@ class DataPusherService {
         // Debug detail setiap row
         print("\n--- DATA ROW $i ---");
         print("id_transaksi: ${idTransaksiGenerated}");
-        print("tgl_transaksi: ${d.tglTransaksi ?? ""}");
+        print("tgl_transaksi: ${tanggalTransaksi}");
         print("km_pulang: ${(d.kmPulang ?? '').toString()}");
         print("rit: ${d.rit ?? "1"}");
         print("no_pol: ${d.noPol ?? ""}");
@@ -283,7 +286,7 @@ class DataPusherService {
         // Siapkan data untuk JSON
         Map<String, dynamic> rowData = {
           'id_transaksi': idTransaksiGenerated,
-          'tgl_transaksi': d.tglTransaksi ?? "",
+          'tgl_transaksi': tanggalTransaksi,
           'km_pulang': d.kmPulang ?? "",
           'rit': d.rit ?? "1",
           'no_pol': d.noPol ?? "",
