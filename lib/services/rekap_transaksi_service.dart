@@ -5,21 +5,25 @@ import 'package:mila_kru_reguler/utils/premi_bersih_calculator.dart';
 import 'package:mila_kru_reguler/models/calculation_result.dart';
 
 class RekapTransaksiService {
-  CalculationResult calculatePremiBersih({
+
+  /// ✅ FIX: async + Future
+  Future<CalculationResult> calculatePremiBersih({
     required List<TagTransaksi> tagPendapatan,
     required List<TagTransaksi> tagPengeluaran,
     required List<TagTransaksi> tagPremi,
     required List<TagTransaksi> tagBersihSetoran,
+    required List<TagTransaksi> tagSusukan,
     required Map<int, TextEditingController> controllers,
     required Map<int, TextEditingController> jumlahControllers,
     required Map<int, TextEditingController> literSolarControllers,
     required User userData,
-  }) {
-    final result = PremiBersihCalculator.calculatePremiBersih(
+  }) async {
+    final Map<String, dynamic> result = await PremiBersihCalculator.calculatePremiBersih(
       tagPendapatan: tagPendapatan,
       tagPengeluaran: tagPengeluaran,
       tagPremi: tagPremi,
       tagBersihSetoran: tagBersihSetoran,
+      tagSusukan: tagSusukan,
       controllers: controllers,
       jumlahControllers: jumlahControllers,
       literSolarControllers: literSolarControllers,
@@ -30,15 +34,15 @@ class RekapTransaksiService {
   }
 
   void updateAutoCalculatedFields({
-    required CalculationResult calculationResult,
-    required Map<int, TextEditingController> controllers,
-    required User userData,
-  }) {
-    PremiBersihCalculator.updateAutoCalculatedFields(
-      calculationResult: calculationResult.toMap(),
-      controllers: controllers,
-      userData: userData,
-    );
+      required CalculationResult calculationResult,
+      required Map<int, TextEditingController> controllers,
+      required User userData,
+    }) {
+      PremiBersihCalculator.updateAutoCalculatedFields(
+        calculationResult: calculationResult.toMap(),
+        controllers: controllers,
+        userData: userData,
+      );
   }
 
   String generateTransactionId(int idUser) {
@@ -53,7 +57,7 @@ class RekapTransaksiService {
       return '';
     }
 
-    List<String> parts = keydataPremiextra.split('_');
+    final parts = keydataPremiextra.split('_');
     if (parts.length >= 2) {
       return '${parts[0]}${parts[1]}'.toLowerCase();
     }

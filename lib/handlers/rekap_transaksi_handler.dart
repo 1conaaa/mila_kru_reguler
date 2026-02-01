@@ -9,6 +9,7 @@ class RekapTransaksiHandler {
     await _databaseHelper.initDatabase();
 
     final hasilReguler = await _penjualanService.getSumJumlahTagihanReguler(kelasBus);
+    final hasilOperan = await _penjualanService.getSumJumlahTagihanOperan(kelasBus);
     final hasilNonReguler = await _penjualanService.getSumJumlahTagihanNonReguler(kelasBus);
     final hasilBagasi = await _databaseHelper.getSumJumlahPendapatanBagasi(kelasBus);
 
@@ -16,6 +17,10 @@ class RekapTransaksiHandler {
       'reguler': {
         'totalPendapatanReguler': (hasilReguler['totalPendapatanReguler'] ?? 0).toDouble(),
         'jumlahTiketReguler': (hasilReguler['jumlahTiketReguler'] ?? 0).toInt(),
+      },
+      'operan': {
+        'totalPendapatanOperan': (hasilOperan['totalPendapatanOperan'] ?? 0).toDouble(),
+        'jumlahTiketOperan': (hasilOperan['jumlahTiketOperan'] ?? 0).toInt(),
       },
       'nonReguler': {
         'totalPendapatanNonReguler': (hasilNonReguler['totalPendapatanNonReguler'] ?? 0).toDouble(),

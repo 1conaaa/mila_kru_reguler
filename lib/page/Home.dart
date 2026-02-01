@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mila_kru_reguler/models/user.dart';
+import 'package:mila_kru_reguler/services/persentase_susukan_service.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -82,6 +83,8 @@ class _HomeState extends State<Home> {
 
     final prefs = await SharedPreferences.getInstance();
 
+    final String loadedToken = _getStringSafe(prefs, 'token') ?? '';
+
     setState(() {
       idUser = prefs.getInt('idUser');
       idGarasi = prefs.getInt('idGarasi');
@@ -89,15 +92,21 @@ class _HomeState extends State<Home> {
 
       noPol = _getStringSafe(prefs, 'noPol');
       idJadwalTrip = _getStringSafe(prefs, 'idJadwalTrip');
-      token = _getStringSafe(prefs, 'token');
+      token = loadedToken;
       namaTrayek = _getStringSafe(prefs, 'namaTrayek');
       namaLengkap = _getStringSafe(prefs, 'namaLengkap');
       noKontak = _getStringSafe(prefs, 'noKontak');
     });
 
+    /// ⚠️ PASTIKAN token SUDAH ADA
+    if (loadedToken.isNotEmpty) {
+      await _preloadPersentaseSusukan(loadedToken);
+    } else {
+      debugPrint('⚠️ Token tidak ditemukan, skip preload persentase');
+    }
+
     await _fetchAllData();
   }
-
 
 
   /// 🆕 Fungsi untuk mengambil semua data sekaligus
@@ -107,6 +116,8 @@ class _HomeState extends State<Home> {
         _fetchNotifikasi(),
         _preloadUserData(),
         _preloadKruBisData(),
+        if (token != null && token!.isNotEmpty)
+          _preloadPersentaseSusukan(token!),
       ]);
     } catch (e) {
       debugPrint('❌ Error loading initial data: $e');
@@ -116,6 +127,23 @@ class _HomeState extends State<Home> {
       });
     }
   }
+
+
+  Future<void> _preloadPersentaseSusukan(String token) async {
+    if (token.isEmpty) {
+      debugPrint('⚠️ Token kosong, preload persentase dibatalkan');
+      return;
+    }
+
+    final persentaseService = PersentaseSusukanService();
+
+    try {
+      await persentaseService.syncFromApi(token);
+    } catch (e) {
+      debugPrint('❌ Gagal preload persentase susukan: $e');
+    }
+  }
+
 
   /// 🆕 Preload user data
   Future<void> _preloadUserData() async {

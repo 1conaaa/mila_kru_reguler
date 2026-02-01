@@ -42,6 +42,15 @@ class DatabaseHelper {
 
   Future<void> _createTables(Database db, int version) async {
     await db.execute('''
+      CREATE TABLE IF NOT EXISTS t_persentase_susukan (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nominal_dari REAL NOT NULL,
+          nominal_sampai REAL NOT NULL,
+          persentase REAL NOT NULL
+      )
+    ''');
+
+    await db.execute('''
       CREATE TABLE IF NOT EXISTS m_persen_premi_kru (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         kode_trayek TEXT,
@@ -365,6 +374,62 @@ class DatabaseHelper {
       _database = null;
     }
   }
+
+  Future<void> insertPersentaseSusukan(Map<String, dynamic> data) async {
+    final db = await database;
+    await db.insert(
+      't_persentase_susukan',
+      data,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getAllPersentaseSusukan() async {
+    final db = await database;
+    return await db.query(
+      't_persentase_susukan',
+      orderBy: 'nominal_dari ASC',
+    );
+  }
+
+  Future<void> updatePersentaseSusukan(
+      Map<String, dynamic> data, int id) async {
+    final db = await database;
+    await db.update(
+      't_persentase_susukan',
+      data,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deletePersentaseSusukan(int id) async {
+    final db = await database;
+    await db.delete(
+      't_persentase_susukan',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> deleteAllPersentaseSusukan() async {
+    final db = await database;
+    await db.delete('t_persentase_susukan');
+  }
+
+  Future<Map<String, dynamic>?> getPersentaseByNominal(double nominal) async {
+    final db = await database;
+
+    final result = await db.rawQuery('''
+    SELECT * FROM t_persentase_susukan
+    WHERE ? >= nominal_dari
+      AND ? <= nominal_sampai
+    LIMIT 1
+  ''', [nominal, nominal]);
+
+    return result.isNotEmpty ? result.first : null;
+  }
+
 
   Future<Map<String, int>> getSumJumlahPendapatanBagasi(String? kelasBus) async {
     final db = await database;

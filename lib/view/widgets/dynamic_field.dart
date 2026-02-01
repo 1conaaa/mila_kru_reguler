@@ -64,7 +64,7 @@ class _DynamicFieldState extends State<DynamicField> {
   Set<int> tagPengeluaranSet = {};
 
   /// TAG PENDAPATAN (HARUS SELALU TAMPIL)
-  static const Set<int> tagPendapatanSet = {1, 2, 3};
+  static const Set<int> tagPendapatanSet = {1, 2, 3, 71};
 
   @override
   void initState() {
@@ -96,9 +96,7 @@ class _DynamicFieldState extends State<DynamicField> {
 
   bool isNonEditable(TagTransaksi tag) {
     final name = tag.nama?.toLowerCase() ?? '';
-    return name.contains('premi') ||
-        name.contains('bersih') ||
-        name.contains('disetor');
+    return name.contains('premi') || name.contains('bersih') || name.contains('disetor') || name.contains('susukan');
   }
 
   @override

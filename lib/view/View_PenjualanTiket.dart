@@ -1470,7 +1470,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           labelText: 'Kategori Tiket',
                           border: OutlineInputBorder(),
                         ),
-                        value: selectedKategoriTiket,
+                        initialValue: selectedKategoriTiket,
                         items: [
                           DropdownMenuItem<String>(
                             child: Text('Pilih'),
@@ -1540,7 +1540,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                 labelText: 'Pilih Rit',
                                 border: OutlineInputBorder(),
                               ),
-                              value: selectedPilihRit,
+                              initialValue: selectedPilihRit,
                               items: [
                                 DropdownMenuItem<String>(
                                   child: Text('Rit-1'),
@@ -2105,7 +2105,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                             labelText: 'Metode Pembayaran',
                             border: OutlineInputBorder(),
                           ),
-                          value: selectedMetodePembayaran,
+                          initialValue: selectedMetodePembayaran,
                           items: listMetodePembayaran.map((item) {
                             return DropdownMenuItem<String>(
                               value: item['id'].toString(),

@@ -7,6 +7,7 @@ class CalculationResult {
   final double totalPengeluaran;
   final double sisaPendapatan;
   final double tolAdjustment;
+  final double nominalSusukan;
 
   CalculationResult({
     required this.nominalPremiKru,
@@ -17,6 +18,7 @@ class CalculationResult {
     required this.totalPengeluaran,
     required this.sisaPendapatan,
     required this.tolAdjustment,
+    required this.nominalSusukan,
   });
 
   Map<String, dynamic> toMap() {
@@ -29,6 +31,7 @@ class CalculationResult {
       'totalPengeluaran': totalPengeluaran,
       'sisaPendapatan': sisaPendapatan,
       'tolAdjustment': tolAdjustment,
+      'nominalSusukan': nominalSusukan,
     };
   }
 
@@ -41,7 +44,8 @@ class CalculationResult {
       totalPendapatan: (map['totalPendapatan'] as num).toDouble(),
       totalPengeluaran: (map['totalPengeluaran'] as num).toDouble(),
       sisaPendapatan: (map['sisaPendapatan'] as num).toDouble(),
-      tolAdjustment: (map['tolAdjustment'] as num).toDouble(),
+      tolAdjustment: (map['tolAdjustment'] as num).toDouble(),// 🔥 AMBIL DARI MAP
+      nominalSusukan: (map['nominalSusukan'] ?? 0).toDouble(),
     );
   }
 }

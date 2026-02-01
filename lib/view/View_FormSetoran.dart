@@ -12,6 +12,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
   final List<TagTransaksi> tagPengeluaran;
   final List<TagTransaksi> tagPremi;
   final List<TagTransaksi> tagBersihSetoran;
+  final List<TagTransaksi> tagSusukan;
   final Map<int, TextEditingController> controllers;
   final Map<int, TextEditingController> jumlahControllers;
   final Map<int, TextEditingController> literSolarControllers;
@@ -25,6 +26,8 @@ class ViewFormRekapTransaksi extends StatelessWidget {
   final bool Function(TagTransaksi) requiresLiterSolar;
   final Function() onCalculatePremiBersih;
   final String? keydataPremiextra; // Tambahkan parameter ini
+  final TextEditingController nominalPersenSusukanController;
+
 
   ViewFormRekapTransaksi({
     Key? key,
@@ -34,6 +37,7 @@ class ViewFormRekapTransaksi extends StatelessWidget {
     required this.tagPengeluaran,
     required this.tagPremi,
     required this.tagBersihSetoran,
+    required this.tagSusukan,
     required this.controllers,
     required this.jumlahControllers,
     required this.literSolarControllers,
@@ -47,6 +51,8 @@ class ViewFormRekapTransaksi extends StatelessWidget {
     required this.requiresLiterSolar,
     required this.onCalculatePremiBersih,
     this.keydataPremiextra, // Tambahkan di constructor
+    // 🔥 TAMBAHKAN INI
+    required this.nominalPersenSusukanController,
   }) : super(key: key) {
     _debugConstructor();
   }
@@ -188,9 +194,29 @@ class ViewFormRekapTransaksi extends StatelessWidget {
                     // KATEGORI 4: BERSIH DAN SETORAN
                     if (tagBersihSetoran.isNotEmpty)
                       KategoriSection(
-                        title: 'Bersih dan Setoran',
+                        title: 'Bersih, Setoran',
                         color: Colors.green,
                         tags: tagBersihSetoran,
+                        showJumlah: false,
+                        showLiterSolar: false,
+                        controllers: controllers,
+                        jumlahControllers: jumlahControllers,
+                        literSolarControllers: literSolarControllers,
+                        requiresImage: requiresImage,
+                        requiresJumlah: requiresJumlah,
+                        requiresLiterSolar: requiresLiterSolar,
+                        onImageUpload: onImageUpload,
+                        uploadedImages: uploadedImages,
+                        onRemoveImage: onRemoveImage,
+                        onFieldChanged: onCalculatePremiBersih,
+                      ),
+
+                    // KATEGORI 5: SUSUKAN
+                    if (tagBersihSetoran.isNotEmpty)
+                      KategoriSection(
+                        title: 'Susukan',
+                        color: Colors.green,
+                        tags: tagSusukan,
                         showJumlah: false,
                         showLiterSolar: false,
                         controllers: controllers,

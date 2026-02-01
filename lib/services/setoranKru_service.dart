@@ -16,19 +16,11 @@ class SetoranKruService {
     final db = await _dbHelper.database;
 
     /// TAG HASIL KALKULASI
-    final isCalculatedTag = [27, 32, 60, 61].contains(setoran.idTagTransaksi);
+    final isCalculatedTag = [27, 32, 60, 61, 70].contains(setoran.idTagTransaksi);
 
     /// Untuk tag non-kalkulasi → nilai 0 dilewati
     if (!isCalculatedTag && setoran.nilai == 0) {
-      print('⏭️ SKIP INSERT | nilai=0 | tag=${setoran.idTagTransaksi}',);
-      return 0;
-    }
-
-    /// ================= CEK DUPLIKASI (KUNCI SOLUSI) =================
-    final exists = await existsSetoranKru(setoran);
-
-    if (exists) {
-      print('⚠️ SETORAN SUDAH ADA → SKIP INSERT | tag=${setoran.idTagTransaksi}',);
+      print('⏭️ SKIP INSERT | nilai=0 | tag=${setoran.idTagTransaksi}');
       return 0;
     }
 
@@ -36,26 +28,73 @@ class SetoranKruService {
 
     /// ================= LOG AWAL =================
     print('''
-              📝 INSERT SETORAN
-              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              Tag ID      : ${setoran.idTagTransaksi}
-              Nilai       : ${setoran.nilai}
-              Rit         : ${setoran.rit}
-              No Pol      : ${setoran.noPol}
-              Kode Trayek : ${setoran.kodeTrayek}
-              Personil   : ${setoran.idPersonil}
-              Group      : ${setoran.idGroup}
-              Tanggal     : ${setoran.tglTransaksi}
-              Calculated  : $isCalculatedTag
-              ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-              ''');
+📝 PROSES SETORAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tag ID      : ${setoran.idTagTransaksi}
+Nilai       : ${setoran.nilai}
+Rit         : ${setoran.rit}
+No Pol      : ${setoran.noPol}
+ID Bus      : ${setoran.idBus}
+Kode Trayek : ${setoran.kodeTrayek}
+Personil    : ${setoran.idPersonil}
+Group       : ${setoran.idGroup}
+Tanggal     : ${setoran.tglTransaksi}
+Calculated  : $isCalculatedTag
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''');
 
     try {
+      /// ================= CEK SESUAI UNIQUE INDEX =================
+      final existing = await db.query(
+        't_setoran_kru',
+        where: '''
+        rit = ?
+        AND no_pol = ?
+        AND id_bus = ?
+        AND kode_trayek = ?
+        AND id_personil = ?
+        AND id_group = ?
+        AND id_tag_transaksi = ?
+      ''',
+        whereArgs: [
+          setoran.rit,
+          setoran.noPol,
+          setoran.idBus,
+          setoran.kodeTrayek,
+          setoran.idPersonil,
+          setoran.idGroup,
+          setoran.idTagTransaksi,
+        ],
+        limit: 1,
+      );
+
+      if (existing.isNotEmpty) {
+        final int rowId = existing.first['id'] as int;
+
+        /// ================= UPDATE =================
+        await db.update(
+          't_setoran_kru',
+          {
+            'nilai': setoran.nilai,
+            'jumlah': setoran.jumlah,
+            'status': setoran.status,
+            'updated_at': DateTime.now().toIso8601String(),
+          },
+          where: 'id = ?',
+          whereArgs: [rowId],
+        );
+
+        print(
+          '🔄 UPDATE BERHASIL | rowId=$rowId | tag=${setoran.idTagTransaksi} | nilai=${setoran.nilai}',
+        );
+
+        return rowId;
+      }
+
       /// ================= INSERT =================
       final result = await db.insert(
         't_setoran_kru',
         map,
-        conflictAlgorithm: ConflictAlgorithm.abort,
       );
 
       print(
@@ -64,17 +103,15 @@ class SetoranKruService {
 
       return result;
     } catch (e, stackTrace) {
-      /// ================= ERROR LOG =================
       print('''
-            ❌ GAGAL INSERT SETORAN
-            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            Error : $e
-            Data  : $map
-            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            ''');
+❌ GAGAL PROSES SETORAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Error : $e
+Data  : $map
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+''');
 
       debugPrintStack(stackTrace: stackTrace);
-
       rethrow;
     }
   }
@@ -109,110 +146,169 @@ class SetoranKruService {
     return result.isNotEmpty;
   }
 
+  Future<bool> cekPremiHarianKruSudahAda({
+    required int idTransaksi,
+    required int idUser,
+    required int idGroup,
+    required String tanggalSimpan,
+  }) async {
+    final db = await _dbHelper.database;
 
+    final result = await db.query(
+      'premi_harian_kru',
+      where: '''
+      id_transaksi = ?
+      AND id_user = ?
+      AND id_group = ?
+      AND tanggal_simpan = ?
+    ''',
+      whereArgs: [
+        idTransaksi,
+        idUser,
+        idGroup,
+        tanggalSimpan,
+      ],
+      limit: 1,
+    );
+
+    return result.isNotEmpty;
+  }
+
+  Future<void> updatePremiHarianKru({
+    required int idTransaksi,
+    required int idUser,
+    required int idGroup,
+    required String tanggalSimpan,
+    required double persenPremi,
+    required double nominalPremi,
+    required String status,
+  }) async {
+    final db = await _dbHelper.database;
+
+    await db.update(
+      'premi_harian_kru',
+      {
+        'persen_premi_disetor': persenPremi,
+        'nominal_premi_disetor': nominalPremi,
+        'status': status,
+      },
+      where: '''
+      id_transaksi = ?
+      AND id_user = ?
+      AND id_group = ?
+      AND tanggal_simpan = ?
+    ''',
+      whereArgs: [
+        idTransaksi,
+        idUser,
+        idGroup,
+        tanggalSimpan,
+      ],
+    );
+  }
 
 
 
   // Method untuk menghitung dan menyimpan premi bawah setiap kru
   Future<void> hitungDanSimpanPremiBawahKru({
-    required double nominalPremiKru,
-    required String tanggalTransaksi,
-    required String rit,
-    required String noPol,
-    required int idBus,
-    required String kodeTrayek,
-  }) async {
-    print('=== [DEBUG] MULAI HITUNG PREMI BAWAH KRU ===');
-    print('Nominal Premi Kru: $nominalPremiKru');
-    print('Tanggal Transaksi: $tanggalTransaksi');
-    print('Rit: $rit, No Pol: $noPol, ID Bus: $idBus, Kode Trayek: $kodeTrayek');
+      required double nominalPremiKru,
+      required String tanggalTransaksi,
+      required String rit,
+      required String noPol,
+      required int idBus,
+      required String kodeTrayek,
+    }) async {
+      print('=== [DEBUG] MULAI HITUNG PREMI BAWAH KRU ===');
+      print('Nominal Premi Kru: $nominalPremiKru');
+      print('Tanggal Transaksi: $tanggalTransaksi');
+      print('Rit: $rit, No Pol: $noPol, ID Bus: $idBus, Kode Trayek: $kodeTrayek');
 
-    try {
-      // 1. Ambil data premi posisi kru
-      print('--- [DEBUG] AMBIL DATA PREMI POSISI KRU ---');
-      final List<PremiPosisiKru> premiList = await _premiService.getAllPremiPosisiKru(); // PERBAIKAN: gunakan instance
+      try {
+        // 1. Ambil data premi posisi kru
+        print('--- [DEBUG] AMBIL DATA PREMI POSISI KRU ---');
+        final List<PremiPosisiKru> premiList = await _premiService.getAllPremiPosisiKru(); // PERBAIKAN: gunakan instance
 
-      print('Jumlah data premi posisi kru: ${premiList.length}');
-      for (var premi in premiList) {
-        print('Premi: ${premi.namaPremi} - ${premi.persenPremi}%');
-      }
-
-      if (premiList.isEmpty) {
-        print('⚠️ Tidak ada data premi posisi kru ditemukan');
-        return;
-      }
-
-      // 2. Ambil data kru bis untuk mendapatkan id_personil dan id_group
-      print('--- [DEBUG] AMBIL DATA KRU BIS ---');
-      final List<Map<String, dynamic>> kruBisList = await _dbHelper.getKruBis();
-
-      print('Jumlah data kru bis: ${kruBisList.length}');
-      for (var kru in kruBisList) {
-        print('Kru: ${kru['nama_lengkap']} - ${kru['group_name']} - ID: ${kru['id_personil']}');
-      }
-
-      if (kruBisList.isEmpty) {
-        print('⚠️ Tidak ada data kru bis ditemukan');
-        return;
-      }
-
-      // 3. Hitung premi bawah untuk setiap kru
-      print('--- [DEBUG] HITUNG PREMI BAWAH SETIAP KRU ---');
-      for (var kru in kruBisList) {
-        final int idPersonil = kru['id_personil'];
-        final int idGroup = kru['id_group'];
-        final String namaLengkap = kru['nama_lengkap'];
-        final String groupName = kru['group_name'];
-
-        print('Proses kru: $namaLengkap ($groupName)');
-
-        // Cari premi dengan matching yang flexible
-        PremiPosisiKru? premiKru;
-        try {
-          premiKru = premiList.firstWhere(
-                (premi) {
-              final premiName = (premi.namaPremi ?? '').toLowerCase().trim();
-              final groupNameNormalized = groupName.toLowerCase().trim();
-
-              // Debug matching
-              print('   - Mencocokkan: "$premiName" dengan "$groupNameNormalized"');
-
-              return premiName == groupNameNormalized;
-            },
-          );
-        } catch (e) {
-          print('⚠️ Premi tidak ditemukan untuk "$groupName"');
-
-          // Tampilkan daftar premi yang tersedia untuk debugging
-          print('   Daftar premi tersedia:');
-          for (var p in premiList) {
-            print('     - "${p.namaPremi}"');
-          }
-          continue;
+        print('Jumlah data premi posisi kru: ${premiList.length}');
+        for (var premi in premiList) {
+          print('Premi: ${premi.namaPremi} - ${premi.persenPremi}%');
         }
 
-        print('✅ Premi ditemukan: ${premiKru.namaPremi} - ${premiKru.persenPremi}%');
+        if (premiList.isEmpty) {
+          print('⚠️ Tidak ada data premi posisi kru ditemukan');
+          return;
+        }
 
-        final String persenPremiStr = (premiKru.persenPremi ?? '0').toString();
-        final double persenPremi = double.tryParse(persenPremiStr.replaceAll('%', '').replaceAll(' ', '')) ?? 0.0;
+        // 2. Ambil data kru bis untuk mendapatkan id_personil dan id_group
+        print('--- [DEBUG] AMBIL DATA KRU BIS ---');
+        final List<Map<String, dynamic>> kruBisList = await _dbHelper.getKruBis();
 
-        // Hitung nominal premi bawah
-        final double nominalPremiBawah = (nominalPremiKru * persenPremi) / 100;
+        print('Jumlah data kru bis: ${kruBisList.length}');
+        for (var kru in kruBisList) {
+          print('Kru: ${kru['nama_lengkap']} - ${kru['group_name']} - ID: ${kru['id_personil']}');
+        }
 
-        print('📊 Perhitungan premi bawah:');
-        print('   - Persen premi: $persenPremi%');
-        print('   - Nominal premi kru: $nominalPremiKru');
-        print('   - Hasil: $nominalPremiBawah');
+        if (kruBisList.isEmpty) {
+          print('⚠️ Tidak ada data kru bis ditemukan');
+          return;
+        }
 
+        // 3. Hitung premi bawah untuk setiap kru
+        print('--- [DEBUG] HITUNG PREMI BAWAH SETIAP KRU ---');
+        for (var kru in kruBisList) {
+          final int idPersonil = kru['id_personil'];
+          final int idGroup = kru['id_group'];
+          final String namaLengkap = kru['nama_lengkap'];
+          final String groupName = kru['group_name'];
+
+          print('Proses kru: $namaLengkap ($groupName)');
+
+          // Cari premi dengan matching yang flexible
+          PremiPosisiKru? premiKru;
+          try {
+            premiKru = premiList.firstWhere(
+                  (premi) {
+                final premiName = (premi.namaPremi ?? '').toLowerCase().trim();
+                final groupNameNormalized = groupName.toLowerCase().trim();
+
+                // Debug matching
+                print('   - Mencocokkan: "$premiName" dengan "$groupNameNormalized"');
+
+                return premiName == groupNameNormalized;
+              },
+            );
+          } catch (e) {
+            print('⚠️ Premi tidak ditemukan untuk "$groupName"');
+
+            // Tampilkan daftar premi yang tersedia untuk debugging
+            print('   Daftar premi tersedia:');
+            for (var p in premiList) {
+              print('     - "${p.namaPremi}"');
+            }
+            continue;
+          }
+
+          print('✅ Premi ditemukan: ${premiKru.namaPremi} - ${premiKru.persenPremi}%');
+
+          final String persenPremiStr = (premiKru.persenPremi ?? '0').toString();
+          final double persenPremi = double.tryParse(persenPremiStr.replaceAll('%', '').replaceAll(' ', '')) ?? 0.0;
+
+          // Hitung nominal premi bawah
+          final double nominalPremiBawah = (nominalPremiKru * persenPremi) / 100;
+
+          print('📊 Perhitungan premi bawah:');
+          print('   - Persen premi: $persenPremi%');
+          print('   - Nominal premi kru: $nominalPremiKru');
+          print('   - Hasil: $nominalPremiBawah');
+
+        }
+
+        print('=== [DEBUG] SELESAI HITUNG PREMI BAWAH KRU ===');
+
+      } catch (e, stackTrace) {
+        print('❌ ERROR dalam hitungDanSimpanPremiBawahKru: $e');
+        print(stackTrace);
+        rethrow;
       }
-
-      print('=== [DEBUG] SELESAI HITUNG PREMI BAWAH KRU ===');
-
-    } catch (e, stackTrace) {
-      print('❌ ERROR dalam hitungDanSimpanPremiBawahKru: $e');
-      print(stackTrace);
-      rethrow;
-    }
   }
 
   // Method untuk proses simpan setoran lengkap dengan premi

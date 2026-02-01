@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'dart:io';
 import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:mila_kru_reguler/models/calculation_result.dart';
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
 import 'package:mila_kru_reguler/models/user.dart';
 import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
@@ -34,9 +35,7 @@ class FormRekapTransaksi extends StatefulWidget {
   _FormRekapTransaksiState createState() => _FormRekapTransaksiState();
 }
 
-class _FormRekapTransaksiState
-    extends State<FormRekapTransaksi>
-    with SingleTickerProviderStateMixin {
+class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController(text: 'Hidden Value');
   final PremiPosisiKruService _premiService = PremiPosisiKruService();
   final bool _isHidden = true;
@@ -68,6 +67,8 @@ class _FormRekapTransaksiState
   late String ritke = '';
   late String pendapatanTiketReguler = '';
   late String nilaiTiketReguler = '';
+  late String pendapatanTiketOperan = '';
+  late String nilaiTiketOperan = '';
   late String pendapatanTiketOnline = '';
   late String nilaiTiketOnLine = '';
   late String pendapatanBagasi = '';
@@ -95,6 +96,8 @@ class _FormRekapTransaksiState
   TextEditingController nominalperbaikanController = TextEditingController();
   TextEditingController pendapatanTiketRegulerController = TextEditingController();
   TextEditingController jumlahTiketRegulerController = TextEditingController();
+  TextEditingController pendapatanTiketOperanController = TextEditingController();
+  TextEditingController jumlahTiketOperanController = TextEditingController();
   TextEditingController pendapatanTiketNonRegulerController = TextEditingController();
   TextEditingController jumlahTiketOnLineController = TextEditingController();
   TextEditingController pendapatanBagasiController = TextEditingController();
@@ -112,6 +115,7 @@ class _FormRekapTransaksiState
   TextEditingController nominalPremiKruController = TextEditingController();
   TextEditingController nominalPendapatanBersihController = TextEditingController();
   TextEditingController nominalPendapatanDisetorController = TextEditingController();
+  TextEditingController nominalPersenSusukanController = TextEditingController();
 
   late DatabaseHelper databaseHelper;
   TextEditingController sarantagihanController = TextEditingController();
@@ -123,6 +127,8 @@ class _FormRekapTransaksiState
   double totalPendapatanNonRegulerValue = 00;
   int jumlahTiketOnlineValue = 0;
   double totalPendapatanBagasiValue = 00;
+  int jumlahTiketOperanValue = 0;
+  double totalPendapatanOperanValue = 00;
   int jumlahBarangBagasiValue = 0;
   get persenPremiExtra => null;
   get existingDataId => null;
@@ -137,6 +143,7 @@ class _FormRekapTransaksiState
   List<TagTransaksi> tagPengeluaran = [];
   List<TagTransaksi> tagPremi = [];
   List<TagTransaksi> tagBersihSetoran = [];
+  List<TagTransaksi> tagSusukan = [];
 
   User? _user;
 
@@ -160,6 +167,7 @@ class _FormRekapTransaksiState
       pengeluaran: tagMap['pengeluaran'] ?? [],
       premi: tagMap['premi'] ?? [],
       bersihSetoran: tagMap['bersihSetoran'] ?? [],
+      susukan: tagMap['susukan'] ?? [],
       kelasLayanan: kelasLayanan,
     );
 
@@ -171,30 +179,33 @@ class _FormRekapTransaksiState
     setState(() {});
   }
 
-  void _handleCalculatePremiBersih() {
+  Future<void> _handleCalculatePremiBersih() async {
     if (_user == null) {
       print('User data belum tersedia, menggunakan kalkulasi tanpa user data');
-      final result = PremiBersihCalculator.calculatePremiBersihWithoutUser(
+
+      final result = await PremiBersihCalculator.calculatePremiBersihWithoutUser(
         tagPendapatan: tagPendapatan,
         tagPengeluaran: tagPengeluaran,
         tagPremi: tagPremi,
         tagBersihSetoran: tagBersihSetoran,
+        tagSusukan: tagSusukan,
         controllers: _controllers,
         jumlahControllers: _jumlahControllers,
         literSolarControllers: _literSolarControllers,
       );
-
       PremiBersihCalculator.updateAutoCalculatedFieldsWithoutUser(
         calculationResult: result,
         controllers: _controllers,
       );
     } else {
       print('Menggunakan user data untuk kalkulasi: $_user');
-      final calculationResult = _rekapService.calculatePremiBersih(
+
+      final CalculationResult calculationResult = await _rekapService.calculatePremiBersih(
         tagPendapatan: tagPendapatan,
         tagPengeluaran: tagPengeluaran,
         tagPremi: tagPremi,
         tagBersihSetoran: tagBersihSetoran,
+        tagSusukan: tagSusukan,
         controllers: _controllers,
         jumlahControllers: _jumlahControllers,
         literSolarControllers: _literSolarControllers,
@@ -206,6 +217,10 @@ class _FormRekapTransaksiState
         controllers: _controllers,
         userData: _user!,
       );
+
+      // Update semua controller
+      nominalPersenSusukanController.text = NumberFormat.currency(locale: 'id_ID', symbol: '').format(calculationResult.nominalSusukan);
+
     }
   }
 
@@ -219,6 +234,8 @@ class _FormRekapTransaksiState
       jumlahTiketOnlineValue: jumlahTiketOnlineValue,
       totalPendapatanBagasiValue: totalPendapatanBagasiValue,
       jumlahBarangBagasiValue: jumlahBarangBagasiValue,
+      totalPendapatanOperanValue: totalPendapatanOperanValue,
+      jumlahTiketOperanValue: jumlahTiketOperanValue,
     );
   }
 
@@ -285,6 +302,7 @@ class _FormRekapTransaksiState
     tagPengeluaran.clear();
     tagPremi.clear();
     tagBersihSetoran.clear();
+    tagSusukan.clear();
 
     _controllers.clear();
     _jumlahControllers.clear();
@@ -299,10 +317,11 @@ class _FormRekapTransaksiState
     tagPengeluaran = tagData['pengeluaran']!;
     tagPremi = tagData['premi']!;
     tagBersihSetoran = tagData['bersihSetoran']!;
+    tagSusukan = tagData['susukan']!;
 
     // Initialize controllers
     FormResetUtils.initializeControllers(
-      tags: [...tagPendapatan, ...tagPengeluaran, ...tagPremi, ...tagBersihSetoran],
+      tags: [...tagPendapatan, ...tagPengeluaran, ...tagPremi, ...tagBersihSetoran, ...tagSusukan],
       controllers: _controllers,
       jumlahControllers: _jumlahControllers,
       literSolarControllers: _literSolarControllers,
@@ -312,6 +331,7 @@ class _FormRekapTransaksiState
     debugPrint('Jumlah tag pengeluaran: ${tagPengeluaran.length}');
     debugPrint('Jumlah tag premi: ${tagPremi.length}');
     debugPrint('Jumlah tag bersih/setoran: ${tagBersihSetoran.length}');
+    debugPrint('Jumlah tag susukan: ${tagSusukan.length}');
 
     await _loadLastRekapTransaksi();
 
@@ -328,12 +348,15 @@ class _FormRekapTransaksiState
 
     print("=== DEBUG Rekap ===");
     print("Reguler: ${rekapData['reguler']}");
+    print("Operan: ${rekapData['operan']}");
     print("Non Reguler: ${rekapData['nonReguler']}");
     print("Bagasi: ${rekapData['bagasi']}");
 
     setState(() {
       totalPendapatanRegulerValue = rekapData['reguler']['totalPendapatanReguler'];
       jumlahTiketRegulerValue = rekapData['reguler']['jumlahTiketReguler'];
+      totalPendapatanOperanValue = rekapData['operan']['totalPendapatanOperan'];
+      jumlahTiketOperanValue = rekapData['operan']['jumlahTiketOperan'];
       totalPendapatanNonRegulerValue = rekapData['nonReguler']['totalPendapatanNonReguler'];
       jumlahTiketOnlineValue = rekapData['nonReguler']['jumlahTiketOnLine'];
       totalPendapatanBagasiValue = rekapData['bagasi']['totalPendapatanBagasi'];
@@ -343,6 +366,8 @@ class _FormRekapTransaksiState
     print("=== Nilai Setelah setState ===");
     print("Reguler Pendapatan: $totalPendapatanRegulerValue");
     print("Reguler Tiket: $jumlahTiketRegulerValue");
+    print("Operan Pendapatan: $totalPendapatanOperanValue");
+    print("Operan Tiket: $jumlahTiketOperanValue");
     print("NonReg Pendapatan: $totalPendapatanNonRegulerValue");
     print("Online Tiket: $jumlahTiketOnlineValue");
     print("Bagasi Pendapatan: $totalPendapatanBagasiValue");
@@ -583,10 +608,13 @@ class _FormRekapTransaksiState
     return RekapTransaksiForm(
       formKey: _formKey,
       kmMasukGarasiController: kmMasukGarasiController,
+      // 🔥 INI YANG ERROR SEBELUMNYA
+      nominalPersenSusukanController: nominalPersenSusukanController,
       tagPendapatan: tagPendapatan,
       tagPengeluaran: tagPengeluaran,
       tagPremi: tagPremi,
       tagBersihSetoran: tagBersihSetoran,
+      tagSusukan: tagSusukan,
       controllers: _controllers,
       jumlahControllers: _jumlahControllers,
       literSolarControllers: _literSolarControllers,
@@ -675,16 +703,18 @@ class _FormRekapTransaksiState
       }
 
       /// ================= HITUNG PREMI =================
-      final calculationResult = _rekapService.calculatePremiBersih(
+      final CalculationResult calculationResult = await _rekapService.calculatePremiBersih(
         tagPendapatan: tagPendapatan,
         tagPengeluaran: tagPengeluaran,
         tagPremi: tagPremi,
         tagBersihSetoran: tagBersihSetoran,
+        tagSusukan: tagSusukan,
         controllers: _controllers,
         jumlahControllers: _jumlahControllers,
         literSolarControllers: _literSolarControllers,
         userData: _user!,
       );
+
 
       DebugUtils.printCalculationResults(
         nominalPremiKru: calculationResult.nominalPremiKru,
@@ -693,6 +723,7 @@ class _FormRekapTransaksiState
         pendapatanDisetor: calculationResult.pendapatanDisetor,
         totalPendapatan: calculationResult.totalPendapatan,
         totalPengeluaran: calculationResult.totalPengeluaran,
+        nominalSusukan: calculationResult.nominalSusukan,
         sisaPendapatan: calculationResult.sisaPendapatan,
         tolAdjustment: calculationResult.tolAdjustment,
       );
@@ -759,6 +790,12 @@ class _FormRekapTransaksiState
         tagId: 61,
         nilai: calculationResult.pendapatanDisetor,
         coa: coaPendapatanBusController.text.trim(),
+      );
+
+      _addCalculatedSetoran(
+        tagId: 70,
+        nilai: calculationResult.nominalSusukan,
+        coa: coaPengeluaranBusController.text.trim(),
       );
 
       /// ================= SIMPAN PREMI HARIAN =================

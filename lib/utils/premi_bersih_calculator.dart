@@ -1,24 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:mila_kru_reguler/models/persentase_susukan_model.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/models/user.dart';
+import 'package:mila_kru_reguler/services/persentase_susukan_service.dart';
 
 class PremiBersihCalculator {
   /// Method utama untuk kalkulasi premi bersih dengan user data
-  static Map<String, dynamic> calculatePremiBersih({
+  static Future<Map<String, dynamic>> calculatePremiBersih({
     required List<TagTransaksi> tagPendapatan,
     required List<TagTransaksi> tagPengeluaran,
     required List<TagTransaksi> tagPremi,
     required List<TagTransaksi> tagBersihSetoran,
+    required List<TagTransaksi> tagSusukan,
     required Map<int, TextEditingController> controllers,
     required Map<int, TextEditingController> jumlahControllers,
     required Map<int, TextEditingController> literSolarControllers,
     required User userData,
-  }) {
+  }) async { // ✅ INI YANG WAJIB
+
+    final List<PersentaseSusukan> persentaseSusukanList = await PersentaseSusukanService.getAllLocal();
+
     final allData = collectAllTagData(
       tagPendapatan: tagPendapatan,
       tagPengeluaran: tagPengeluaran,
       tagPremi: tagPremi,
       tagBersihSetoran: tagBersihSetoran,
+      tagSusukan: tagSusukan,
       controllers: controllers,
       jumlahControllers: jumlahControllers,
       literSolarControllers: literSolarControllers,
@@ -36,6 +43,7 @@ class PremiBersihCalculator {
       extractedValues: extractedValues,
       userData: userData,
       allData: allData,
+      persentaseSusukanList: persentaseSusukanList,
     );
 
     // Debug output
@@ -52,24 +60,26 @@ class PremiBersihCalculator {
   }
 
   /// Method untuk kalkulasi tanpa user data (menggunakan default)
-  static Map<String, dynamic> calculatePremiBersihWithoutUser({
+  static Future<Map<String, dynamic>> calculatePremiBersihWithoutUser({
     required List<TagTransaksi> tagPendapatan,
     required List<TagTransaksi> tagPengeluaran,
     required List<TagTransaksi> tagPremi,
     required List<TagTransaksi> tagBersihSetoran,
+    required List<TagTransaksi> tagSusukan,
     required Map<int, TextEditingController> controllers,
     required Map<int, TextEditingController> jumlahControllers,
     required Map<int, TextEditingController> literSolarControllers,
-  }) {
-    return calculatePremiBersih(
+  }) async {
+    return await calculatePremiBersih(
       tagPendapatan: tagPendapatan,
       tagPengeluaran: tagPengeluaran,
       tagPremi: tagPremi,
       tagBersihSetoran: tagBersihSetoran,
+      tagSusukan: tagSusukan,
       controllers: controllers,
       jumlahControllers: jumlahControllers,
       literSolarControllers: literSolarControllers,
-      userData: User.empty(), // ✅ FIX
+      userData: User.empty(),
     );
   }
 
@@ -94,6 +104,7 @@ class PremiBersihCalculator {
       'nominalTiketReguler': getValue(1),      // ID 1: Pendapatan Tiket Reguler
       'nominalTiketOnline': getValue(2),       // ID 2: Pendapatan Tiket Ota
       'pendapatanBagasi': getValue(3),         // ID 3: Pendapatan Bagasi
+      'pendapatanOperan': getValue(71),         // ID 3: Pendapatan Bagasi
 
       // Pengeluaran Operasional
       'pengeluaranTol': getValue(15),          // ID 15: Biaya Tol
@@ -115,15 +126,19 @@ class PremiBersihCalculator {
       // Premi
       'premiAtas': getValue(27),               // ID 27: Premi Atas
       'premiBawah': getValue(32),              // ID 32: Premi Bawah
+
+      // Persen Susukan
+      'persenSusukan': getValue(70),               // ID 70: Persen Susukan
     };
   }
 
   /// Kalkulasi kompleks berdasarkan aturan bisnis
   static Map<String, dynamic> _calculateComplexPremi({
-    required Map<String, double> extractedValues,
-    required User userData,
-    required Map<String, List<TagData>> allData,
-  }) {
+      required Map<String, double> extractedValues,
+      required User userData,
+      required Map<String, List<TagData>> allData,
+      required List<PersentaseSusukan> persentaseSusukanList, // 👈 BARU
+    }) {
     print('=== [DEBUG] START CALCULATION ===');
     print('Kelas Bus: ${userData.kelasBus}');
     print('Jenis Trayek: ${userData.jenisTrayek}');
@@ -133,8 +148,12 @@ class PremiBersihCalculator {
     print('Persen Premi Kru: ${userData.persenPremikru}%');
 
     // Ekstrak nilai
-    final double nominalTiketReguler = extractedValues['nominalTiketReguler']!;
-    final double nominalTiketOnline = extractedValues['nominalTiketOnline']!;
+    final double nominalTiketReguler = extractedValues['nominalTiketReguler'] ?? 0.0;
+
+    final double nominalTiketOperan = extractedValues['nominalTiketOperan'] ?? 0.0;
+
+    final double nominalTiketOnline = extractedValues['nominalTiketOnline'] ?? 0.0;
+
     final double pendapatanBagasi = extractedValues['pendapatanBagasi']!;
     double pengeluaranTol = extractedValues['pengeluaranTol']!;
     final double nominalsolar = extractedValues['nominalsolar']!;
@@ -154,6 +173,7 @@ class PremiBersihCalculator {
     // Debug nilai yang diekstrak
     print('=== [DEBUG] EXTRACTED VALUES ===');
     print('Nominal Tiket Reguler: $nominalTiketReguler');
+    print('Nominal Tiket Operan: $nominalTiketOperan');
     print('Nominal Tiket Online: $nominalTiketOnline');
     print('Pendapatan Bagasi: $pendapatanBagasi');
     print('Operan: $operan');
@@ -175,29 +195,24 @@ class PremiBersihCalculator {
     final double persenPremiExtra = (double.tryParse(userData.premiExtra?.replaceAll('%', '') ?? '0') ?? 0) / 100;
 
     final double persenPremiKru = (double.tryParse(userData.persenPremikru?.replaceAll('%', '') ?? '0') ?? 0) / 100;
-
+    final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+    final double pendapatanKotor = (nominalTiketReguler) - operan;
 
     print('=== [DEBUG] PARSED PERCENTAGES ===');
     print('Persen Premi Extra: $persenPremiExtra');
     print('Persen Premi Kru: $persenPremiKru');
 
     // Variabel umum
-    final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
-    // final double pendapatanKotor = (pendKeseluruhan-pendapatanBagasi) - operan;
-    // final double pendapatanKotor = pendKeseluruhan - operan;
-    final double pendapatanKotor = (nominalTiketReguler) - operan;
-
-    print('=== [DEBUG] BASE CALCULATIONS ===');
-    print('Pendapatan Keseluruhan: $pendKeseluruhan');
-    print('Pendapatan Kotor (Reguler - Operan): $pendapatanKotor');
-
     double nominalPremiExtra = 0.0;
     double nominalPremiKru = 0.0;
     double pendBersih = 0.0;
     double pendDisetor = 0.0;
+    double nominalSusukan = 0.0;
     double totalPengeluaran = 0.0;
     double sisaPendapatan = 0.0;
     double tolAdjustment = 0;
+
+    PersentaseSusukan? matchedPersen;
 
     // Logika berdasarkan kelas bus, jenis trayek, dan nama trayek
     switch (userData.kelasBus) {
@@ -210,6 +225,59 @@ class PremiBersihCalculator {
               //BWI-YOG BWI-STB-YOG
               case '3471351001':
               case '3471351002':
+            // ===============================
+            // HITUNG PENDAPATAN KESELURUHAN
+            // ===============================
+                          final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+
+            // ===============================
+            // CARI PERSENTASE SUSUKAN
+            // ===============================
+                          PersentaseSusukan? matchedPersen;
+
+                          for (final item in persentaseSusukanList) {
+                            if (nominalTiketReguler >= item.nominalDari &&
+                                nominalTiketReguler <= item.nominalSampai) {
+                              matchedPersen = item;
+                              break;
+                            }
+                          }
+
+            // ===============================
+            // NORMALISASI PERSEN SUSUKAN
+            // ===============================
+                          final double persenSusukanRaw = matchedPersen?.persentase ?? 0.0;
+                          final double persenSusukan = persenSusukanRaw > 1 ? persenSusukanRaw / 100 : persenSusukanRaw;
+
+                          nominalSusukan = nominalTiketReguler * persenSusukan;
+
+            // ===============================
+            // HITUNG PENDAPATAN KOTOR
+            // ===============================
+                          double pendapatanKotor = nominalTiketReguler - nominalSusukan;
+
+                          if (nominalTiketOperan > 0) {
+                            pendapatanKotor -= nominalTiketOperan;
+                          } else if (operan > 0) {
+                            pendapatanKotor -= operan;
+                          }
+
+            // ===============================
+            // DEBUG LOG
+            // ===============================
+                          print('=== [DEBUG SUSUKAN] ===');
+                          print('Pendapatan Keseluruhan : $pendKeseluruhan');
+                          print('Tiket Reguler          : $nominalTiketReguler');
+                          print('Persen Susukan (raw)   : $persenSusukanRaw');
+                          print('Persen Susukan (%)     : ${persenSusukan * 100}');
+                          print('Nominal Susukan        : $nominalSusukan');
+                          print('Operan Nominal         : $nominalTiketOperan');
+                          print('Operan                : $operan');
+                          print('Pendapatan Kotor       : $pendapatanKotor');
+
+              print('=== [DEBUG] BASE CALCULATIONS ===');
+                print('Pendapatan Keseluruhan: $pendKeseluruhan');
+                print('Pendapatan Kotor (Reguler - TiketOperan): $pendapatanKotor');
                 print('=== [DEBUG] PROCESSING: YOGYAKARTA - BANYUWANGI ===');
                 // Pengeluaran untuk AKAP Ekonomi Yogyakarta-Banyuwangi
                 totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
@@ -223,12 +291,11 @@ class PremiBersihCalculator {
                 print('Lain-lain: $pengeluaranLainLain');
                 print('Total Pengeluaran: $totalPengeluaran');
 
-                pendBersih = pendapatanKotor - totalPengeluaran;
+                pendBersih = (pendapatanKotor - totalPengeluaran)+nominalTiketOperan;
                 print('Pendapatan Bersih (Kotor - Pengeluaran): $pendBersih');
 
                 // Premi berdasarkan pendapatan bersih
                 nominalPremiExtra = pendBersih * persenPremiExtra;
-                // nominalPremiKru = pendBersih * persenPremiKru;
                 nominalPremiKru   = pendBersih * (persenPremiKru - persenPremiExtra);
 
                 print('Premi Extra ($persenPremiExtra): $nominalPremiExtra');
@@ -254,10 +321,65 @@ class PremiBersihCalculator {
                 print('Pendapatan Bagasi: $pendapatanBagasi');
                 print('Tiket Online: $nominalTiketOnline');
                 print('Pendapatan Disetor: $pendDisetor');
+                print('Nominal Susukan: $nominalSusukan');
                 break;
 
               case '3471352901':
                 print('=== [DEBUG] PROCESSING: YOG-SMP ===');
+                // ===============================
+                // HITUNG PENDAPATAN KESELURUHAN
+                // ===============================
+                final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+
+                // ===============================
+                // CARI PERSENTASE SUSUKAN
+                // ===============================
+                PersentaseSusukan? matchedPersen;
+
+                for (final item in persentaseSusukanList) {
+                  if (nominalTiketReguler >= item.nominalDari &&
+                      nominalTiketReguler <= item.nominalSampai) {
+                    matchedPersen = item;
+                    break;
+                  }
+                }
+
+                // ===============================
+                // NORMALISASI PERSEN SUSUKAN
+                // ===============================
+                final double persenSusukanRaw = matchedPersen?.persentase ?? 0.0;
+                final double persenSusukan = persenSusukanRaw > 1 ? persenSusukanRaw / 100 : persenSusukanRaw;
+
+                nominalSusukan = nominalTiketReguler * persenSusukan;
+
+                // ===============================
+                // HITUNG PENDAPATAN KOTOR
+                // ===============================
+                double pendapatanKotor = nominalTiketReguler - nominalSusukan;
+
+                if (nominalTiketOperan > 0) {
+                  pendapatanKotor -= nominalTiketOperan;
+                } else if (operan > 0) {
+                  pendapatanKotor -= operan;
+                }
+
+                // ===============================
+                // DEBUG LOG
+                // ===============================
+                print('=== [DEBUG SUSUKAN] ===');
+                print('Pendapatan Keseluruhan : $pendKeseluruhan');
+                print('Tiket Reguler          : $nominalTiketReguler');
+                print('Persen Susukan (raw)   : $persenSusukanRaw');
+                print('Persen Susukan (%)     : ${persenSusukan * 100}');
+                print('Nominal Susukan        : $nominalSusukan');
+                print('Operan Nominal         : $nominalTiketOperan');
+                print('Operan                : $operan');
+                print('Pendapatan Kotor       : $pendapatanKotor');
+
+                print('=== [DEBUG] BASE CALCULATIONS ===');
+                print('Pendapatan Keseluruhan: $pendKeseluruhan');
+                print('Pendapatan Kotor (Reguler - Operan): $pendapatanKotor');
+
                 // Pengeluaran untuk AKAP Ekonomi YOG-SMP
                 totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranSuramadu;
 
@@ -303,9 +425,17 @@ class PremiBersihCalculator {
                 print('Pendapatan Bagasi: $pendapatanBagasi');
                 print('Tiket Online: $nominalTiketOnline');
                 print('Pendapatan Disetor: $pendDisetor');
+                print('Nominal Susukan: $nominalSusukan');
                 break;
 
               default:
+                final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+                final double pendapatanKotor = (nominalTiketReguler) - operan;
+
+                print('=== [DEBUG] BASE CALCULATIONS ===');
+                print('Pendapatan Keseluruhan: $pendKeseluruhan');
+                print('Pendapatan Kotor (Reguler - Operan): $pendapatanKotor');
+
                 print('=== [DEBUG] PROCESSING: AKAP EKONOMI DEFAULT ===');
                 // Default calculation for AKAP Ekonomi lainnya
                 totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
@@ -326,6 +456,8 @@ class PremiBersihCalculator {
 
           case 'AKDP':
             print('=== [DEBUG] PROCESSING: AKDP ===');
+            final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+            final double pendapatanKotor = (nominalTiketReguler) - operan;
             switch (userData.namaTrayek) {
               case 'JEMBER - KALIANGET':
               case 'KALIANGET - JEMBER':
@@ -341,6 +473,8 @@ class PremiBersihCalculator {
 
       case 'Non Ekonomi':
         print('=== [DEBUG] PROCESSING: NON EKONOMI ===');
+        final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+        final double pendapatanKotor = (nominalTiketReguler) - operan;
         switch (userData.jenisTrayek) {
           case 'AKDP':
             print('=== [DEBUG] PROCESSING: AKDP ===');
@@ -382,6 +516,7 @@ class PremiBersihCalculator {
     print('Nominal Premi Kru: $nominalPremiKru');
     print('Pendapatan Bersih: $pendBersih');
     print('Pendapatan Disetor: $pendDisetor');
+    print('Nominal Susukan x: $nominalSusukan');
     print('Total Pengeluaran: $totalPengeluaran');
     print('=== [DEBUG] END CALCULATION ===');
 
@@ -390,6 +525,7 @@ class PremiBersihCalculator {
       'nominalPremiKru': nominalPremiKru,
       'pendapatanBersih': pendBersih,
       'pendapatanDisetor': pendDisetor,
+      'nominalSusukan': nominalSusukan,
       'totalPendapatan': pendKeseluruhan,
       'totalPengeluaran': totalPengeluaran,
       'sisaPendapatan': sisaPendapatan,
@@ -408,42 +544,44 @@ class PremiBersihCalculator {
     required Map<int, TextEditingController> controllers,
     required User userData,
   }) {
-    final double nominalPremiExtra = calculationResult['nominalPremiExtra'] as double;
-    final double nominalPremiKru = calculationResult['nominalPremiKru'] as double;
-    final double pendapatanBersih = calculationResult['pendapatanBersih'] as double;
-    final double pendapatanDisetor = calculationResult['pendapatanDisetor'] as double;
-
-    // Update field-field berdasarkan ID tag yang sesuai
-    // Premi Atas (ID 27)
-    final premiAtasController = controllers[27];
-    if (premiAtasController != null) {
-      premiAtasController.text = nominalPremiExtra.toStringAsFixed(0);
+    // Helper untuk ambil double dari map, aman null dan int
+    double getDouble(String key) {
+      final value = calculationResult[key];
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
     }
 
-    // Premi Bawah (ID 32)
-    final premiBawahController = controllers[32];
-    if (premiBawahController != null) {
-      premiBawahController.text = nominalPremiKru.toStringAsFixed(0);
+    final double nominalPremiExtra = getDouble('nominalPremiExtra');
+    final double nominalPremiKru   = getDouble('nominalPremiKru');
+    final double pendapatanBersih  = getDouble('pendapatanBersih');
+    final double pendapatanDisetor = getDouble('pendapatanDisetor');
+    final double nominalSusukan    = getDouble('nominalSusukan');
+
+    void setController(int id, double value) {
+      final controller = controllers[id];
+      if (controller != null) {
+        controller.text = value.toStringAsFixed(0);
+      }
     }
 
-    // Pendapatan Bersih (ID 60)
-    final pendapatanBersihController = controllers[60];
-    if (pendapatanBersihController != null) {
-      pendapatanBersihController.text = pendapatanBersih.toStringAsFixed(0);
-    }
-
-    // Pendapatan Disetor (ID 61)
-    final pendapatanDisetorController = controllers[61];
-    if (pendapatanDisetorController != null) {
-      pendapatanDisetorController.text = pendapatanDisetor.toStringAsFixed(0);
-    }
+    setController(27, nominalPremiExtra);  // Premi Atas
+    setController(32, nominalPremiKru);    // Premi Bawah
+    setController(60, pendapatanBersih);   // Pendapatan Bersih
+    setController(61, pendapatanDisetor);  // Pendapatan Disetor
+    setController(70, nominalSusukan);     // Nominal Susukan
 
     print('=== [DEBUG] Auto-calculated fields updated ===');
     print('Premi Atas (ID 27): $nominalPremiExtra');
     print('Premi Bawah (ID 32): $nominalPremiKru');
     print('Pendapatan Bersih (ID 60): $pendapatanBersih');
     print('Pendapatan Disetor (ID 61): $pendapatanDisetor');
+    print('Nominal Susukan (ID 70): $nominalSusukan');
   }
+
+
 
   /// Update controllers tanpa user data
   static void updateAutoCalculatedFieldsWithoutUser({
@@ -464,6 +602,7 @@ class PremiBersihCalculator {
     required List<TagTransaksi> tagPengeluaran,
     required List<TagTransaksi> tagPremi,
     required List<TagTransaksi> tagBersihSetoran,
+    required List<TagTransaksi> tagSusukan,
     required Map<int, TextEditingController> controllers,
     required Map<int, TextEditingController> jumlahControllers,
     required Map<int, TextEditingController> literSolarControllers,
@@ -472,12 +611,14 @@ class PremiBersihCalculator {
     final pengeluaranData = _collectTagData(tagPengeluaran, controllers, jumlahControllers, literSolarControllers);
     final premiData = _collectTagData(tagPremi, controllers, jumlahControllers, literSolarControllers);
     final bersihSetoranData = _collectTagData(tagBersihSetoran, controllers, jumlahControllers, literSolarControllers);
+    final susukanData = _collectTagData(tagBersihSetoran, controllers, jumlahControllers, literSolarControllers);
 
     return {
       'pendapatan': pendapatanData,
       'pengeluaran': pengeluaranData,
       'premi': premiData,
       'bersihSetoran': bersihSetoranData,
+      'susukan': susukanData,
     };
   }
 

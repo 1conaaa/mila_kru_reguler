@@ -345,7 +345,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
 
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: selectedKotaTujuan,
+                              initialValue: selectedKotaTujuan,
                               isDense: true,
                               decoration: InputDecoration(
                                 contentPadding:

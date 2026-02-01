@@ -18,6 +18,7 @@ class DebugUtils {
     required double totalPendapatan,
     required double totalPengeluaran,
     required double sisaPendapatan,
+    required double nominalSusukan,
     required double tolAdjustment,
   }) {
     print('=== HASIL KALKULASI YANG DIEKSTRAK ===');
@@ -28,6 +29,7 @@ class DebugUtils {
     print('💰 Total Pendapatan: $totalPendapatan');
     print('💰 Total Pengeluaran: $totalPengeluaran');
     print('💰 Sisa Pendapatan: $sisaPendapatan');
+    print('💰 Nominal Susukan: $nominalSusukan');
     print('💰 Tol Adjustment: $tolAdjustment');
     print('====================================');
   }

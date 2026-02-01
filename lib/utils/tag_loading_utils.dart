@@ -27,6 +27,7 @@ class TagLoadingUtils {
         'pengeluaran': [],
         'premi': [],
         'bersihSetoran': [],
+        'susukan': [],
       };
     }
 
@@ -47,6 +48,7 @@ class TagLoadingUtils {
         'pengeluaran': [],
         'premi': [],
         'bersihSetoran': [],
+        'susukan': [],
       };
     }
 
@@ -71,6 +73,7 @@ class TagLoadingUtils {
         'pengeluaran': [],
         'premi': [],
         'bersihSetoran': [],
+        'susukan': [],
       };
     }
 
@@ -80,10 +83,10 @@ class TagLoadingUtils {
     List<TagTransaksi> tagPengeluaran = [];
     List<TagTransaksi> tagPremi = [];
     List<TagTransaksi> tagBersihSetoran = [];
+    List<TagTransaksi> tagSusukan = [];
 
     for (final tag in allTags) {
-      int kategori =
-          int.tryParse(tag.kategoriTransaksi?.toString() ?? '2') ?? 2;
+      int kategori = int.tryParse(tag.kategoriTransaksi?.toString() ?? '2') ?? 2;
 
       switch (kategori) {
         case 1:
@@ -97,6 +100,9 @@ class TagLoadingUtils {
           break;
         case 4:
           tagBersihSetoran.add(tag);
+          break;
+        case 5:
+          tagSusukan.add(tag);
           break;
         default:
           tagPengeluaran.add(tag);
@@ -116,6 +122,7 @@ class TagLoadingUtils {
       'pengeluaran': tagPengeluaran, // ⬅️ SUDAH DIFILTER
       'premi': tagPremi,
       'bersihSetoran': tagBersihSetoran,
+      'susukan': tagSusukan,
     };
   }
 
@@ -126,6 +133,7 @@ class TagLoadingUtils {
     required List<TagTransaksi> pengeluaran,
     required List<TagTransaksi> premi,
     required List<TagTransaksi> bersihSetoran,
+    required List<TagTransaksi> susukan,
     required String kelasLayanan,
   }) {
     final List<TagTransaksi> result = [];
@@ -144,6 +152,11 @@ class TagLoadingUtils {
     // 4️⃣ TAB BERSIH / SETORAN (OPSIONAL)
     if (bersihSetoran.isNotEmpty) {
       result.addAll(bersihSetoran);
+    }
+
+    // 4️⃣ TAB SUSUKAN
+    if (susukan.isNotEmpty) {
+      result.addAll(susukan);
     }
 
     return result;

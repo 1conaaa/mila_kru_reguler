@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
+import 'package:mila_kru_reguler/utils/indonesian_number_input_formatter.dart';
+
 
 class SingleField extends StatelessWidget {
   final TagTransaksi tag;
@@ -35,6 +37,7 @@ class SingleField extends StatelessWidget {
         enabled: !readOnly,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
+          IndonesianNumberInputFormatter(), // ✅ FORMAT RIBUAN
         ],
         onChanged: (value) => onChanged(tag, value),
         validator: (value) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
+import 'package:mila_kru_reguler/utils/indonesian_number_input_formatter.dart';
 
 class FieldWithJumlah extends StatelessWidget {
   final TagTransaksi tag;
@@ -64,7 +65,7 @@ class FieldWithJumlah extends StatelessWidget {
                 textAlign: TextAlign.right,
                 keyboardType: TextInputType.number,
                 inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly
+                  FilteringTextInputFormatter.digitsOnly,IndonesianNumberInputFormatter(),
                 ],
                 onChanged: (value) {
                   if (!readOnly) onChanged(tag, value);

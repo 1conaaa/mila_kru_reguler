@@ -750,7 +750,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
               SizedBox(height: 20),
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(labelText: 'Pilih Jenis Paket'),
-                value: selectedJenisPaket,
+                initialValue: selectedJenisPaket,
                 items: jenisPaket.map((item) {
                   String combinedValue =
                       '${item['id']} - ${item['persen']} - ${item['harga_paket']}';

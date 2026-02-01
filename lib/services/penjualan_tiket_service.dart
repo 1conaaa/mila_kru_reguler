@@ -220,7 +220,7 @@ class PenjualanTiketService {
           UNION ALL
           SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
           FROM penjualan_tiket
-          WHERE kategori_tiket IN ('langganan','operan','sepi','tni','pelajar') AND status = 'Y' AND id_metode_bayar = '1'
+          WHERE kategori_tiket IN ('langganan','sepi','tni','pelajar') AND status = 'Y' AND id_metode_bayar = '1'
           GROUP BY rit
         ) x
       ''');
@@ -242,6 +242,41 @@ class PenjualanTiketService {
       'rit': rit,
       'totalPendapatanReguler': totalPendapatanReguler,
       'jumlahTiketReguler': jumlahTiketReguler,
+    };
+  }
+
+  Future<Map<String, int>> getSumJumlahTagihanOperan(String? kelasBus) async {
+    final db = await database;
+    List<Map<String, dynamic>> result;
+
+    if (kelasBus == 'Ekonomi') {
+      result = await db.rawQuery('''
+        SELECT SUM(x.total_tagihan) AS total_tagihan, SUM(x.jumlah_tiket) AS jumlah_tiket, SUM(x.rit) AS rit
+        FROM (
+          SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
+          FROM penjualan_tiket
+          WHERE kategori_tiket IN ('operan') AND status = 'Y' AND id_metode_bayar = '1'
+          GROUP BY rit
+        ) x
+      ''');
+    } else if (kelasBus == 'Non Ekonomi') {
+      result = await db.rawQuery('''
+        SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, SUM(rit) AS rit
+        FROM penjualan_tiket
+        WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'online') AND status = 'Y' AND id_metode_bayar = '1'
+      ''');
+    } else {
+      return {'rit': 0, 'totalPendapatanOperan': 0, 'jumlahTiketOperan': 0};
+    }
+
+    int rit = result.isNotEmpty ? result[0]['rit']?.toInt() ?? 0 : 0;
+    int totalPendapatanOperan = result.isNotEmpty ? result[0]['total_tagihan']?.toInt() ?? 0 : 0;
+    int jumlahTiketOperan = result.isNotEmpty ? result[0]['jumlah_tiket']?.toInt() ?? 0 : 0;
+
+    return {
+      'rit': rit,
+      'totalPendapatanOperan': totalPendapatanOperan,
+      'jumlahTiketOperan': jumlahTiketOperan,
     };
   }
 

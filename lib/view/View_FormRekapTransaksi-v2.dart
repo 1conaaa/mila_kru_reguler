@@ -132,6 +132,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
   List<TagTransaksi> tagPengeluaran = [];
   List<TagTransaksi> tagPremi = [];
   List<TagTransaksi> tagBersihSetoran = [];
+  List<TagTransaksi> tagSusukan = [];
 
   // Tambahkan deklarasi userData
   User? _user;
@@ -302,6 +303,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     tagPengeluaran.clear();
     tagPremi.clear();
     tagBersihSetoran.clear();
+    tagSusukan.clear();
 
     _controllers.clear();
     _jumlahControllers.clear();
@@ -317,10 +319,8 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     final firstUser = users.first;
 
     // Ambil tag dari kolom user (SQLite)
-    final String? tagPendapatanStr =
-    firstUser['tag_transaksi_pendapatan']?.toString();
-    final String? tagPengeluaranStr =
-    firstUser['tag_transaksi_pengeluaran']?.toString();
+    final String? tagPendapatanStr = firstUser['tag_transaksi_pendapatan']?.toString();
+    final String? tagPengeluaranStr = firstUser['tag_transaksi_pengeluaran']?.toString();
 
     debugPrint("Tag Pendapatan dari DB: $tagPendapatanStr");
     debugPrint("Tag Pengeluaran dari DB: $tagPengeluaranStr");
@@ -353,8 +353,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     }
 
     // Ambil data tag dari DB
-    final allTags =
-    await TagTransaksiService().getTagTransaksiByIds(allIds);
+    final allTags = await TagTransaksiService().getTagTransaksiByIds(allIds);
 
     for (final tag in allTags) {
       int kategori = int.tryParse(
@@ -374,6 +373,9 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
         case 4:
           tagBersihSetoran.add(tag);
           break;
+        case 5:
+          tagSusukan.add(tag);
+          break;
         default:
           tagPengeluaran.add(tag);
       }
@@ -388,6 +390,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     debugPrint('Jumlah tag pengeluaran: ${tagPengeluaran.length}');
     debugPrint('Jumlah tag premi: ${tagPremi.length}');
     debugPrint('Jumlah tag bersih/setoran: ${tagBersihSetoran.length}');
+    debugPrint('Jumlah tag susukan: ${tagSusukan.length}');
 
     // Isi controller dari transaksi terakhir (kalau ada)
     await _loadLastRekapTransaksi();
@@ -910,6 +913,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
       tagPengeluaran: tagPengeluaran,
       tagPremi: tagPremi,
       tagBersihSetoran: tagBersihSetoran,
+      tagSusukan: tagSusukan,
       controllers: _controllers,
       jumlahControllers: _jumlahControllers,
       literSolarControllers: _literSolarControllers,

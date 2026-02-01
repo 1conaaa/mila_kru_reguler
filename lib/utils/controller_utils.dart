@@ -11,6 +11,8 @@ class ControllerUtils {
     required int jumlahTiketOnlineValue,
     required double totalPendapatanBagasiValue,
     required int jumlahBarangBagasiValue,
+    required double totalPendapatanOperanValue,
+    required int jumlahTiketOperanValue,
   }) {
     print('=== MENGISI CONTROLLER PENDAPATAN ===');
 
@@ -21,6 +23,15 @@ class ControllerUtils {
     if (jumlahControllers.containsKey(1)) {
       jumlahControllers[1]!.text = jumlahTiketRegulerValue.toString();
       print('✓ _jumlahControllers[1] diisi: $jumlahTiketRegulerValue');
+    }
+
+    if (controllers.containsKey(71)) {
+      controllers[71]!.text = totalPendapatanOperanValue.toInt().toString();
+      print('✓ _controllers[1] diisi: ${totalPendapatanOperanValue.toInt()}');
+    }
+    if (jumlahControllers.containsKey(71)) {
+      jumlahControllers[71]!.text = jumlahTiketOperanValue.toString();
+      print('✓ _jumlahControllers[1] diisi: $jumlahTiketOperanValue');
     }
 
     if (controllers.containsKey(2)) {

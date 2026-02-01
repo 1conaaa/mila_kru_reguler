@@ -6,10 +6,15 @@ import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 class RekapTransaksiForm extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController kmMasukGarasiController;
+
+  // 🔥 TAMBAHAN
+  final TextEditingController nominalPersenSusukanController;
+
   final List<TagTransaksi> tagPendapatan;
   final List<TagTransaksi> tagPengeluaran;
   final List<TagTransaksi> tagPremi;
   final List<TagTransaksi> tagBersihSetoran;
+  final List<TagTransaksi> tagSusukan;
   final Map<int, TextEditingController> controllers;
   final Map<int, TextEditingController> jumlahControllers;
   final Map<int, TextEditingController> literSolarControllers;
@@ -28,10 +33,15 @@ class RekapTransaksiForm extends StatelessWidget {
     Key? key,
     required this.formKey,
     required this.kmMasukGarasiController,
+
+    // 🔥 WAJIB DI-CONSTRUCTOR
+    required this.nominalPersenSusukanController,
+
     required this.tagPendapatan,
     required this.tagPengeluaran,
     required this.tagPremi,
     required this.tagBersihSetoran,
+    required this.tagSusukan,
     required this.controllers,
     required this.jumlahControllers,
     required this.literSolarControllers,
@@ -52,10 +62,15 @@ class RekapTransaksiForm extends StatelessWidget {
     return ViewFormRekapTransaksi(
       formKey: formKey,
       kmMasukGarasiController: kmMasukGarasiController,
+
+      // 🔥 TERUSKAN KE VIEW
+      nominalPersenSusukanController: nominalPersenSusukanController,
+
       tagPendapatan: tagPendapatan,
       tagPengeluaran: tagPengeluaran,
       tagPremi: tagPremi,
       tagBersihSetoran: tagBersihSetoran,
+      tagSusukan: tagSusukan,
       controllers: controllers,
       jumlahControllers: jumlahControllers,
       literSolarControllers: literSolarControllers,

@@ -1,14 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/models/PersenPremiKru.dart';
 import 'package:mila_kru_reguler/services/persen_premi_kru_service.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';

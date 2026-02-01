@@ -354,8 +354,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> {
     }
 
     // Ambil data tag dari DB
-    final allTags =
-    await TagTransaksiService().getTagTransaksiByIds(allIds);
+    final allTags = await TagTransaksiService().getTagTransaksiByIds(allIds);
 
     for (final tag in allTags) {
       int kategori = int.tryParse(

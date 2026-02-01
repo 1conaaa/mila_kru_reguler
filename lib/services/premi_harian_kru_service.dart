@@ -207,50 +207,80 @@ class PremiHarianKruService {
   }
 
   // Bulk insert data premi harian kru
-  Future<void> insertBulkPremiHarianKru(List<PremiHarianKru> premiList) async {
+  Future<void> insertBulkPremiHarianKru(
+      List<PremiHarianKru> premiList) async {
     try {
       final db = await _databaseHelper.database;
-      print("🗄️ DB isOpen: ${db.isOpen}");
 
-      print("📥 Mulai bulk insert premi harian kru");
-      print("📊 Total data diterima: ${premiList.length}");
+      print("📥 Mulai bulk UPSERT premi harian kru");
+      print("📊 Total data: ${premiList.length}");
 
       final batch = db.batch();
 
-      int index = 1;
       for (final premi in premiList) {
         final mapData = premi.toMap();
 
-        print("--------------------------------------------------");
-        print("➡️ Data #$index yang akan disimpan:");
-        mapData.forEach((key, value) {
-          print("   • $key : $value");
-        });
+        final int idTransaksi = mapData['id_transaksi'];
+        final int idUser = mapData['id_user'];
+        final int idGroup = mapData['id_group'];
 
-        batch.insert(
+        /// 🔑 NORMALISASI TANGGAL (HARI SAJA)
+        final String tanggalHari =
+        mapData['tanggal_simpan'].toString().substring(0, 10);
+
+        // 🔎 CEK DATA EXIST (PER HARI)
+        final List<Map<String, dynamic>> existing = await db.query(
           'premi_harian_kru',
-          mapData,
-          conflictAlgorithm: ConflictAlgorithm.replace,
+          where: '''
+          id_transaksi = ?
+          AND id_user = ?
+          AND id_group = ?
+          AND substr(tanggal_simpan, 1, 10) = ?
+        ''',
+          whereArgs: [
+            idTransaksi,
+            idUser,
+            idGroup,
+            tanggalHari,
+          ],
+          limit: 1,
         );
 
-        index++;
+        if (existing.isNotEmpty) {
+          final int rowId = existing.first['id'] as int;
+
+          print("🔄 UPDATE premi | rowId=$rowId");
+
+          batch.update(
+            'premi_harian_kru',
+            {
+              'persen_premi_disetor': mapData['persen_premi_disetor'],
+              'nominal_premi_disetor': mapData['nominal_premi_disetor'],
+              'status': mapData['status'],
+              'tanggal_simpan': DateTime.now().toIso8601String(),
+            },
+            where: 'id = ?',
+            whereArgs: [rowId],
+          );
+        } else {
+          print("➕ INSERT premi baru");
+
+          batch.insert(
+            'premi_harian_kru',
+            {
+              ...mapData,
+              'tanggal_simpan': DateTime.now().toIso8601String(),
+            },
+          );
+        }
       }
 
-      final results = await batch.commit(noResult: false);
+      await batch.commit(noResult: true);
 
-      print("--------------------------------------------------");
-      print("✅ Batch commit selesai");
-      print("📊 Jumlah operasi DB: ${results.length}");
-
-      for (int i = 0; i < results.length; i++) {
-        print("   ✔️ Insert result #${i + 1}: ${results[i]}");
-      }
-
-      print("🎉 ${premiList.length} data premi harian kru berhasil disimpan");
+      print("✅ Premi harian kru berhasil di-UPSERT");
     } catch (e, stackTrace) {
-      print("❌ Error bulk insert premi harian kru");
-      print("   Error: $e");
-      print("   StackTrace:");
+      print("❌ Error bulk premi harian kru");
+      print(e);
       print(stackTrace);
       rethrow;
     }
