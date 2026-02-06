@@ -655,10 +655,7 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
       /// ================= ID TRANSAKSI =================
       final idTransaksi = _rekapService.generateTransactionId(idUser);
 
-      DebugUtils.printSaveProgress(
-        '=== MULAI SIMPAN REKAP ===',
-        'Tanggal: $formattedDate | Rit: $ritValue | ID: $idTransaksi',
-      );
+      DebugUtils.printSaveProgress('=== MULAI SIMPAN REKAP ===','Tanggal: $formattedDate | Rit: $ritValue | ID: $idTransaksi',);
 
       final List<SetoranKru> semuaSetoran = [];
 

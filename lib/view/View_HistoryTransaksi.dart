@@ -230,46 +230,27 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     // ================================
     // FILTER BERDASARKAN KOTA TUJUAN
     // ================================
-    final List<Map<String, dynamic>> filteredPenjualan =
-    selectedKotaTujuan == 'SEMUA'
-        ? listPenjualan
-        : listPenjualan.where((e) {
+    final List<Map<String, dynamic>> filteredPenjualan = selectedKotaTujuan == 'SEMUA' ? listPenjualan : listPenjualan.where((e) {
       final rute = e['rute_kota']?.toString() ?? '';
       if (!rute.contains(' - ')) return false;
       final kotaTujuan = rute.split(' - ').last.trim();
       return kotaTujuan == selectedKotaTujuan;
     }).toList();
 
-    debugPrint(
-      "🔍 Filter TUJUAN: $selectedKotaTujuan | data: ${filteredPenjualan.length}",
-    );
+    debugPrint("🔍 Filter TUJUAN: $selectedKotaTujuan | data: ${filteredPenjualan.length}",);
 
     // ==========================================
     // 2️⃣ FLAG STATUS (INI YANG KAMU TANYAKAN)
     // ==========================================
-    final bool allTujuanSudahTurun =
-        selectedKotaTujuan != 'SEMUA' &&
-            filteredPenjualan.isNotEmpty &&
-            filteredPenjualan.every(
-                  (e) => (e['is_turun'] ?? 0) == 1,
-            );
+    final bool allTujuanSudahTurun = selectedKotaTujuan != 'SEMUA' && filteredPenjualan.isNotEmpty && filteredPenjualan.every((e) => (e['is_turun'] ?? 0) == 1,);
 
     // ================================
     // TOTAL PENUMPANG PER KOTA TUJUAN
     // ================================
 
-    final num totalPerKotaTujuan =
-    selectedKotaTujuan == 'SEMUA'
-        ? 0
-        : filteredPenjualan.fold(
-      0,
-          (total, item) => total + (item['jumlah_tiket'] ?? 0),
-    );
+    final num totalPerKotaTujuan = selectedKotaTujuan == 'SEMUA' ? 0 : filteredPenjualan.fold(0,(total, item) => total + (item['jumlah_tiket'] ?? 0),);
 
-    debugPrint(
-      "📍 Total tujuan $selectedKotaTujuan : $totalPerKotaTujuan",
-    );
-
+    debugPrint("📍 Total tujuan $selectedKotaTujuan : $totalPerKotaTujuan",);
 
     debugPrint("🔄 build() dipanggil");
 
@@ -552,18 +533,13 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                         "➡️ Render rute: $ruteKota | item: ${penjualanPerRute.length}",
                       );
 
-                      final num subtotalJumlahTiket = penjualanPerRute.fold(
-                        0,
-                            (total, pj) => total + (pj['jumlah_tiket'] ?? 0),
-                      );
+                      final num subtotalJumlahTiket = penjualanPerRute.fold(0,(total, pj) => total + (pj['jumlah_tiket'] ?? 0),);
 
                       final bool allSudahTurun = penjualanPerRute.every(
                             (item) => (item['is_turun'] ?? 0) == 1,
                       );
 
-                      debugPrint(
-                        "   └─ subtotal: $subtotalJumlahTiket | allSudahTurun: $allSudahTurun",
-                      );
+                      debugPrint("   └─ subtotal: $subtotalJumlahTiket | allSudahTurun: $allSudahTurun",);
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,

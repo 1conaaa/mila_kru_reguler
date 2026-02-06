@@ -213,7 +213,7 @@ class PenjualanTiketService {
       result = await db.rawQuery('''
         SELECT SUM(x.total_tagihan) AS total_tagihan, SUM(x.jumlah_tiket) AS jumlah_tiket, SUM(x.rit) AS rit
         FROM (
-          SELECT SUM(harga_kantor) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
+          SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
           FROM penjualan_tiket
           WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan', 'operan','sepi','tni','pelajar', 'online') AND status = 'Y' AND id_metode_bayar = '1'
           GROUP BY rit
@@ -317,14 +317,14 @@ class PenjualanTiketService {
            SUM(x.jumlah_tiket) AS jumlah_tiket, 
            SUM(x.rit) AS rit
     FROM (
-      SELECT SUM(harga_kantor) AS total_tagihan, 
+      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
       WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y'
       UNION ALL
-      SELECT SUM(harga_kantor) AS total_tagihan, 
+      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
@@ -340,14 +340,14 @@ class PenjualanTiketService {
            SUM(x.jumlah_tiket) AS jumlah_tiket, 
            SUM(x.rit) AS rit
     FROM (
-      SELECT SUM(harga_kantor) AS total_tagihan, 
+      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket
       WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
         AND status = 'Y'
       UNION ALL
-      SELECT SUM(harga_kantor) AS total_tagihan, 
+      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
              SUM(jumlah_tiket) AS jumlah_tiket, 
              rit
       FROM penjualan_tiket

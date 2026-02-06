@@ -104,7 +104,7 @@ class PremiBersihCalculator {
       'nominalTiketReguler': getValue(1),      // ID 1: Pendapatan Tiket Reguler
       'nominalTiketOnline': getValue(2),       // ID 2: Pendapatan Tiket Ota
       'pendapatanBagasi': getValue(3),         // ID 3: Pendapatan Bagasi
-      'pendapatanOperan': getValue(71),         // ID 3: Pendapatan Bagasi
+      'nominalTiketOperan': getValue(71),         // ID 3: Pendapatan Bagasi
 
       // Pengeluaran Operasional
       'pengeluaranTol': getValue(15),          // ID 15: Biaya Tol
@@ -225,62 +225,33 @@ class PremiBersihCalculator {
               //BWI-YOG BWI-STB-YOG
               case '3471351001':
               case '3471351002':
-            // ===============================
-            // HITUNG PENDAPATAN KESELURUHAN
-            // ===============================
-                          final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+                PersentaseSusukan? matchedPersen;
+                for (final item in persentaseSusukanList) {
+                  if (nominalTiketReguler >= item.nominalDari && nominalTiketReguler <= item.nominalSampai) {
+                    matchedPersen = item;
+                    break;
+                  }
+                }
 
-            // ===============================
-            // CARI PERSENTASE SUSUKAN
-            // ===============================
-                          PersentaseSusukan? matchedPersen;
+                final double persenSusukanRaw = matchedPersen?.persentase ?? 0.0;
+                final double persenSusukan = persenSusukanRaw > 1 ? persenSusukanRaw / 100 : persenSusukanRaw;
+                nominalSusukan = nominalTiketReguler * persenSusukan;
 
-                          for (final item in persentaseSusukanList) {
-                            if (nominalTiketReguler >= item.nominalDari &&
-                                nominalTiketReguler <= item.nominalSampai) {
-                              matchedPersen = item;
-                              break;
-                            }
-                          }
+                double pendapatanKotor = nominalTiketReguler;
 
-            // ===============================
-            // NORMALISASI PERSEN SUSUKAN
-            // ===============================
-                          final double persenSusukanRaw = matchedPersen?.persentase ?? 0.0;
-                          final double persenSusukan = persenSusukanRaw > 1 ? persenSusukanRaw / 100 : persenSusukanRaw;
+                print('=== [DEBUG SUSUKAN] ===');
+                print('Tiket Reguler          : $nominalTiketReguler');
+                print('Persen Susukan (raw)   : $persenSusukanRaw');
+                print('Persen Susukan (%)     : ${persenSusukan * 100}');
+                print('Nominal Susukan        : $nominalSusukan');
+                print('Operan Nominal         : $nominalTiketOperan');
+                print('Operan                : $operan');
 
-                          nominalSusukan = nominalTiketReguler * persenSusukan;
-
-            // ===============================
-            // HITUNG PENDAPATAN KOTOR
-            // ===============================
-                          double pendapatanKotor = nominalTiketReguler - nominalSusukan;
-
-                          if (nominalTiketOperan > 0) {
-                            pendapatanKotor -= nominalTiketOperan;
-                          } else if (operan > 0) {
-                            pendapatanKotor -= operan;
-                          }
-
-            // ===============================
-            // DEBUG LOG
-            // ===============================
-                          print('=== [DEBUG SUSUKAN] ===');
-                          print('Pendapatan Keseluruhan : $pendKeseluruhan');
-                          print('Tiket Reguler          : $nominalTiketReguler');
-                          print('Persen Susukan (raw)   : $persenSusukanRaw');
-                          print('Persen Susukan (%)     : ${persenSusukan * 100}');
-                          print('Nominal Susukan        : $nominalSusukan');
-                          print('Operan Nominal         : $nominalTiketOperan');
-                          print('Operan                : $operan');
-                          print('Pendapatan Kotor       : $pendapatanKotor');
-
-              print('=== [DEBUG] BASE CALCULATIONS ===');
-                print('Pendapatan Keseluruhan: $pendKeseluruhan');
-                print('Pendapatan Kotor (Reguler - TiketOperan): $pendapatanKotor');
+                print('=== [DEBUG] BASE CALCULATIONS ===');
+                print('Pendapatan Kotor (Tiket Reguler): $pendapatanKotor');
                 print('=== [DEBUG] PROCESSING: YOGYAKARTA - BANYUWANGI ===');
                 // Pengeluaran untuk AKAP Ekonomi Yogyakarta-Banyuwangi
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + nominalSusukan;
 
                 print('=== [DEBUG] PENGELUARAN DETAIL ===');
                 print('Solar: $nominalsolar');
@@ -291,8 +262,13 @@ class PremiBersihCalculator {
                 print('Lain-lain: $pengeluaranLainLain');
                 print('Total Pengeluaran: $totalPengeluaran');
 
-                pendBersih = (pendapatanKotor - totalPengeluaran)+nominalTiketOperan;
-                print('Pendapatan Bersih (Kotor - Pengeluaran): $pendBersih');
+                if (operan > 0) {
+                  pendBersih = (pendapatanKotor - totalPengeluaran) - operan;
+                  print('1. Pendapatan Bersih (Kotor - Pengeluaran) - operan: $pendBersih');
+                }else{
+                  pendBersih = (pendapatanKotor - totalPengeluaran) + nominalTiketOperan;
+                  print('2. Pendapatan Bersih (Kotor - Pengeluaran) + nominalTiketOperan: $pendBersih');
+                }
 
                 // Premi berdasarkan pendapatan bersih
                 nominalPremiExtra = pendBersih * persenPremiExtra;
@@ -326,42 +302,19 @@ class PremiBersihCalculator {
 
               case '3471352901':
                 print('=== [DEBUG] PROCESSING: YOG-SMP ===');
-                // ===============================
-                // HITUNG PENDAPATAN KESELURUHAN
-                // ===============================
-                final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
-
-                // ===============================
-                // CARI PERSENTASE SUSUKAN
-                // ===============================
                 PersentaseSusukan? matchedPersen;
 
                 for (final item in persentaseSusukanList) {
-                  if (nominalTiketReguler >= item.nominalDari &&
-                      nominalTiketReguler <= item.nominalSampai) {
+                  if (nominalTiketReguler >= item.nominalDari && nominalTiketReguler <= item.nominalSampai) {
                     matchedPersen = item;
                     break;
                   }
                 }
-
-                // ===============================
-                // NORMALISASI PERSEN SUSUKAN
-                // ===============================
                 final double persenSusukanRaw = matchedPersen?.persentase ?? 0.0;
                 final double persenSusukan = persenSusukanRaw > 1 ? persenSusukanRaw / 100 : persenSusukanRaw;
 
                 nominalSusukan = nominalTiketReguler * persenSusukan;
-
-                // ===============================
-                // HITUNG PENDAPATAN KOTOR
-                // ===============================
-                double pendapatanKotor = nominalTiketReguler - nominalSusukan;
-
-                if (nominalTiketOperan > 0) {
-                  pendapatanKotor -= nominalTiketOperan;
-                } else if (operan > 0) {
-                  pendapatanKotor -= operan;
-                }
+                double pendapatanKotor = nominalTiketReguler;
 
                 // ===============================
                 // DEBUG LOG
@@ -374,17 +327,20 @@ class PremiBersihCalculator {
                 print('Nominal Susukan        : $nominalSusukan');
                 print('Operan Nominal         : $nominalTiketOperan');
                 print('Operan                : $operan');
-                print('Pendapatan Kotor       : $pendapatanKotor');
 
                 print('=== [DEBUG] BASE CALCULATIONS ===');
-                print('Pendapatan Keseluruhan: $pendKeseluruhan');
-                print('Pendapatan Kotor (Reguler - Operan): $pendapatanKotor');
+                print('Pendapatan Kotor (Tiket Reguler): $pendapatanKotor');
 
                 // Pengeluaran untuk AKAP Ekonomi YOG-SMP
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranSuramadu;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranSuramadu + nominalSusukan;
 
-                pendBersih = pendapatanKotor - totalPengeluaran;
-                print('Pendapatan Bersih (Kotor - Pengeluaran): $pendBersih');
+                if (operan > 0) {
+                  pendBersih = (pendapatanKotor - totalPengeluaran) - operan;
+                  print('1. Pendapatan Bersih (Kotor - Pengeluaran) - operan: $pendBersih');
+                }else{
+                  pendBersih = (pendapatanKotor - totalPengeluaran) + nominalTiketOperan;
+                  print('2. Pendapatan Bersih (Kotor - Pengeluaran) + nominalTiketOperan: $pendBersih');
+                }
 
                 // Premi berdasarkan pendapatan bersih
                 nominalPremiExtra = pendBersih * persenPremiExtra;
