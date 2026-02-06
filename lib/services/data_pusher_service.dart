@@ -130,7 +130,7 @@ class DataPusherService {
     final String noPol = prefs.getString('noPol') ?? '';
     final String kodeTrayek = prefs.getString('kode_trayek') ?? '';
 
-    final List<Map<String, dynamic>> premiKruData = await _premiHarianKruService.getPremiHarianKruWithKruBisByStatus('Y');
+    final List<Map<String, dynamic>> premiKruData = await _premiHarianKruService.getPremiHarianKruWithKruBisByStatus('N');
 
     if (premiKruData.isEmpty) {
       print('Tidak ada data premi harian kru dengan status \'N\'');
@@ -207,7 +207,7 @@ class DataPusherService {
     try {
       // Get setoran kru data with status 'N'
       final List<SetoranKru> setoranKruData = await _setoranKruService.getAllSetoran();
-      final List<SetoranKru> setoranKruToSend = setoranKruData.where((setoran) => setoran.status == 'Y').toList();
+      final List<SetoranKru> setoranKruToSend = setoranKruData.where((setoran) => setoran.status == 'N').toList();
 
       if (setoranKruToSend.isEmpty) {
         print('Tidak ada data setoran kru dengan status \'N\'');
