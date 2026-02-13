@@ -19,6 +19,8 @@ class _HistoryBagasiBusState extends State<HistoryBagasiBus> {
   int idBus = 0;
   String? noPol;
   late String token;
+  bool _isSending = false;
+
 
   DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
@@ -87,6 +89,8 @@ class _HistoryBagasiBusState extends State<HistoryBagasiBus> {
       print('Mengirim data berikut: $item'); // Menampilkan nilai yang dikirim
       await sendInspectionResult(item);
     }
+    // 🔥 REFRESH DATA SETELAH SEMUA TERKIRIM
+    await _getInspectionResults();
   }
 
   @override
@@ -100,16 +104,20 @@ class _HistoryBagasiBusState extends State<HistoryBagasiBus> {
             child: Tooltip(
               message: 'Kirim Hasil Pengecekan', // Label tooltip
               child: IconButton(
-                icon: Icon(
+                icon: _isSending
+                    ? CircularProgressIndicator(color: Colors.green)
+                    : Icon(
                   Icons.cloud_upload,
-                  color: Colors.green, // Warna hijau pada ikon
-                  size: 30.0, // Ukuran ikon yang diperbesar
+                  color: Colors.green,
+                  size: 30.0,
                 ),
-                onPressed: () async {
-                  // Mengirim semua hasil pengecekan ke API
+                onPressed: _isSending
+                    ? null
+                    : () async {
+                  setState(() => _isSending = true);
                   await sendAllInspectionResults();
+                  setState(() => _isSending = false);
                 },
-                tooltip: 'Kirim Hasil Pengecekan', // Label tooltip
               ),
             ),
           ),

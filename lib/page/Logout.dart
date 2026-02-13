@@ -35,8 +35,8 @@ class Logout extends StatelessWidget {
 
       await userService.clearUsersTable();
       await databaseHelper.clearKruBis();
-      await databaseHelper.clearListKota();
-      await databaseHelper.clearRuteTrayekUrutan();
+      // await databaseHelper.clearListKota();
+      // await databaseHelper.clearRuteTrayekUrutan();
       await penjualanTiketService.clearPenjualanTiket();
       await databaseHelper.clearResumeTransaksi();
       await premiHarianKruService.clearPremiHarianKru();

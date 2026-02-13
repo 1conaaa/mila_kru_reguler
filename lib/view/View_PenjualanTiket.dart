@@ -123,6 +123,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
   String? fotoLocalPath;
   String? fotoFileName;
 
+  final NumberFormat ribuanFormatter =
+  NumberFormat.decimalPattern('id_ID');
+
   @override
   void initState() {
     super.initState();
@@ -1793,39 +1796,56 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           style: TextStyle(fontSize: 18),
                           enabled: isHargaTarikanEditable, // ← aturan baru
                           onChanged: (value) async {
-                            setState(() {
-                              jumlahTagihan = double.tryParse(value.replaceAll('.', '').replaceAll(',', '')) ?? 0.0;
-                            });
+                            // 🔴 cegah loop format
+                            final cleanValue = value.replaceAll('.', '');
 
-                            // Ambil persen susukan
+                            final number = int.tryParse(cleanValue);
+                            if (number == null) return;
+
+                            // 🔹 format ribuan
+                            final formatted = ribuanFormatter.format(number);
+
+                            // 🔹 update controller HANYA jika berbeda
+                            if (tagihanController.text != formatted) {
+                              tagihanController.value = TextEditingValue(
+                                text: formatted,
+                                selection: TextSelection.collapsed(
+                                  offset: formatted.length,
+                                ),
+                              );
+                            }
+
+                            // ==============================
+                            // LOGIC KAMU (TIDAK DIUBAH)
+                            // ==============================
+                            jumlahTagihan = number.toDouble();
+
                             final prefs = await SharedPreferences.getInstance();
                             String? persenStr = prefs.getString('persenSusukanKru');
 
                             double persenKru = 0.0;
-
                             if (persenStr != null && persenStr.contains('%')) {
-                              persenKru = double.tryParse(
-                                persenStr.replaceAll('%', '').trim(),
-                              ) ?? 0.0;
+                              persenKru =
+                                  double.tryParse(persenStr.replaceAll('%', '').trim()) ?? 0.0;
                             } else if (persenStr != null) {
                               persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
                             }
 
                             double persen = persenKru / 100;
 
-                            // Hitung ulang harga kantor
-                            double hargaKantorHitung = jumlahTagihan - (jumlahTagihan * persen);
+                            double hargaKantorHitung =
+                                jumlahTagihan - (jumlahTagihan * persen);
 
-                            // Dibulatkan jika perlu
                             int hargaKantorBulat = hargaKantorHitung.toInt();
                             if (hargaKantorBulat < 0) hargaKantorBulat = 0;
 
                             setState(() {
                               _hargaKantorCalculated = hargaKantorBulat.toDouble();
-                              hargaKantorController.text = formatter.format(hargaKantorBulat);
+                              hargaKantorController.text =
+                                  ribuanFormatter.format(hargaKantorBulat);
 
-                              // Kembalian tetap dihitung
-                              _calculateKembalian(jumlahBayar.toDouble(), jumlahTagihan);
+                              _calculateKembalian(
+                                  jumlahBayar.toDouble(), jumlahTagihan);
                             });
                           },
                           inputFormatters: <TextInputFormatter>[

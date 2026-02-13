@@ -164,7 +164,6 @@ class _PremiKruState extends State<PremiKru> {
       print("✅ PUSH DATA BERHASIL");
       print("🔰 ID TRANSAKSI: $idTransaksi");
 
-
       // =============================
       // 🔄 REFRESH DATA UI
       // =============================
@@ -293,22 +292,17 @@ class _PremiKruState extends State<PremiKru> {
             final Map<String, List<dynamic>> groupedData = {};
 
             for (var item in setoranList) {
-              final key =
-                  '${item.noPol}_${item.tglTransaksi}_${item.kodeTrayek}';
+              final key = '${item.noPol}_${item.tglTransaksi}_${item.kodeTrayek}';
 
               groupedData.putIfAbsent(key, () => []);
               groupedData[key]!.add(item);
             }
 
             // ===== AMBIL TANGGAL LAPORAN DARI DATA =====
-            String tanggalLaporan = "-";
-            if (groupedData.isNotEmpty) {
-              final firstGroup = groupedData.values.first.first;
-              tanggalLaporan = firstGroup.tglTransaksi ?? "-";
-              if (tanggalLaporan.length > 10) {
-                tanggalLaporan = tanggalLaporan.substring(0, 10);
-              }
-            }
+            // ===== TANGGAL LAPORAN DARI DATE PICKER =====
+            final DateTime tanggalDipilih = _selectedDate ?? DateTime.now();
+
+            final String tanggalLaporan = DateFormat('dd-MM-yyyy').format(tanggalDipilih);
 
             return [
               // ================= HEADER =================
@@ -341,7 +335,14 @@ class _PremiKruState extends State<PremiKru> {
                 final first = items.first;
 
                 String tgl = first.tglTransaksi ?? '-';
-                if (tgl.length > 10) tgl = tgl.substring(0, 10);
+                if (tgl != '-') {
+                  try {
+                    DateTime parsedDate = DateTime.parse(tgl.substring(0, 10));
+                    tgl = DateFormat('dd MMMM yyyy', 'id_ID').format(parsedDate);
+                  } catch (e) {
+                    // Jika parsing gagal, biarkan tetap format awal
+                  }
+                }
 
                 return pw.Container(
                   margin: const pw.EdgeInsets.only(bottom: 12),
@@ -361,15 +362,15 @@ class _PremiKruState extends State<PremiKru> {
                             crossAxisAlignment: pw.CrossAxisAlignment.start,
                             children: [
                               pw.Text(
-                                "No. Polisi: ${first.noPol ?? '-'}",
+                                "No. Polisi : ${first.noPol ?? '-'}",
                                 style: const pw.TextStyle(fontSize: 10),
                               ),
                               pw.Text(
-                                "Tanggal: $tgl",
+                                "Tanggal kirim : $tgl",
                                 style: const pw.TextStyle(fontSize: 10),
                               ),
                               pw.Text(
-                                "Trayek: ${first.kodeTrayek ?? '-'}",
+                                "Trayek : ${first.kodeTrayek ?? '-'}",
                                 style: const pw.TextStyle(fontSize: 10),
                               ),
                             ],
@@ -729,6 +730,10 @@ class _PremiKruState extends State<PremiKru> {
                                       DataColumn(label: Text("Status")),
                                     ],
                                     rows: setoranList.expand((s) {
+                                      if ([6, 7, 81].contains(s.idTagTransaksi)) {
+                                        return <DataRow>[];
+                                      }
+
                                       final rows = <DataRow>[];
 
                                       final isPremiAtas = s.idTagTransaksi == 27;

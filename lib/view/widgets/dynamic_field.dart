@@ -66,6 +66,13 @@ class _DynamicFieldState extends State<DynamicField> {
   /// TAG PENDAPATAN (HARUS SELALU TAMPIL)
   static const Set<int> tagPendapatanSet = {1, 2, 3, 71};
 
+  /// Nama tag yang disembunyikan
+  static const List<String> hiddenTagNames = [
+    'redbus',
+    'traveloka',
+    'sysconix',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -77,7 +84,6 @@ class _DynamicFieldState extends State<DynamicField> {
     if (!mounted || users.isEmpty) return;
 
     final u = users.first;
-
     final rawTagPengeluaran = u['tag_transaksi_pengeluaran']?.toString() ?? '';
 
     final parsedSet = rawTagPengeluaran
@@ -96,7 +102,19 @@ class _DynamicFieldState extends State<DynamicField> {
 
   bool isNonEditable(TagTransaksi tag) {
     final name = tag.nama?.toLowerCase() ?? '';
-    return name.contains('premi') || name.contains('bersih') || name.contains('disetor') || name.contains('susukan');
+    return name.contains('premi') ||
+        name.contains('bersih') ||
+        name.contains('disetor') ||
+        name.contains('susukan') ||
+        name.contains('redbus') ||
+        name.contains('traveloka') ||
+        name.contains('sysconix');
+  }
+
+  /// Fungsi untuk mengecek apakah tag harus disembunyikan
+  bool isHiddenTag(TagTransaksi tag) {
+    final name = tag.nama?.toLowerCase() ?? '';
+    return hiddenTagNames.any((hidden) => name.contains(hidden));
   }
 
   @override
@@ -112,25 +130,25 @@ class _DynamicFieldState extends State<DynamicField> {
 
     /// 1️⃣ FILTER TAG PENGELUARAN (BUKAN PENDAPATAN)
     if (!tagPendapatanSet.contains(tagId)) {
-      if (tagPengeluaranSet.isNotEmpty &&
-          !tagPengeluaranSet.contains(tagId)) {
-        debugPrint(
-          "=== [HIDE] Tag $tagId bukan bagian dari tagTransaksiPengeluaran ===",
-        );
+      if (tagPengeluaranSet.isNotEmpty && !tagPengeluaranSet.contains(tagId)) {
+        debugPrint("=== [HIDE] Tag $tagId bukan bagian dari tagTransaksiPengeluaran ===");
         return const SizedBox.shrink();
       }
     }
 
     /// 2️⃣ FILTER KHUSUS TRAYEK
-    if (trayek != null &&
-        hiddenTagsByTrayek[tagId]?.contains(trayek) == true) {
-      debugPrint(
-        "=== [HIDE] Tag $tagId disembunyikan oleh trayek $trayek ===",
-      );
+    if (trayek != null && hiddenTagsByTrayek[tagId]?.contains(trayek) == true) {
+      debugPrint("=== [HIDE] Tag $tagId disembunyikan oleh trayek $trayek ===");
       return const SizedBox.shrink();
     }
 
-    /// 3️⃣ RENDER FIELD
+    /// 3️⃣ FILTER HIDDEN TAGS
+    if (isHiddenTag(widget.tag)) {
+      debugPrint("=== [HIDE] Tag ${widget.tag.nama} termasuk dalam hiddenTagNames ===");
+      return const SizedBox.shrink();
+    }
+
+    /// 4️⃣ RENDER FIELD
     return Column(
       children: [
         if (widget.showJumlah && widget.requiresJumlah(widget.tag))
@@ -141,8 +159,7 @@ class _DynamicFieldState extends State<DynamicField> {
             readOnly: true,
             onChanged: widget.onFieldChanged,
           )
-        else if (widget.showLiterSolar &&
-            widget.requiresLiterSolar(widget.tag))
+        else if (widget.showLiterSolar && widget.requiresLiterSolar(widget.tag))
           FieldWithLiterSolar(
             tag: widget.tag,
             controllers: widget.controllers,
@@ -178,3 +195,4 @@ class _DynamicFieldState extends State<DynamicField> {
     );
   }
 }
+

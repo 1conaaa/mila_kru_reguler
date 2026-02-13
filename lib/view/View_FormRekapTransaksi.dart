@@ -95,6 +95,9 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
   TextEditingController keteranganPerbaikanController = TextEditingController();
   TextEditingController nominalperbaikanController = TextEditingController();
   TextEditingController pendapatanTiketRegulerController = TextEditingController();
+  TextEditingController totalFeeRedBusValueController = TextEditingController();
+  TextEditingController totalFeeTravelokaValueController = TextEditingController();
+  TextEditingController totalFeeSysconixValueController = TextEditingController();
   TextEditingController jumlahTiketRegulerController = TextEditingController();
   TextEditingController pendapatanTiketOperanController = TextEditingController();
   TextEditingController jumlahTiketOperanController = TextEditingController();
@@ -120,6 +123,10 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
   late DatabaseHelper databaseHelper;
   TextEditingController sarantagihanController = TextEditingController();
   NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: ' ');
+
+  double totalFeeRedBusValue = 0.0;
+  double totalFeeTravelokaValue = 0.0;
+  double totalFeeSysconixValue = 0.0;
 
   double get totalPendapatanReguler => 00;
   double totalPendapatanRegulerValue = 00;
@@ -225,6 +232,13 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
   }
 
   void _isiControllerPendapatan() {
+    ControllerUtils.fillOutcomeControllers(
+      controllers: _controllers,
+      totalFeeRedBusValue: totalFeeRedBusValue,
+      totalFeeTravelokaValue: totalFeeTravelokaValue,
+      totalFeeSysconixValue: totalFeeSysconixValue,
+    );
+
     ControllerUtils.fillIncomeControllers(
       controllers: _controllers,
       jumlahControllers: _jumlahControllers,
@@ -344,23 +358,38 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
     await databaseHelper.initDatabase();
     await _getUserData();
 
-    final rekapData = await _rekapHandler.loadLastRekapData(kelasBus);
+    final Map<String, dynamic> rekapData = await _rekapHandler.loadLastRekapData(kelasBus);
 
     print("=== DEBUG Rekap ===");
     print("Reguler: ${rekapData['reguler']}");
     print("Operan: ${rekapData['operan']}");
     print("Non Reguler: ${rekapData['nonReguler']}");
+    print("Fee OTA: ${rekapData['feeOTA']}");
     print("Bagasi: ${rekapData['bagasi']}");
 
     setState(() {
-      totalPendapatanRegulerValue = rekapData['reguler']['totalPendapatanReguler'];
-      jumlahTiketRegulerValue = rekapData['reguler']['jumlahTiketReguler'];
-      totalPendapatanOperanValue = rekapData['operan']['totalPendapatanOperan'];
-      jumlahTiketOperanValue = rekapData['operan']['jumlahTiketOperan'];
-      totalPendapatanNonRegulerValue = rekapData['nonReguler']['totalPendapatanNonReguler'];
-      jumlahTiketOnlineValue = rekapData['nonReguler']['jumlahTiketOnLine'];
-      totalPendapatanBagasiValue = rekapData['bagasi']['totalPendapatanBagasi'];
-      jumlahBarangBagasiValue = rekapData['bagasi']['jumlahBarangBagasi'];
+      final reguler = (rekapData['reguler'] as Map<String, dynamic>?) ?? {};
+      final operan = (rekapData['operan'] as Map<String, dynamic>?) ?? {};
+      final nonReguler = (rekapData['nonReguler'] as Map<String, dynamic>?) ?? {};
+      final bagasi = (rekapData['bagasi'] as Map<String, dynamic>?) ?? {};
+      final feeOTA = (rekapData['feeOTA'] as Map<String, dynamic>?) ?? {};
+
+      totalPendapatanRegulerValue = (reguler['totalPendapatanReguler'] ?? 0).toDouble();
+      jumlahTiketRegulerValue = (reguler['jumlahTiketReguler'] ?? 0).toInt();
+
+      totalPendapatanOperanValue = (operan['totalPendapatanOperan'] ?? 0).toDouble();
+      jumlahTiketOperanValue = (operan['jumlahTiketOperan'] ?? 0).toInt();
+
+      totalPendapatanNonRegulerValue = (nonReguler['totalPendapatanNonReguler'] ?? 0).toDouble();
+      jumlahTiketOnlineValue = (nonReguler['jumlahTiketOnLine'] ?? 0).toInt();
+
+      totalPendapatanBagasiValue = (bagasi['totalPendapatanBagasi'] ?? 0).toDouble();
+      jumlahBarangBagasiValue = (bagasi['jumlahBarangBagasi'] ?? 0).toInt();
+
+      // 🔹 FEE OTA
+      totalFeeRedBusValue = (feeOTA['redbus'] ?? 0).toDouble();
+      totalFeeTravelokaValue = (feeOTA['traveloka'] ?? 0).toDouble();
+      totalFeeSysconixValue = (feeOTA['sysconix'] ?? 0).toDouble();
     });
 
     print("=== Nilai Setelah setState ===");
@@ -372,9 +401,13 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
     print("Online Tiket: $jumlahTiketOnlineValue");
     print("Bagasi Pendapatan: $totalPendapatanBagasiValue");
     print("Bagasi Barang: $jumlahBarangBagasiValue");
+    print("Fee RedBus: $totalFeeRedBusValue");
+    print("Fee Traveloka: $totalFeeTravelokaValue");
+    print("Fee Sysconix: $totalFeeSysconixValue");
 
     _isiControllerPendapatan();
   }
+
 
   bool _requiresJumlah(TagTransaksi tag) {
     return ControllerUtils.requiresQuantity(tag, tagPendapatan);
@@ -608,7 +641,6 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
     return RekapTransaksiForm(
       formKey: _formKey,
       kmMasukGarasiController: kmMasukGarasiController,
-      // 🔥 INI YANG ERROR SEBELUMNYA
       nominalPersenSusukanController: nominalPersenSusukanController,
       tagPendapatan: tagPendapatan,
       tagPengeluaran: tagPengeluaran,

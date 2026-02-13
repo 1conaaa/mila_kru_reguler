@@ -78,8 +78,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     String? token = prefs.getString('token');
 
     await databaseHelper.initDatabase();
-    List<Map<String, dynamic>> penjualanData =
-    await PenjualanTiketService.instance.getPenjualanByStatus('N');
+    List<Map<String, dynamic>> penjualanData = await PenjualanTiketService.instance.getPenjualanByStatus('N');
 
     if (penjualanData.isNotEmpty) {
       int totalData = penjualanData.length;
@@ -170,8 +169,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
             print("[SUCCESS] Data berhasil dikirim (ID: $penjualanId)");
 
             // update status lokal
-            await PenjualanTiketService.instance
-                .updatePenjualanStatus(penjualanId, 'Y');
+            await PenjualanTiketService.instance.updatePenjualanStatus(penjualanId, 'Y');
 
             dataSent++;
             double progress = dataSent / totalData;

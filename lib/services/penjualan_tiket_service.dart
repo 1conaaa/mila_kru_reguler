@@ -1,3 +1,4 @@
+import 'package:mila_kru_reguler/models/PersenFeeOTA_model.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 
@@ -57,21 +58,6 @@ class PenjualanTiketService {
       ORDER BY a.id DESC;
     ''');
   }
-
-  /// Mengambil seluruh data penjualan tiket (gabung dengan list_kota)
-  // Future<List<Map<String, dynamic>>> getDataPenjualan() async {
-  //   final db = await database;
-  //   return await db.rawQuery('''
-  //     SELECT
-  //       a.*,
-  //       a.is_turun,
-  //       a.kategori_tiket || ' - ' || b.nama_kota || ' - ' || c.nama_kota AS rute_kota
-  //     FROM penjualan_tiket AS a
-  //     LEFT JOIN list_kota AS b ON a.kota_berangkat = b.id_kota_tujuan
-  //     LEFT JOIN list_kota AS c ON a.kota_tujuan = c.id_kota_tujuan
-  //     ORDER BY a.id DESC;
-  //   ''');
-  // }
 
   Future<List<Map<String, dynamic>>> getDataPenjualan() async {
     final db = await database;
@@ -280,102 +266,161 @@ class PenjualanTiketService {
     };
   }
 
+  // Fungsi yang sudah ada
+  Future<List<PersenFeeOTA>> getAllPersenFeeOTA() async {
+    final db = await _dbHelper.database;
+    final result = await db.query(
+      'm_persen_fee_ota',
+      columns: ['nama_organisasi', 'nilai_ota', 'is_persen'],
+    );
+
+    return result.map((map) => PersenFeeOTA.fromJson(map)).toList();
+  }
+
   /// Mengambil total pendapatan non-reguler
-  Future<Map<String, int>> getSumJumlahTagihanNonReguler(String? kelasBus) async {
+  Future<Map<String, dynamic>> getSumJumlahTagihanNonReguler(String? kelasBus) async {
     final db = await database;
-    List<Map<String, dynamic>> result;
+
+    // Ambil data OTA
+    final List<PersenFeeOTA> daftarFeeOTA = await getAllPersenFeeOTA();
+    print("=== DEBUG: DATA PersenFeeOTA ===");
+
+    // Map fee OTA valid
+    final Map<String, PersenFeeOTA> feeMap = {
+      for (var fee in daftarFeeOTA)
+        if (fee.namaOrganisasi.trim().isNotEmpty)
+          fee.namaOrganisasi.toLowerCase(): fee
+    };
+
+    feeMap.forEach((nama, fee) {
+      print('Organisasi: $nama, Nilai: ${fee.nilaiOta}, isPersen: ${fee.isPersen}');
+    });
+
     print("kelas bus : $kelasBus");
 
-    final cekCount = await db.rawQuery('SELECT COUNT(*) AS total FROM penjualan_tiket');
+    final cekCount = await db.rawQuery('SELECT COUNT(*) AS total FROM penjualan_tiket WHERE status = "Y"');
+    int total = int.tryParse(cekCount.first['total'].toString()) ?? 0;
 
-    print("=== DEBUG: JUMLAH DATA penjualan_tiket ===");
-
-    int total = 0;
-
-// pastikan nilai tidak null dan bisa dikonversi
-    var rawTotal = cekCount.first['total'];
-    if (rawTotal != null) {
-      total = int.tryParse(rawTotal.toString()) ?? 0;
-    }
-
-    print("Total baris: $total");
-
-    if (total > 0) {
-      final cekData = await db.rawQuery('SELECT * FROM penjualan_tiket LIMIT 5');
-      print("=== DEBUG: SAMPLE DATA penjualan_tiket (5 baris pertama) ===");
-      for (var row in cekData) {
-        print(row);
-      }
-    } else {
+    if (total == 0) {
       print("=== TABEL penjualan_tiket KOSONG ===");
-    }
-
-    if (kelasBus == 'Ekonomi') {
-      print("1. kelas bus : $kelasBus");
-      result = await db.rawQuery('''
-    SELECT SUM(x.total_tagihan) AS total_tagihan, 
-           SUM(x.jumlah_tiket) AS jumlah_tiket, 
-           SUM(x.rit) AS rit
-    FROM (
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y'
-      UNION ALL
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y' 
-        AND id_metode_bayar != '1'
-    ) x
-   ''');
-    } else if (kelasBus == 'Non Ekonomi') {
-      print("2. kelas bus : $kelasBus");
-      result = await db.rawQuery('''
-    SELECT SUM(x.total_tagihan) AS total_tagihan, 
-           SUM(x.jumlah_tiket) AS jumlah_tiket, 
-           SUM(x.rit) AS rit
-    FROM (
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y'
-      UNION ALL
-      SELECT SUM(jumlah_tagihan) AS total_tagihan, 
-             SUM(jumlah_tiket) AS jumlah_tiket, 
-             rit
-      FROM penjualan_tiket
-      WHERE kategori_tiket NOT IN ('red_bus','traveloka', 'go_asia', 'online') 
-        AND status = 'Y' 
-        AND id_metode_bayar != '1'
-    ) x
-   ''');
-    } else {
-      print("3. kelas bus : $kelasBus");
-      // Jika kelasBus tidak sesuai, kembalikan nilai default
       return {
         'rit': 0,
-        'totalPendapatanReguler': 0,
-        'jumlahTiketReguler': 0,
+        'totalPendapatanNonReguler': 0.0,
+        'totalFeeRedBus': 0.0,
+        'totalFeeTraveloka': 0.0,
+        'totalFeeSysconix': 0.0,
+        'jumlahTiketOnLine': 0,
+        'summaryPerKategoriOTA': {},
       };
     }
 
-    int rit = result.isNotEmpty ? result[0]['rit']?.toInt() ?? 0 : 0;
-    int totalPendapatanNonReguler = result.isNotEmpty ? result[0]['total_tagihan']?.toInt() ?? 0 : 0;
-    int jumlahTiketOnLine = result.isNotEmpty ? result[0]['jumlah_tiket']?.toInt() ?? 0 : 0;
-    print('Total Pendapatan Reguler: $totalPendapatanNonReguler'); // Cetak hasil
+    // Summary per kategori OTA
+    final summaryPerKategori = await db.rawQuery('''
+    SELECT kategori_tiket, 
+           SUM(jumlah_tagihan) AS total_tagihan,
+           SUM(jumlah_tiket) AS jumlah_tiket
+    FROM penjualan_tiket
+    WHERE status = 'Y'
+      AND kategori_tiket IN ('red_bus','traveloka')
+    GROUP BY kategori_tiket
+  ''');
+
+    int parseDbInt(Object? value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      return int.tryParse(value.toString()) ?? 0;
+    }
+
+    double parseDbDouble(Object? value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      return double.tryParse(value.toString()) ?? 0.0;
+    }
+
+    // Mapping kategori → organisasi OTA
+    Map<String, String> kategoriToOrganisasi = {
+      'traveloka': 'traveloka',
+      'red_bus': 'redbus',
+    };
+
+    Map<String, Map<String, dynamic>> summaryMap = {};
+    double totalPendapatanNonReguler = 0.0;
+    int jumlahTiketOnLine = 0;
+
+    // Fee Sysconix
+    final PersenFeeOTA? sysconixFee = feeMap['sysconix'];
+
+    double totalFeeRedBus = 0.0;
+    double totalFeeTraveloka = 0.0;
+    double totalFeeSysconix = 0.0;
+
+    for (var row in summaryPerKategori) {
+      String kategori = row['kategori_tiket'].toString().toLowerCase();
+      double totalTagihan = parseDbDouble(row['total_tagihan']);
+      int jumlahTiket = parseDbInt(row['jumlah_tiket']);
+
+      // Fee OTA
+      String? namaOrganisasi = kategoriToOrganisasi[kategori];
+      final PersenFeeOTA? feeOTAData =
+      namaOrganisasi != null ? feeMap[namaOrganisasi] : null;
+
+      int nilaiOta = feeOTAData?.nilaiOta ?? 0;
+      int isPersen = feeOTAData?.isPersen ?? 0;
+
+      double feeOTA = (isPersen == 1)
+          ? totalTagihan * (nilaiOta / 100)
+          : nilaiOta.toDouble();
+
+      if (kategori == 'red_bus') {
+        totalFeeRedBus += feeOTA;
+      } else if (kategori == 'traveloka') {
+        totalFeeTraveloka += feeOTA;
+      }
+
+      // Fee Sysconix
+      double feeSysconix = 0.0;
+      if (sysconixFee != null) {
+        feeSysconix = (sysconixFee.isPersen == 1)
+            ? totalTagihan * (sysconixFee.nilaiOta / 100)
+            : sysconixFee.nilaiOta.toDouble();
+
+        totalFeeSysconix += feeSysconix;
+      }
+
+      // Pendapatan PO
+      double pendapatanPOOTA = totalTagihan - feeOTA - feeSysconix;
+
+      summaryMap[kategori] = {
+        'total_tagihan': totalTagihan,
+        'jumlah_tiket': jumlahTiket,
+        'nilai_ota': nilaiOta,
+        'is_persen': isPersen,
+        'fee_OTA': feeOTA,
+        'fee_sysconix': feeSysconix,
+        'pendapatan_PO_OTA': pendapatanPOOTA,
+      };
+
+      totalPendapatanNonReguler += pendapatanPOOTA;
+      jumlahTiketOnLine += jumlahTiket;
+    }
+
+    print('Total Fee RedBus: $totalFeeRedBus');
+    print('Total Fee Traveloka: $totalFeeTraveloka');
+    print('Total Fee Sysconix: $totalFeeSysconix');
+    print('Total Pendapatan PO OTA: $totalPendapatanNonReguler');
+
     return {
-      'rit': rit,
+      'rit': 0,
       'totalPendapatanNonReguler': totalPendapatanNonReguler,
+      'totalFeeRedBus': totalFeeRedBus,
+      'totalFeeTraveloka': totalFeeTraveloka,
+      'totalFeeSysconix': totalFeeSysconix,
       'jumlahTiketOnLine': jumlahTiketOnLine,
+      'summaryPerKategoriOTA': summaryMap,
     };
   }
+
 
   // Method untuk mendapatkan nilai rit dari penjualan tiket
   Future<List<String>> getRitFromPenjualanTiket() async {

@@ -25,11 +25,11 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_31122025-3.db';
+    String path = '${documentsDirectory.path}/bisapp_10022026-2.db';
 
     return await openDatabase(
       path,
-      version: 3, // Update the version number
+      version: 2, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -41,6 +41,15 @@ class DatabaseHelper {
   }
 
   Future<void> _createTables(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS m_persen_fee_ota (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          nama_organisasi TEXT NOT NULL,
+          nilai_ota INTEGER NOT NULL,
+          is_persen INTEGER NOT NULL
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE IF NOT EXISTS t_persentase_susukan (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -185,7 +194,7 @@ class DatabaseHelper {
 
     await db.execute('''
       CREATE TABLE IF NOT EXISTS list_kota (
-        id INTEGER PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         id_trayek TEXT,
         kode_trayek TEXT,
         id_kota_berangkat INTEGER,
@@ -198,7 +207,13 @@ class DatabaseHelper {
         biaya_perkursi REAL,
         margin_kantor REAL,
         margin_tarikan REAL,
-        aktif TEXT
+        aktif TEXT,
+        UNIQUE (
+          id_trayek,
+          id_kota_berangkat,
+          id_kota_tujuan,
+          no_urut_kota
+        )
       )
     ''');
 
@@ -216,7 +231,12 @@ class DatabaseHelper {
         harga_kantor REAL,
         no_urut_kota INTEGER,
         tanggal TEXT,
-        nama_kota TEXT
+        nama_kota TEXT,
+        UNIQUE (
+          id_trayek,
+          id_kota_berangkat,
+          no_urut_kota
+        )
       )
     ''');
 
@@ -719,7 +739,11 @@ class DatabaseHelper {
 
   Future<void> insertListKota(Map<String, dynamic> data) async {
     final db = await database;
-    await db.insert('list_kota', data);
+    await db.insert(
+      'list_kota',
+      data,
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   Future<List<Map<String, dynamic>>> getCariHargaKantor(int idkotaAwal, int idkotaAkhir) async {
@@ -770,6 +794,7 @@ class DatabaseHelper {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
   }
+
 
   Future<List<Map<String, dynamic>>> getRuteTrayekUrutan() async {
     final db = await database;

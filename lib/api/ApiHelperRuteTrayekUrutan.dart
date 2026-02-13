@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 import '../database/database_helper.dart';
 import '../models/rute_trayek_urutan_model.dart';
 
@@ -34,18 +35,17 @@ class ApiHelperRuteTrayekUrutan {
 
         // 🔹 Simpan ke database
         DatabaseHelper db = DatabaseHelper.instance;
-        await db.initDatabase();
+        final database = await db.database;
+        final batch = database.batch();
 
-        final existing = await db.getRuteTrayekUrutan();
-        if (existing.isEmpty) {
-          for (var item in data) {
-            await db.insertRuteTrayekUrutan(item.toMap());
-          }
-          print('Data rute trayek urutan berhasil disimpan');
-        } else {
-          print('Data rute trayek urutan sudah ada');
+        for (var item in data) {
+          batch.insert(
+            'rute_trayek_urutan',
+            item.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
         }
-
+        await batch.commit(noResult: true);
         await db.closeDatabase();
       } else {
         print('API Rute Trayek Urutan gagal');

@@ -26,6 +26,11 @@ class RekapTransaksiHandler {
         'totalPendapatanNonReguler': (hasilNonReguler['totalPendapatanNonReguler'] ?? 0).toDouble(),
         'jumlahTiketOnLine': (hasilNonReguler['jumlahTiketOnLine'] ?? 0).toInt(),
       },
+      'feeOTA': {
+        'redbus': (hasilNonReguler['totalFeeRedBus'] ?? 0).toDouble(),
+        'traveloka': (hasilNonReguler['totalFeeTraveloka'] ?? 0).toDouble(),
+        'sysconix': (hasilNonReguler['totalFeeSysconix'] ?? 0).toDouble(),
+      },
       'bagasi': {
         'totalPendapatanBagasi': (hasilBagasi['totalPendapatanBagasi'] ?? 0).toDouble(),
         'jumlahBarangBagasi': (hasilBagasi['jumlahBarangBagasi'] ?? 0).toInt(),

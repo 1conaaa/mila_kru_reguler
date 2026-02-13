@@ -2,6 +2,28 @@ import 'package:flutter/cupertino.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 
 class ControllerUtils {
+  static void fillOutcomeControllers({
+    required Map<int, TextEditingController> controllers,
+    required double totalFeeRedBusValue,
+    required double totalFeeTravelokaValue,
+    required double totalFeeSysconixValue,
+  }){
+    print('=== MENGISI CONTROLLER Pengeluaran FEE ===');
+    if (controllers.containsKey(6)) {
+      controllers[6]!.text = totalFeeRedBusValue.toInt().toString();
+      print('✓ _controllers[1] diisi: ${totalFeeRedBusValue.toInt()}');
+    }
+    if (controllers.containsKey(7)) {
+      controllers[7]!.text = totalFeeTravelokaValue.toInt().toString();
+      print('✓ _controllers[1] diisi: ${totalFeeTravelokaValue.toInt()}');
+    }
+    if (controllers.containsKey(81)) {
+      controllers[81]!.text = totalFeeSysconixValue.toInt().toString();
+      print('✓ _controllers[1] diisi: ${totalFeeSysconixValue.toInt()}');
+    }
+    print('=== SELESAI MENGISI CONTROLLER ===');
+  }
+
   static void fillIncomeControllers({
     required Map<int, TextEditingController> controllers,
     required Map<int, TextEditingController> jumlahControllers,

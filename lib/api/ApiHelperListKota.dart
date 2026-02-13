@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/models/list_kota_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
 
 class ApiHelperListKota {
   static Future<void> requestListKotaAPI(String token, String kodeTrayek) async {
@@ -24,26 +25,37 @@ class ApiHelperListKota {
 
         // Simpan data ke shared preferences
         DatabaseHelper databaseHelper = DatabaseHelper.instance;
-        await databaseHelper.initDatabase(); // Panggil fungsi initDatabase dari DatabaseHelperKruBis
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('listkotaData', jsonEncode(listkotaData.map((listkota) => listkota.toMap()).toList()));
+        await databaseHelper.initDatabase();
 
-        // Simpan data ke database
+// 🔹 Simpan ke SharedPreferences (tetap seperti semula)
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setString(
+          'listkotaData',
+          jsonEncode(listkotaData.map((e) => e.toMap()).toList()),
+        );
+
+// 🔹 Simpan ke database (BATCH)
         try {
-          List<Map<String, dynamic>> existingListKota = await databaseHelper.getListKota();
-          if (existingListKota.isEmpty) {
-            for (var listkota in listkotaData) {
-              await databaseHelper.insertListKota(listkota.toMap()); // Panggil fungsi insertListKota dari DatabaseHelper
-            }
-            print('Data List Kota berhasil disimpan');
-            await databaseHelper.closeDatabase(); // Panggil fungsi closeDatabase dari DatabaseHelper
-          } else {
-            print('Data List Kota sudah ada, tidak perlu disimpan lagi.');
+          final db = await databaseHelper.database;
+          final batch = db.batch();
+
+          for (var listkota in listkotaData) {
+            batch.insert(
+              'list_kota',
+              listkota.toMap(),
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
           }
 
-        } catch (e) {
-          print('Error: $e');
+          await batch.commit(noResult: true);
+          print('Data List Kota berhasil di-sync (batch insert / update)');
+        } catch (e, stacktrace) {
+          print('Error sync List Kota (batch): $e');
+          print(stacktrace);
+        } finally {
+          await databaseHelper.closeDatabase();
         }
+
       } else {
         print('Anda gagal simpan API List Kota. Silakan coba lagi.');
       }

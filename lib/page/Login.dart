@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/api/ApiHelperMetodePembayaran.dart';
+import 'package:mila_kru_reguler/api/ApiHelperPersenFeeOTA.dart';
 import 'package:mila_kru_reguler/api/ApiPersenPremiKru..dart';
 import 'package:mila_kru_reguler/models/user.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
@@ -357,6 +358,13 @@ class _LoginState extends State<Login> {
         await ApiHelperTagTransaksi.fetchAndStoreTagTransaksi(token);
       } catch (e) {
         print('[WARN] TagTransaksi gagal: $e');
+      }
+
+      // ===== API 10: Fee OTA =====
+      try {
+        await ApiHelperPersenFeeOTA.requestListPersenFeeOTAAPI(token);
+      } catch (e) {
+        print('[WARN] Persen Fee OTA gagal: $e');
       }
 
       print('[INIT] Load initial data selesai (best effort)');
