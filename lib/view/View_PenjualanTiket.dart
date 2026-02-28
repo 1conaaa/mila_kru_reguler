@@ -123,8 +123,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
   String? fotoLocalPath;
   String? fotoFileName;
 
-  final NumberFormat ribuanFormatter =
-  NumberFormat.decimalPattern('id_ID');
+  final NumberFormat ribuanFormatter = NumberFormat.decimalPattern('id_ID');
+
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -1235,7 +1236,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<void> _kirimValue(
-      double hargaKantorParam, // Parameter dari panggilan fungsi
+      double hargaKantorParam,
       double jumlahTagihanParam,
       int jumlahTiket,
       String selectedPilihRit,
@@ -1246,110 +1247,78 @@ class _PenjualanFormState extends State<PenjualanForm> {
       String noTelepon,
       String keteranganTagihan,
       ) async {
+
+      // 🔒 BLOK DOUBLE SUBMIT
+      if (_isSubmitting) {
+        print('⛔ _kirimValue diblok karena masih proses simpan');
+        return;
+      }
+      _isSubmitting = true;
+
     try {
       print('🚀 MEMULAI _kirimValue');
 
-      // DEBUG: CEK SEMUA SUMBER HARGA KANTOR
+      // ==============================
+      // DEBUG HARGA KANTOR
+      // ==============================
       print('🔍 DEBUG HARGA KANTOR:');
       print('   hargaKantorParam (parameter): $hargaKantorParam');
       print('   _hargaKantorCalculated (global): $_hargaKantorCalculated');
       print('   hargaKantorController.text: ${hargaKantorController.text}');
 
-      // TENTUKAN HARGA KANTOR YANG AKAN DIGUNAKAN
       double hargaKantorFinal = 0.0;
-
-      print('🔎 DEBUG HARGA KANTOR');
-      print('   kategori tiket         : $selectedKategoriTiket');
-      print('   _hargaKantorCalculated : $_hargaKantorCalculated');
-      print('   hargaKantorParam       : $hargaKantorParam');
-      print('   controller.text (raw)  : "${hargaKantorController.text}"');
 
       if (selectedKategoriTiket == 'gratis') {
         hargaKantorFinal = 0.0;
-        print('🎟️ [GRATIS] hargaKantorFinal diset ke 0');
-      }
-      else if (_hargaKantorCalculated > 0) {
+        print('🎟️ [GRATIS] hargaKantorFinal = 0');
+      } else if (_hargaKantorCalculated > 0) {
         hargaKantorFinal = _hargaKantorCalculated;
-        print('✅ [GLOBAL] Pakai _hargaKantorCalculated: $hargaKantorFinal');
-      }
-      else if (hargaKantorParam > 0) {
+        print('✅ [GLOBAL] Pakai _hargaKantorCalculated');
+      } else if (hargaKantorParam > 0) {
         hargaKantorFinal = hargaKantorParam;
-        print('✅ [PARAM] Pakai hargaKantorParam: $hargaKantorFinal');
-      }
-      else {
+        print('✅ [PARAM] Pakai hargaKantorParam');
+      } else {
         String cleanedText = hargaKantorController.text
             .replaceAll('Rp', '')
             .replaceAll('.', '')
             .trim();
 
-        print('🧹 controller.text (cleaned): "$cleanedText"');
-
         hargaKantorFinal = double.tryParse(cleanedText) ?? 0.0;
-        print('✅ [INPUT] Pakai harga dari controller: $hargaKantorFinal');
+        print('✅ [INPUT] Pakai controller: $hargaKantorFinal');
       }
 
-      print('🎯 HASIL AKHIR hargaKantorFinal: $hargaKantorFinal');
-
-      // VALIDASI HARGA KANTOR
+      // VALIDASI
       if (selectedKategoriTiket != 'gratis' && hargaKantorFinal <= 0) {
-        print('❌ ERROR: hargaKantorFinal tidak valid untuk tiket berbayar: $hargaKantorFinal');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: Harga kantor harus lebih dari 0'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+        throw Exception('Harga kantor tidak valid');
       }
 
-      // Untuk tiket gratis, pastikan harga 0
-      if (selectedKategoriTiket == 'gratis') {
-        hargaKantorFinal = 0.0;
-        print('🎟️ Tiket gratis → harga_kantor dipaksa 0');
-      }
-
-      // EKSTRAK DATA DARI STRING KOTA
-      double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
+      // ==============================
+      // DATA KOTA
+      // ==============================
       int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
-
-      double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
       int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
 
-      double jumlahBayar = 0;
-      double jumlahKembalian = 0;
+      // ==============================
+      // PEMBAYARAN
+      // ==============================
+      double jumlahBayar = selectedKategoriTiket == 'gratis' ? 0 : jumlahTagihanParam;
+      double jumlahKembalian = (jumlahTagihanParam - jumlahBayar).abs();
 
-      if (selectedKategoriTiket == 'gratis') {
-        jumlahBayar = 0;
-      } else {
-        jumlahBayar = jumlahTagihanParam;
-      }
+      print('💰 PEMBAYARAN:');
+      print('   jumlahTagihan: $jumlahTagihanParam');
+      print('   jumlahBayar: $jumlahBayar');
+      print('   jumlahKembalian: $jumlahKembalian');
 
-      jumlahKembalian = (jumlahTagihanParam - jumlahBayar).abs();
+      // ==============================
+      // TANGGAL (TIDAK UNIQUE)
+      // ==============================
+      String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
-      print("💰 PEMBAYARAN:");
-      print("   jumlahTagihan: $jumlahTagihanParam");
-      print("   jumlahBayar: $jumlahBayar");
-      print("   jumlahKembalian: $jumlahKembalian");
-      print("   kategoriTiket: $selectedKategoriTiket");
-
-      DateTime now = DateTime.now();
-      String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-      print('📅 Tanggal Transaksi: $formattedDate');
-
-      // SIMPAN KE DATABASE
+      // ==============================
+      // INSERT DATABASE
+      // ==============================
       Database database = await databaseHelper.database;
 
-      print("📷 DEBUG FOTO:");
-      print("   fotoLocalPath: $fotoLocalPath");
-      print("   fotoFileName: $fotoFileName");
-
-      // DEBUG SEBELUM INSERT
-      print('📦 DATA YANG AKAN DISIMPAN:');
-      print('   harga_kantor: $hargaKantorFinal');
-      print('   jumlah_tagihan: $jumlahTagihanParam');
-      print('   jumlah_tiket: $jumlahTiket');
-
-      // INSERT KE DATABASE
       int insertedId = await database.insert(
         'penjualan_tiket',
         {
@@ -1366,7 +1335,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
           'kota_tujuan': idkotaAkhir.toString(),
           'nama_pembeli': namaPembeli,
           'no_telepon': noTelepon,
-          'harga_kantor': hargaKantorFinal, // GUNAKAN hargaKantorFinal
+          'harga_kantor': hargaKantorFinal,
           'jumlah_tagihan': jumlahTagihanParam,
           'nominal_bayar': jumlahBayar,
           'jumlah_kembalian': jumlahKembalian,
@@ -1380,8 +1349,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         },
       );
 
-      print('✅ Data penjualan tiket berhasil disimpan dengan ID: $insertedId');
-      // await printTableContents(database, 'penjualan_tiket');
+      print('✅ Data berhasil disimpan. ID: $insertedId');
       await databaseHelper.closeDatabase();
 
     } catch (e) {
@@ -1392,6 +1360,10 @@ class _PenjualanFormState extends State<PenjualanForm> {
           backgroundColor: Colors.red,
         ),
       );
+    } finally {
+      // 🔓 PASTI DIBUKA KEMBALI
+      _isSubmitting = false;
+      print('🔓 _isSubmitting dilepas');
     }
   }
 

@@ -25,7 +25,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_10022026-2.db';
+    String path = '${documentsDirectory.path}/bisapp_23022026-2.db';
 
     return await openDatabase(
       path,
@@ -189,7 +189,7 @@ class DatabaseHelper {
         redirect_url TEXT,
         fupload TEXT,
         file_name TEXT,
-        PRIMARY KEY (id, tanggal_transaksi)
+        UNIQUE (tanggal_transaksi)
       )
     ''');
 
