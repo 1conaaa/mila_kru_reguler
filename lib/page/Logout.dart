@@ -9,6 +9,8 @@ import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 import 'package:mila_kru_reguler/page/logout_success_screen.dart';
 import 'package:mila_kru_reguler/services/premi_harian_kru_service.dart';
+import 'package:mila_kru_reguler/services/rit_user_service.dart';
+import 'package:mila_kru_reguler/services/bus_perpal_service.dart';
 
 class Logout extends StatelessWidget {
   Future<void> _clearData(BuildContext context) async {
@@ -42,13 +44,15 @@ class Logout extends StatelessWidget {
       await premiHarianKruService.clearPremiHarianKru();
       await setoranKruService.clearSetoran();
       await premiPosisiKruService.clearPremiPosisiKru();
-      await databaseHelper.clearInspectionItems();
-      await databaseHelper.clearJenisPaket();
+      // await databaseHelper.clearInspectionItems();
+      // await databaseHelper.clearJenisPaket();
       await databaseHelper.clearOrderBagasi();
       await databaseHelper.clearOrderBagasiStatus();
-      await databaseHelper.clearMetodePembayaran();
-      await tagService.clearTagTransaksi();
+      // await databaseHelper.clearMetodePembayaran();
+      // await tagService.clearTagTransaksi();
       await persenPremiKruService.clearTable();
+      await RitUserService.instance.clearAll();
+      await BusPerpalService.instance.clearAll();
 
       await databaseHelper.closeDatabase();
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/bus_perpal_service.dart';
+import '../../services/rit_user_service.dart';
 import 'dart:io';
 import 'package:path/path.dart';
 
@@ -19,11 +21,38 @@ class SaveKondisiBus {
       final String? noPol = prefs.getString('noPol');
       final int? idBus = prefs.getInt('idBus');
       final String? kodeTrayek = prefs.getString('kode_trayek');
+      final int? idUser = prefs.getInt('idUser');
 
       // 🔴 Validasi data WAJIB
       if (token == null || idBus == null) {
         throw Exception('Data login tidak lengkap. Silakan login ulang.');
       }
+
+      /// 🔹 Ambil rit terakhir user
+      final int rit =
+      await RitUserService.instance.getLastRitByUser(
+        idUser: idUser!,
+        idBus: idBus,
+        noPol: noPol ?? '',
+      );
+
+      /// 🔹 Waktu sekarang
+      final DateTime now = DateTime.now();
+
+      /// 🔹 Simpan dulu ke SQLite
+      await BusPerpalService.instance.insertBusPerpal(
+        idBus: idBus,
+        noPol: noPol ?? '',
+        rit: rit,
+        kodeTrayek: kodeTrayek ?? '',
+        tglPerpal: now,
+        lokasiPerpal: lokasi,
+        kategori: kategori,
+        keterangan: keterangan,
+        status: 'N',
+      );
+
+      print('[LOCAL] Data perpal disimpan ke SQLite');
 
       final request = http.MultipartRequest(
         'POST',
@@ -36,6 +65,7 @@ class SaveKondisiBus {
       request.fields['id_bus'] = idBus.toString();
       request.fields['no_pol'] = noPol ?? '';
       request.fields['kode_trayek'] = kodeTrayek ?? '';
+      request.fields['rit'] = rit.toString();
       request.fields['lokasi'] = lokasi;
       request.fields['kategori'] = kategori;
       request.fields['keterangan'] = keterangan;

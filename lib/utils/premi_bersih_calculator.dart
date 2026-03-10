@@ -122,6 +122,7 @@ class PremiBersihCalculator {
       'uangSakuKondektur': getValue(35),       // ID 35: Uang Saku Kondektur
       'pengeluaranTpr': getValue(30),          // ID 30: Biaya Tpr
       'pengeluaranOperasionalSby': getValue(31), // ID 31: Biaya Operasional Surabaya
+      'pengeluaranLla': getValue(86), // ID 31: Biaya TPR (LLA)
 
       // Premi
       'premiAtas': getValue(27),               // ID 27: Premi Atas
@@ -169,6 +170,7 @@ class PremiBersihCalculator {
     final double uangSakuKondektur = extractedValues['uangSakuKondektur']!;
     final double pengeluaranTpr = extractedValues['pengeluaranTpr']!;
     final double pengeluaranOperasionalSby = extractedValues['pengeluaranOperasionalSby']!;
+    final double pengeluaranLla = extractedValues['pengeluaranLla']!;
 
     // Debug nilai yang diekstrak
     print('=== [DEBUG] EXTRACTED VALUES ===');
@@ -190,6 +192,7 @@ class PremiBersihCalculator {
     print('Uang Saku Kondektur: $uangSakuKondektur');
     print('Pengeluaran TPR: $pengeluaranTpr');
     print('Pengeluaran Operasional Sby: $pengeluaranOperasionalSby');
+    print('Pengeluaran TPR LLA: $pengeluaranLla');
 
     // Parse persentase premi dari userData
     final double persenPremiExtra = (double.tryParse(userData.premiExtra?.replaceAll('%', '') ?? '0') ?? 0) / 100;
@@ -251,7 +254,7 @@ class PremiBersihCalculator {
                 print('Pendapatan Kotor (Tiket Reguler): $pendapatanKotor');
                 print('=== [DEBUG] PROCESSING: YOGYAKARTA - BANYUWANGI ===');
                 // Pengeluaran untuk AKAP Ekonomi Yogyakarta-Banyuwangi
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + nominalSusukan;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranLla + nominalSusukan;
 
                 print('=== [DEBUG] PENGELUARAN DETAIL ===');
                 print('Solar: $nominalsolar');
@@ -260,6 +263,7 @@ class PremiBersihCalculator {
                 print('Parkir: $pengeluaranParkir');
                 print('Perbaikan: $pengeluaranPerbaikan');
                 print('Lain-lain: $pengeluaranLainLain');
+                print('TPR LLA: $pengeluaranLainLain');
                 print('Total Pengeluaran: $totalPengeluaran');
 
                 if (operan > 0) {
@@ -332,7 +336,7 @@ class PremiBersihCalculator {
                 print('Pendapatan Kotor (Tiket Reguler): $pendapatanKotor');
 
                 // Pengeluaran untuk AKAP Ekonomi YOG-SMP
-                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranSuramadu + nominalSusukan;
+                totalPengeluaran = nominalsolar + pengeluaranMakelar + pengeluaranCuci + pengeluaranParkir + pengeluaranPerbaikan + pengeluaranLainLain + pengeluaranLla + pengeluaranSuramadu + nominalSusukan;
 
                 if (operan > 0) {
                   pendBersih = (pendapatanKotor - totalPengeluaran) - (operan + nominalTiketOnline);

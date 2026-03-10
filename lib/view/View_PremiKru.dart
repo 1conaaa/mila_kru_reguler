@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/models/PersenPremiKru.dart';
 import 'package:mila_kru_reguler/services/persen_premi_kru_service.dart';
 
-
 import 'package:mila_kru_reguler/models/setoranKru_model.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 
@@ -15,12 +14,24 @@ import 'package:mila_kru_reguler/services/setoranKru_service.dart';
 import 'package:mila_kru_reguler/services/tag_transaksi_service.dart';
 import 'package:mila_kru_reguler/services/data_pusher_service.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
+import 'package:mila_kru_reguler/services/rit_user_service.dart';
 
 import 'package:mila_kru_reguler/database/database_helper.dart';
+
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+
+import 'dart:convert';
+import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:mila_kru_reguler/page/bluetooth_service.dart';
+import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+
+final printerService = BluetoothPrinterService();
 
 class PremiKru extends StatefulWidget {
   @override
@@ -48,6 +59,9 @@ class _PremiKruState extends State<PremiKru> {
   get kodeTrayek => null;
 
   final UserService _userService = UserService();
+
+  final BlueThermalPrinter _bluetooth = BlueThermalPrinter.instance;
+  List<BluetoothDevice> _devices = [];
 
   @override
   void initState() {
@@ -134,6 +148,10 @@ class _PremiKruState extends State<PremiKru> {
   // PUSH DATA
   //----------------------------------------------------------------------
 
+  int toggleRit(int lastRit) {
+    return lastRit == 1 ? 2 : 1;
+  }
+
   Future<void> _pushDataPremiHarianKru() async {
     if (_selectedDate == null) {
       _showAlertDialog(context, "Silakan pilih tanggal terlebih dahulu.");
@@ -165,6 +183,39 @@ class _PremiKruState extends State<PremiKru> {
       print("🔰 ID TRANSAKSI: $idTransaksi");
 
       // =============================
+      // 🔁 INSERT RIT USER (SETELAH PUSH BERHASIL)
+      // =============================
+      final users = await _userService.getAllUsers();
+
+      for (final user in users) {
+        // validasi data wajib
+        if (user.idUser == 0 || user.idBus == 0 || user.noPol == null) {
+          print('⚠️ Skip user tidak valid: ${user.namaLengkap}');
+          continue;
+        }
+
+        final lastRit = await RitUserService.instance.getLastRitByUser(
+          idUser: user.idUser,
+          idBus: user.idBus,
+          noPol: user.noPol!,
+        );
+
+        final newRit = toggleRit(lastRit);
+
+        await RitUserService.instance.insertRitUser(
+          idUser: user.idUser,
+          idBus: user.idBus,
+          noPol: user.noPol!,
+          rit: newRit,
+        );
+
+        print(
+          '🔁 RIT disimpan | User:${user.idUser} | Bus:${user.idBus} | '
+              'Pol:${user.noPol} | $lastRit → $newRit',
+        );
+      }
+
+      // =============================
       // 🔄 REFRESH DATA UI
       // =============================
       await _getListPremiKru();
@@ -173,6 +224,30 @@ class _PremiKruState extends State<PremiKru> {
       print("====================================");
       print("✅ PUSH DATA PREMI & SETORAN SELESAI");
       print("====================================");
+
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false, // tidak bisa klik luar
+          builder: (context) {
+            return AlertDialog(
+              title: const Text("Push Berhasil"),
+              content: const Text(
+                "Data berhasil dikirim.\n\n"
+                    "Silakan klik menu KELUAR terlebih dahulu sebelum memulai transaksi kembali.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text("OK"),
+                ),
+              ],
+            );
+          },
+        );
+      }
     } catch (e, s) {
       print("❌ ERROR PUSH DATA");
       print(e);
@@ -221,6 +296,245 @@ class _PremiKruState extends State<PremiKru> {
         ],
       ),
     );
+  }
+
+  Future<void> getBluetooth() async {
+    try {
+      print("🔍 Mulai getBluetooth...");
+      await _requestBluetoothPermission();
+
+      print("📡 Mendapatkan daftar perangkat yang dipasangkan...");
+      _devices = await _bluetooth.getBondedDevices();
+      print("✅ Perangkat ditemukan: ${_devices.length}");
+
+      if (_devices.isEmpty) {
+        Fluttertoast.showToast(msg: "Tidak ada printer yang ditemukan");
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text("Pilih Printer"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _devices.length,
+              itemBuilder: (context, index) {
+                final device = _devices[index];
+                return ListTile(
+                  title: Text(device.name ?? 'Printer ${index + 1}'),
+                  subtitle: Text(device.address ?? 'Alamat tidak tersedia'),
+                  onTap: () async {
+                    print("📌 Memilih printer: ${device.name} - ${device.address}");
+                    Navigator.pop(context);
+                    await _connectToDevice(device);
+                  },
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      print("❌ Error getBluetooth: ${e.toString()}");
+      Fluttertoast.showToast(msg: "Error: ${e.toString()}");
+    }
+  }
+
+  // Function to request the Bluetooth permission.
+  Future<void> _requestBluetoothPermission() async {
+    if (Platform.isAndroid) {
+      print("🔍 Memeriksa permission Bluetooth...");
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+      final androidSdk = androidInfo.version.sdkInt ?? 0;
+
+      print("✅ Android SDK Version: $androidSdk");
+      if (androidSdk >= 31) {
+        print("📌 Meminta permission bluetoothScan, bluetoothConnect, bluetoothAdvertise");
+        await [
+          Permission.bluetoothScan,
+          Permission.bluetoothConnect,
+          Permission.bluetoothAdvertise,
+        ].request();
+      } else {
+        print("📌 Meminta permission bluetooth");
+        await Permission.bluetooth.request();
+      }
+    }
+  }
+
+  Future<void> _connectToDevice(BluetoothDevice device) async {
+    try {
+      await printerService.connect(device);
+      Fluttertoast.showToast(msg: "Terhubung ke printer ${device.name}");
+    } catch (e) {
+      Fluttertoast.showToast(msg: "Gagal terhubung ke printer: ${e.toString()}");
+    }
+  }
+
+  Future<void> _printSetoran() async {
+    print("🖨️ Cek koneksi sebelum print...");
+
+    if (!printerService.isConnected || printerService.selectedDevice == null) {
+      print("❌ Printer belum terhubung");
+      Fluttertoast.showToast(msg: "Printer belum terhubung");
+
+      // langsung tampilkan pilihan bluetooth
+      await getBluetooth();
+      return;
+    }
+
+    try {
+      final setoranList = await setoranKruService.getAllSetoran();
+      final tagList = await _getAllTagTransaksi();
+      final users = await _userService.getAllUsers();
+      final user = users.isNotEmpty ? users.first : null;
+      final kruList = await databaseHelper.queryKruBis();
+
+      String formatPrinter(double value) {
+        return NumberFormat("#,###", "id_ID").format(value.toInt());
+      }
+
+      if (setoranList.isEmpty) {
+        Fluttertoast.showToast(msg: "Tidak ada data untuk dicetak");
+        return;
+      }
+
+      // ===============================
+      // CEK SEMUA DATA SUDAH TERKIRIM
+      // ===============================
+      final allDataSent = setoranList.every((item) => item.status == "Y");
+
+      if (!allDataSent) {
+        _showAlertDialog(
+          context,
+          "Tidak dapat mencetak laporan.\n\n"
+              "Pastikan semua data setoran sudah dikirim ke server.\n"
+              "Status harus 'Y' untuk semua data.",
+        );
+        return;
+      }
+
+      // ===============================
+      // HITUNG TOTAL
+      // ===============================
+
+      double totalPendapatan = 0;
+      double totalPengeluaran = 0;
+      double pendapatanBersih = 0;
+      double pendapatanDisetor = 0;
+
+      for (var item in setoranList) {
+
+        // 🔎 ambil tag berdasarkan id_tag_transaksi
+        TagTransaksi? tag;
+
+        try {
+          tag = tagList.firstWhere(
+                (e) => e.id == item.idTagTransaksi,
+          );
+        } catch (e) {
+          tag = null;
+        }
+
+        // DEBUG PRINT
+        print("ID Tag Setoran : ${item.idTagTransaksi}");
+        print("Nama Tag       : ${tag?.nama}");
+        print("Kategori       : ${tag?.kategoriTransaksi}");
+        print("-----------------------------");
+
+        // ==========================
+        // PENJUMLAHAN BERDASARKAN KATEGORI
+        // ==========================
+
+        if (tag != null) {
+
+          // pastikan kategoriTransaksi angka
+          int kategori = int.tryParse(tag.kategoriTransaksi ?? '0') ?? 0;
+
+          if (kategori == 1) {
+            totalPendapatan += item.nilai ?? 0;
+          }
+          else if (kategori == 2) {
+            totalPengeluaran += item.nilai ?? 0;
+          }
+        }
+
+        // khusus ID tertentu
+        if (item.idTagTransaksi == 60) {
+          pendapatanBersih = item.nilai ?? 0;
+        }
+
+        if (item.idTagTransaksi == 61) {
+          pendapatanDisetor = item.nilai ?? 0;
+        }
+      }
+
+      // ===== TANGGAL LAPORAN DARI DATE PICKER =====
+      final DateTime tanggalDipilih = _selectedDate ?? DateTime.now();
+      final String tanggalLaporan =
+      DateFormat('dd-MM-yyyy').format(tanggalDipilih);
+
+      // ===============================
+      // FORMAT TEXT THERMAL
+      // ===============================
+
+      String text = "";
+
+      // text += "LAPORAN SETORAN KRU\n";
+      // text += "--------------------------------\n";
+      // text += "Tanggal : $tanggalLaporan\n";
+      // text += "No Pol : ${user?.noPol ?? '-'}\n";
+      // text += "Trayek : ${user?.namaTrayek ?? '-'}\n";
+      // text += "Kondektur : ${user?.namaLengkap ?? '-'}\n";
+      // text += "--------------------------------\n";
+      // text += "Pendapatan : ${formatPrinter(totalPendapatan)}\n";
+      // text += "Pengeluaran: ${formatPrinter(totalPengeluaran)}\n";
+      // text += "Bersih     : ${formatPrinter(pendapatanBersih)}\n";
+      // text += "Disetor    : ${formatPrinter(pendapatanDisetor)}\n";
+      // text += "--------------------------------\n\n\n";
+
+      text += "LAPORAN SETORAN KRU\n";
+      text += "--------------------------------\n";
+      text += "Tanggal :\n$tanggalLaporan\n";
+      text += "No Pol :\n${user?.noPol ?? '-'}\n";
+      text += "Trayek :\n${user?.namaTrayek ?? '-'}\n";
+      // text += "Kondektur\n${user?.namaLengkap ?? '-'}\n";
+      text += "--------------------------------\n";
+      text += "DATA KRU\n";
+      for (var kru in kruList) {
+        final group = kru['group_name'] ?? '-';
+        final nama = kru['nama_lengkap'] ?? '-';
+        final nik = kru['nik'] ?? '-';
+
+        text += "$group - $nama ($nik)\n";
+      }
+      text += "--------------------------------\n";
+
+      text += "Pendapatan :\n${formatPrinter(totalPendapatan)}\n";
+      text += "--------------------------------\n";
+      text += "Pengeluaran :\n${formatPrinter(totalPengeluaran)}\n";
+      text += "--------------------------------\n";
+      text += "Bersih :\n${formatPrinter(pendapatanBersih)}\n";
+      text += "--------------------------------\n";
+      text += "Disetor :\n${formatPrinter(pendapatanDisetor)}\n";
+
+      text += "--------------------------------\n\n\n";
+
+      // kirim ke printer
+      await printerService.bluetooth.writeBytes(
+        Uint8List.fromList(utf8.encode(text)),
+      );
+
+      Fluttertoast.showToast(msg: "Laporan berhasil dicetak");
+
+    } catch (e) {
+      print("❌ Error cetak: $e");
+      Fluttertoast.showToast(msg: "Error mencetak: $e");
+    }
   }
 
   //----------------------------------------------------------------------
@@ -320,8 +634,8 @@ class _PremiKruState extends State<PremiKru> {
                 _pdfRow("No Pol", user.noPol ?? "-"),
                 _pdfRow("Nama Kru", user.namaLengkap ?? "-"),
                 _pdfRow("Trayek", user.namaTrayek ?? "-"),
-                _pdfRow("Jenis Trayek", user.jenisTrayek ?? "-"),
-                _pdfRow("Kelas Bus", user.kelasBus ?? "-"),
+                // _pdfRow("Jenis Trayek", user.jenisTrayek ?? "-"),
+                // _pdfRow("Kelas Bus", user.kelasBus ?? "-"),
               ],
 
               // ===== TANGGAL OPERASIONAL =====
@@ -618,6 +932,7 @@ class _PremiKruState extends State<PremiKru> {
       _showAlertDialog(context, "Error menyimpan file: $e");
     }
   }
+
   final Map<String, Future<List<ListPersenPremiKru>>> _persenPremiCache = {};
 
   //----------------------------------------------------------------------
@@ -636,6 +951,11 @@ class _PremiKruState extends State<PremiKru> {
                 icon: const Icon(Icons.picture_as_pdf),
                 tooltip: "Export to PDF",
                 onPressed: _exportToPDF,
+              ),
+              IconButton(
+                icon: const Icon(Icons.print),
+                tooltip: "Cetak Laporan",
+                onPressed: _printSetoran,
               ),
               IconButton(
                 icon: const Icon(Icons.calendar_today),

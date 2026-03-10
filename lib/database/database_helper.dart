@@ -25,7 +25,7 @@ class DatabaseHelper {
 
   Future<Database> _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = '${documentsDirectory.path}/bisapp_23022026-2.db';
+    String path = '${documentsDirectory.path}/bisapp_09032026-1.db';
 
     return await openDatabase(
       path,
@@ -385,6 +385,32 @@ class DatabaseHelper {
           id INTEGER PRIMARY KEY,
           kategori_transaksi INTEGER,
           nama TEXT
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS t_rit_user (
+          id INTEGER PRIMARY KEY,
+          tanggal DATETIME,
+          no_pol TEXT,
+          id_bus INTEGER,
+          id_user INTEGER,
+          rit INTEGER
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS t_bus_perpal (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id_bus INTEGER,
+          no_pol TEXT,
+          rit INTEGER,
+          kode_trayek TEXT,
+          tgl_perpal DATETIME,
+          lokasi_perpal TEXT,
+          kategori TEXT,
+          keterangan TEXT,
+          status TEXT
       )
     ''');
   }
@@ -797,11 +823,23 @@ class DatabaseHelper {
   }
 
 
-  Future<List<Map<String, dynamic>>> getRuteTrayekUrutan() async {
+  // Future<List<Map<String, dynamic>>> getRuteTrayekUrutan() async {
+  //   final db = await database;
+  //   return await db.query(
+  //     'rute_trayek_urutan',
+  //     orderBy: 'no_urut_kota ASC',
+  //   );
+  // }
+
+  Future<List<Map<String, dynamic>>> getRuteTrayekUrutan(int rit) async {
     final db = await database;
+
+    final orderBy =
+    rit == 2 ? 'no_urut_kota DESC' : 'no_urut_kota ASC';
+
     return await db.query(
       'rute_trayek_urutan',
-      orderBy: 'no_urut_kota ASC',
+      orderBy: orderBy,
     );
   }
 

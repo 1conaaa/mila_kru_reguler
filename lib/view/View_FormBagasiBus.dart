@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
+import 'package:mila_kru_reguler/services/rit_user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -315,11 +316,11 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   }
 
   Future<void> _loadLastKotaTerakhir() async {
-    await databaseHelper.initDatabase();
+    // await databaseHelper.initDatabase();
     await _getListKota();
     await _getUserData();
     await _getListKotaTerakhir();
-    await databaseHelper.closeDatabase();
+    // await databaseHelper.closeDatabase();
 
     // Set initial value for tagihanController
     _hargaKmController.text = formatter.format(jumlahTagihan);
@@ -377,20 +378,45 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
   }
 
+  // Future<void> _getListKota() async {
+  //   try {
+  //     List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan();
+  //     setState(() {
+  //       listKota = kotaData; // Pastikan 'listKota' adalah list yang sesuai
+  //     });
+  //
+  //     if (listKota.isEmpty) {
+  //       print('Tidak ada data dalam tabel list_kota.');
+  //     } else {
+  //       print('Data ditemukan dalam tabel list_kota.');
+  //     }
+  //   } catch (e) {
+  //     print('Error saat mengambil data: $e');
+  //   }
+  // }
+
   Future<void> _getListKota() async {
     try {
-      List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan();
+      // 🆕 ambil rit aktif
+      final int ritAktif =
+      await RitUserService.instance.getActiveRit();
+
+      print('[RIT] RIT aktif = $ritAktif');
+
+      List<Map<String, dynamic>> kotaData =
+      await databaseHelper.getRuteTrayekUrutan(ritAktif);
+
       setState(() {
-        listKota = kotaData; // Pastikan 'listKota' adalah list yang sesuai
+        listKota = kotaData;
       });
 
       if (listKota.isEmpty) {
-        print('Tidak ada data dalam tabel list_kota.');
+        print('Tidak ada data dalam tabel rute_trayek_urutan.');
       } else {
-        print('Data ditemukan dalam tabel list_kota.');
+        print('Data rute ditemukan (${listKota.length})');
       }
     } catch (e) {
-      print('Error saat mengambil data: $e');
+      print('Error saat mengambil data rute: $e');
     }
   }
 

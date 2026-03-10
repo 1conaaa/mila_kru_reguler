@@ -123,6 +123,7 @@ class _DynamicFieldState extends State<DynamicField> {
     const Map<int, Set<String>> hiddenTagsByTrayek = {
       15: {'3471352901','3471351002', '3471351001'},
       59: {'3471351002', '3471351001'},
+      86: {'3471351002', '3471351001'},
     };
 
     final int tagId = widget.tag.id;

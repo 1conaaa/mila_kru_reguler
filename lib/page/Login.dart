@@ -16,6 +16,8 @@ import 'package:mila_kru_reguler/api/ApiHelperJenisPaket.dart';
 import 'package:mila_kru_reguler/api/ApiHelperUser.dart';
 import 'package:mila_kru_reguler/api/ApiHelperTagTransaksi.dart';
 import 'package:mila_kru_reguler/api/ApiHelperRuteTrayekUrutan.dart';
+import 'package:mila_kru_reguler/services/rit_user_service.dart';
+import 'package:mila_kru_reguler/page/initial_data_loading_page.dart';
 
 class Login extends StatefulWidget {
   @override
@@ -33,6 +35,7 @@ class _LoginState extends State<Login> {
   bool _obscurePassword = true;
   bool _isInitializing = false; // 🆕 Tambahkan flag untuk initial loading
   final UserService _userService = UserService();
+  int? _selectedRit;
 
   @override
   void initState() {
@@ -111,6 +114,12 @@ class _LoginState extends State<Login> {
 
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
+
+    if (_selectedRit == null) {
+      setState(() => _isLoading = false);
+      _showDialog(context, 'Silakan pilih RIT terlebih dahulu.');
+      return;
+    }
 
     try {
       final response = await http.post(
@@ -199,6 +208,12 @@ class _LoginState extends State<Login> {
         }
       }
 
+      await RitUserService.instance.insertRitUser(
+        idUser: user.idUser,
+        idBus: user.idBus,
+        noPol: user.noPol ?? '',
+        rit: _selectedRit!,
+      );
 
       await prefs.setBool('isLoggedIn', true);
 
@@ -206,22 +221,35 @@ class _LoginState extends State<Login> {
         await _userService.insertUser(user.toMap());
       } catch (_) {}
 
-      // ================= LOAD DATA LANJUTAN (BACKGROUND) =================
-      _loadInitialDataAfterLogin(api, user);
+      // // ================= LOAD DATA LANJUTAN (BACKGROUND) =================
+      // _loadInitialDataAfterLogin(api, user);
+      //
+      // if (!mounted) return;
+      // setState(() => _isLoading = false);
+      //
+      // // ================= PINDAH HALAMAN + KIRIM PESAN =================
+      // Navigator.pushReplacementNamed(
+      //   context,
+      //   '/',
+      //   arguments: {
+      //     'welcomeMessage':
+      //     'Salam ${user.namaLengkap}, Anda sudah terdaftar bertugas pada Bis '
+      //         '(${user.idBus})-${user.noPol} Trayek ${user.namaTrayek}. '
+      //         'Selamat bertugas. Bismillah.',
+      //   },
+      // );
 
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      // ================= PINDAH HALAMAN + KIRIM PESAN =================
-      Navigator.pushReplacementNamed(
+      Navigator.pushReplacement(
         context,
-        '/',
-        arguments: {
-          'welcomeMessage':
-          'Salam ${user.namaLengkap}, Anda sudah terdaftar bertugas pada Bis '
-              '(${user.idBus})-${user.noPol} Trayek ${user.namaTrayek}. '
-              'Selamat bertugas. Bismillah.',
-        },
+        MaterialPageRoute(
+          builder: (_) => InitialDataLoadingPage(
+            token: api.token,
+            user: user,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -229,7 +257,6 @@ class _LoginState extends State<Login> {
       _showDialog(context, 'Terjadi kesalahan jaringan.');
     }
   }
-
 
   Future<void> _loadInitialDataAfterLogin(
       ApiResponseUser api,
@@ -457,6 +484,29 @@ class _LoginState extends State<Login> {
                               validator: (value) {
                                 if (value!.isEmpty) {
                                   return 'Please enter your password';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 20.0),
+                            DropdownButtonFormField<int>(
+                              value: _selectedRit,
+                              decoration: InputDecoration(
+                                labelText: 'Pilih RIT',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: const [
+                                DropdownMenuItem(value: 1, child: Text('RIT 1')),
+                                DropdownMenuItem(value: 2, child: Text('RIT 2')),
+                              ],
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedRit = value;
+                                });
+                              },
+                              validator: (value) {
+                                if (value == null) {
+                                  return 'RIT wajib dipilih';
                                 }
                                 return null;
                               },

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
+import 'package:mila_kru_reguler/services/rit_user_service.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -19,7 +20,6 @@ import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-
 
 final printerService = BluetoothPrinterService();
 
@@ -100,6 +100,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
   get selectedValue => null;
 
+  final TextEditingController jumlahTiketController = TextEditingController();
+
   TextEditingController hargaKantorController = TextEditingController();
   TextEditingController tagihanController = TextEditingController();
   TextEditingController bayarController = TextEditingController();
@@ -133,6 +135,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     _getListKota();
     _loadLastKotaTerakhir();
     _getListMetodePembayaran();
+    _initRitDanData();
     hargaKantorController = TextEditingController();
     tagihanController = TextEditingController();
     bayarController = TextEditingController();
@@ -163,21 +166,67 @@ class _PenjualanFormState extends State<PenjualanForm> {
     tagihanController.text = formatter.format(jumlahTagihan);
   }
 
-  Future<void> _getListKota() async {
+  // Future<void> _getListKota() async {
+  //   try {
+  //     List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan();
+  //     setState(() {
+  //       listKota = kotaData; // Pastikan 'listKota' adalah list yang sesuai
+  //     });
+  //
+  //     if (listKota.isEmpty) {
+  //       print('Tidak ada data dalam tabel list_kota.');
+  //     } else {
+  //       print('Data ditemukan dalam tabel list_kota.');
+  //       print_r(listKota);
+  //     }
+  //   } catch (e) {
+  //     print('Error saat mengambil data: $e');
+  //   }
+  // }
+
+  Future<int> getActiveRit() async {
+    final int ritAktif =
+    await RitUserService.instance.getActiveRit();
+
+    print('[RIT] RIT aktif dari service = $ritAktif');
+    return ritAktif;
+  }
+
+  Future<void> _initRitDanData() async {
     try {
-      List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan();
+      final int ritAktif = await getActiveRit();
+
       setState(() {
-        listKota = kotaData; // Pastikan 'listKota' adalah list yang sesuai
+        selectedPilihRit = ritAktif.toString();
+      });
+
+      // langsung load rute berdasarkan rit aktif
+      await _getListKota(rit: ritAktif);
+    } catch (e) {
+      print('Error init rit: $e');
+    }
+  }
+
+  Future<void> _getListKota({int? rit}) async {
+    try {
+      final int ritDigunakan = rit ?? await getActiveRit();
+
+      print('[RIT] RIT digunakan = $ritDigunakan');
+
+      List<Map<String, dynamic>> kotaData =
+      await databaseHelper.getRuteTrayekUrutan(ritDigunakan);
+
+      setState(() {
+        listKota = kotaData;
       });
 
       if (listKota.isEmpty) {
-        print('Tidak ada data dalam tabel list_kota.');
+        print('Tidak ada data dalam tabel rute_trayek_urutan.');
       } else {
-        print('Data ditemukan dalam tabel list_kota.');
-        print_r(listKota);
+        print('Data rute ditemukan (${listKota.length})');
       }
     } catch (e) {
-      print('Error saat mengambil data: $e');
+      print('Error saat mengambil data rute: $e');
     }
   }
 
@@ -298,7 +347,6 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
   }
 
-
   void _calculateKembalian(double jumlahBayar, double jumlahTagihan) {
     setState(() {
       jumlahKembalian = jumlahBayar - jumlahTagihan;
@@ -327,6 +375,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     // if (_isConnected) {
     //   _bluetooth.disconnect();
     // }
+    jumlahTiketController.dispose();
     tagihanController.removeListener(_updateTotalDenganBiayaAdmin);
     sarantagihanController.removeListener(_updateTotalDenganBiayaAdmin);
     totalDenganAdminController.dispose();
@@ -1511,30 +1560,35 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           Expanded(
                             flex: 2,
                             child: DropdownButtonFormField<String>(
-                              decoration: InputDecoration(
+                              decoration: const InputDecoration(
                                 labelText: 'Pilih Rit',
                                 border: OutlineInputBorder(),
                               ),
-                              initialValue: selectedPilihRit,
-                              items: [
-                                DropdownMenuItem<String>(
-                                  child: Text('Rit-1'),
+                              value: selectedPilihRit, // ⬅️ BUKAN initialValue
+                              items: const [
+                                DropdownMenuItem(
                                   value: '1',
+                                  child: Text('Rit-1'),
                                 ),
-                                DropdownMenuItem<String>(
-                                  child: Text('Rit-2'),
+                                DropdownMenuItem(
                                   value: '2',
+                                  child: Text('Rit-2'),
                                 ),
-                                DropdownMenuItem<String>(
-                                  child: Text('Rit-3'),
+                                DropdownMenuItem(
                                   value: '3',
+                                  child: Text('Rit-3'),
                                 ),
                               ],
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedPilihRit = value ?? '1';
-                                });
-                              },
+                              onChanged: null, // ⬅️ DIJADIKAN READ ONLY
+                              // onChanged: (value) async {
+                              //   if (value == null) return;
+                              //
+                              //   setState(() {
+                              //     selectedPilihRit = value;
+                              //   });
+                              //
+                              //   await _getListKota(rit: int.parse(value));
+                              // },
                               validator: (value) {
                                 if (value == null) {
                                   return 'Pilih Rit harus diisi';
@@ -1547,6 +1601,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                           Expanded(
                             flex: 1,
                             child: TextFormField(
+                              controller: jumlahTiketController,
                               decoration: InputDecoration(
                                 labelText: 'Jml.Tiket',
                                 border: OutlineInputBorder(),
@@ -2362,6 +2417,28 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                         keteranganTagihan,
                                       ).then((_) {
                                         printTicket();
+                                        // ✅ RESET SETELAH SUKSES
+                                        setState(() {
+                                          jumlahTiketController.clear();
+                                          jumlahTiket = 0;
+
+                                          // reset harga tarikan
+                                          tagihanController.clear();
+                                          jumlahTagihan = 0;
+
+                                          // reset harga kantor
+                                          hargaKantorController.clear();
+                                          _hargaKantorCalculated = 0;
+
+                                          // reset total admin jika ada
+                                          totalDenganAdminController.clear();
+                                          biayaAdmin = 0;
+
+                                          // reset bayar & kembalian
+                                          bayarController.clear();
+                                          kembalianController.clear();
+                                          jumlahBayar = 0;
+                                        });
                                       });
                                     }
                                   }

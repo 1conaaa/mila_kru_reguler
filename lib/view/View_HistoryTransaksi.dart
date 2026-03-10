@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 import 'package:http/http.dart' as http;
 import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
+import 'package:mila_kru_reguler/services/rit_user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 
@@ -197,31 +198,94 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     print("=== PUSH DATA SELESAI ===");
   }
 
+  // Future<void> _getListTransaksi() async {
+  //   debugPrint("🔄 Ambil data transaksi");
+  //
+  //   List<Map<String, dynamic>> penjualanData =
+  //   await PenjualanTiketService.instance.getDataPenjualan();
+  //
+  //   final Set<String> kotaTujuanSet = {};
+  //
+  //   for (var e in penjualanData) {
+  //     final rute = e['rute_kota']?.toString();
+  //     if (rute != null && rute.contains(' - ')) {
+  //       final parts = rute.split(' - ');
+  //       final kotaTujuan = parts.last.trim(); // ⬅️ AMBIL TUJUAN
+  //       kotaTujuanSet.add(kotaTujuan);
+  //     }
+  //   }
+  //
+  //   setState(() {
+  //     listPenjualan = penjualanData;
+  //     kotaTujuanList = ['SEMUA', ...kotaTujuanSet.toList()];
+  //   });
+  //
+  //   debugPrint("📍 Kota tujuan unik: $kotaTujuanList");
+  // }
+
+  Future<int> getActiveRit() async {
+    final int ritAktif =
+    await RitUserService.instance.getActiveRit();
+
+    print('[RIT] RIT aktif dari service = $ritAktif');
+    return ritAktif;
+  }
+
   Future<void> _getListTransaksi() async {
     debugPrint("🔄 Ambil data transaksi");
 
+    // ambil rit aktif
+    final int rit = await getActiveRit();
+
     List<Map<String, dynamic>> penjualanData =
     await PenjualanTiketService.instance.getDataPenjualan();
+
+    final ruteUrutan = await databaseHelper.getRuteTrayekUrutan(rit);
+
+    Map<String, int> urutanKota = {};
+
+    for (var r in ruteUrutan) {
+      final namaKota = r['nama_kota']?.toString();
+      final noUrut = r['no_urut_kota'] ?? 0;
+
+      if (namaKota != null) {
+        urutanKota[namaKota] = noUrut;
+      }
+    }
 
     final Set<String> kotaTujuanSet = {};
 
     for (var e in penjualanData) {
       final rute = e['rute_kota']?.toString();
+
       if (rute != null && rute.contains(' - ')) {
         final parts = rute.split(' - ');
-        final kotaTujuan = parts.last.trim(); // ⬅️ AMBIL TUJUAN
+        final kotaTujuan = parts.last.trim();
         kotaTujuanSet.add(kotaTujuan);
       }
     }
 
+    List<String> kotaTujuanSorted = kotaTujuanSet.toList();
+
+    kotaTujuanSorted.sort((a, b) {
+      final urutA = urutanKota[a] ?? 999;
+      final urutB = urutanKota[b] ?? 999;
+      return urutA.compareTo(urutB);
+    });
+
+    // kotaTujuanSorted.sort((a, b) {
+    //   final urutA = urutanKota[a] ?? 999;
+    //   final urutB = urutanKota[b] ?? 999;
+    //   return urutB.compareTo(urutA);
+    // });
+
     setState(() {
       listPenjualan = penjualanData;
-      kotaTujuanList = ['SEMUA', ...kotaTujuanSet.toList()];
+      kotaTujuanList = ['SEMUA', ...kotaTujuanSorted];
     });
 
     debugPrint("📍 Kota tujuan unik: $kotaTujuanList");
   }
-
 
   @override
   Widget build(BuildContext context) {
