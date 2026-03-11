@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/services/user_service.dart';
+import 'package:mila_kru_reguler/services/bus_perpal_service.dart';
 import 'package:mila_kru_reguler/view/widgets/single_field.dart';
 import 'package:mila_kru_reguler/view/widgets/field_with_jumlah.dart';
 import 'package:mila_kru_reguler/view/widgets/field_with_liter_solar.dart';
@@ -63,6 +64,8 @@ class _DynamicFieldState extends State<DynamicField> {
   String? kodeTrayek;
   Set<int> tagPengeluaranSet = {};
 
+  bool isBusPerpal = false;
+
   /// TAG PENDAPATAN (HARUS SELALU TAMPIL)
   static const Set<int> tagPendapatanSet = {1, 2, 3, 71};
 
@@ -77,6 +80,7 @@ class _DynamicFieldState extends State<DynamicField> {
   void initState() {
     super.initState();
     _loadUserData();
+    _checkBusPerpal();
   }
 
   Future<void> _loadUserData() async {
@@ -100,6 +104,18 @@ class _DynamicFieldState extends State<DynamicField> {
     print("=== TAG PENGELUARAN AKTIF: $tagPengeluaranSet ===");
   }
 
+  Future<void> _checkBusPerpal() async {
+    final result = await BusPerpalService.instance.hasPerpal();
+
+    if (!mounted) return;
+
+    setState(() {
+      isBusPerpal = result;
+    });
+
+    debugPrint("=== STATUS BUS PERPAL: $isBusPerpal ===");
+  }
+
   bool isNonEditable(TagTransaksi tag) {
     final name = tag.nama?.toLowerCase() ?? '';
     return name.contains('premi') ||
@@ -120,8 +136,8 @@ class _DynamicFieldState extends State<DynamicField> {
   @override
   Widget build(BuildContext context) {
     /// 🔹 ATURAN KHUSUS TRAYEK
-    const Map<int, Set<String>> hiddenTagsByTrayek = {
-      15: {'3471352901','3471351002', '3471351001'},
+    final Map<int, Set<String>> hiddenTagsByTrayek = {
+      if (!isBusPerpal) 15: {'3471352901','3471351002', '3471351001'},
       59: {'3471351002', '3471351001'},
       86: {'3471351002', '3471351001'},
     };

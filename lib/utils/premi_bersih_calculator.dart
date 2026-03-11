@@ -3,6 +3,7 @@ import 'package:mila_kru_reguler/models/persentase_susukan_model.dart';
 import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/models/user.dart';
 import 'package:mila_kru_reguler/services/persentase_susukan_service.dart';
+import 'package:mila_kru_reguler/services/bus_perpal_service.dart';
 
 class PremiBersihCalculator {
   /// Method utama untuk kalkulasi premi bersih dengan user data
@@ -39,7 +40,7 @@ class PremiBersihCalculator {
     );
 
     // Kalkulasi berdasarkan formula kompleks sesuai aturan bisnis
-    final Map<String, dynamic> complexCalculations = _calculateComplexPremi(
+    final Map<String, dynamic> complexCalculations = await _calculateComplexPremi(
       extractedValues: extractedValues,
       userData: userData,
       allData: allData,
@@ -134,12 +135,12 @@ class PremiBersihCalculator {
   }
 
   /// Kalkulasi kompleks berdasarkan aturan bisnis
-  static Map<String, dynamic> _calculateComplexPremi({
-      required Map<String, double> extractedValues,
-      required User userData,
-      required Map<String, List<TagData>> allData,
-      required List<PersentaseSusukan> persentaseSusukanList, // 👈 BARU
-    }) {
+  static Future<Map<String, dynamic>> _calculateComplexPremi({
+    required Map<String, double> extractedValues,
+    required User userData,
+    required Map<String, List<TagData>> allData,
+    required List<PersentaseSusukan> persentaseSusukanList,
+  }) async {
     print('=== [DEBUG] START CALCULATION ===');
     print('Kelas Bus: ${userData.kelasBus}');
     print('Jenis Trayek: ${userData.jenisTrayek}');
@@ -147,6 +148,10 @@ class PremiBersihCalculator {
     print('Nama Trayek: ${userData.namaTrayek}');
     print('Premi Extra: ${userData.premiExtra}%');
     print('Persen Premi Kru: ${userData.persenPremikru}%');
+
+    final bool isBusPerpal = await BusPerpalService.instance.hasPerpal();
+
+    print('=== STATUS BUS PERPAL: $isBusPerpal ===');
 
     // Ekstrak nilai
     final double nominalTiketReguler = extractedValues['nominalTiketReguler'] ?? 0.0;
@@ -284,10 +289,16 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                if (sisaPendapatan >= 2500000) {
-                  tolAdjustment = 270000;
+                if (isBusPerpal) {
+                  tolAdjustment = pengeluaranTol;
+                  print('=== BUS PERPAL ===');
+                  print('Tol menggunakan input user: $pengeluaranTol');
                 } else {
-                  tolAdjustment = 140000;
+                  if (sisaPendapatan >= 2500000) {
+                    tolAdjustment = 270000;
+                  } else {
+                    tolAdjustment = 140000;
+                  }
                 }
 
                 print('Tol: $tolAdjustment');
@@ -357,10 +368,16 @@ class PremiBersihCalculator {
                 sisaPendapatan = pendBersih - nominalPremiExtra;
                 print('Sisa Pendapatan (Bersih - Premi Extra): $sisaPendapatan');
 
-                if (sisaPendapatan >= 2500000) {
-                  tolAdjustment = 270000;
+                if (isBusPerpal) {
+                  tolAdjustment = pengeluaranTol;
+                  print('=== BUS PERPAL ===');
+                  print('Tol menggunakan input user: $pengeluaranTol');
                 } else {
-                  tolAdjustment = 140000;
+                  if (sisaPendapatan >= 2500000) {
+                    tolAdjustment = 270000;
+                  } else {
+                    tolAdjustment = 140000;
+                  }
                 }
 
                 print('Tol: $tolAdjustment');

@@ -46,6 +46,35 @@ class BusPerpalService {
     }
   }
 
+  Future<Map<String, dynamic>?> getBusPerpal() async {
+    final db = await DatabaseHelper.instance.database;
+
+    final result = await db.query(
+      't_bus_perpal',
+      orderBy: 'id DESC',
+      limit: 1,
+    );
+
+    if (result.isNotEmpty) {
+      return result.first;
+    }
+
+    return null;
+  }
+
+  Future<bool> hasPerpal() async {
+    final db = await DatabaseHelper.instance.database;
+
+    final result = await db.query(
+      't_bus_perpal',
+      limit: 1,
+    );
+
+    print("ISI t_bus_perpal: $result");
+
+    return result.isNotEmpty;
+  }
+
   Future<void> clearAll() async {
     final Database db = await DatabaseHelper.instance.database;
 

@@ -4,6 +4,7 @@ import 'package:mila_kru_reguler/models/tag_transaksi.dart';
 import 'package:mila_kru_reguler/view/widgets/km_pulang_field.dart';
 import 'package:mila_kru_reguler/view/widgets/kategori_section.dart';
 import 'package:mila_kru_reguler/view/widgets/simpan_button.dart';
+import 'package:mila_kru_reguler/services/bus_perpal_service.dart';
 
 class ViewFormRekapTransaksi extends StatelessWidget {
   final GlobalKey<FormState> formKey;
@@ -116,6 +117,37 @@ class ViewFormRekapTransaksi extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
+
+            FutureBuilder<bool>(
+              future: BusPerpalService.instance.hasPerpal(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return SizedBox();
+
+                if (snapshot.data == true) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Bus PERPAL',
+                        style: TextStyle(
+                          color: Colors.orange.shade900,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  );
+                }
+
+                return SizedBox();
+              },
+            ),
+
             SizedBox(height: 16.0),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.0),

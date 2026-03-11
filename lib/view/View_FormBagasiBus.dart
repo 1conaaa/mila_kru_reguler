@@ -395,16 +395,22 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   //   }
   // }
 
-  Future<void> _getListKota() async {
-    try {
-      // 🆕 ambil rit aktif
-      final int ritAktif =
-      await RitUserService.instance.getActiveRit();
+  Future<int> getActiveRit() async {
+    final int ritAktif =
+    await RitUserService.instance.getActiveRit();
 
-      print('[RIT] RIT aktif = $ritAktif');
+    print('[RIT] RIT aktif dari service = $ritAktif');
+    return ritAktif;
+  }
+
+  Future<void> _getListKota({int? rit}) async {
+    try {
+      final int ritDigunakan = rit ?? await getActiveRit();
+
+      print('[RIT] RIT digunakan = $ritDigunakan');
 
       List<Map<String, dynamic>> kotaData =
-      await databaseHelper.getRuteTrayekUrutan(ritAktif);
+      await databaseHelper.getRuteTrayekUrutan(ritDigunakan);
 
       setState(() {
         listKota = kotaData;
