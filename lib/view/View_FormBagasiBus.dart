@@ -112,9 +112,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   @override
   void initState() {
     super.initState();
-    _getJenisPaket();
-    _getListKota();
-    _loadLastKotaTerakhir();
+    // _getJenisPaket();
+    // _getListKota();
+    // _loadLastKotaTerakhir();
+    _refreshData();
     SharedPreferences.getInstance().then((prefs) {
       setState(() {
         idUser = prefs.getInt('idUser') ?? 0;
@@ -159,6 +160,46 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     }
   }
 
+  Future<void> _refreshData() async {
+    setState(() {
+      _isLoading = true; // Tambahkan loading state
+    });
+
+    try {
+      await _getJenisPaket();
+      await _getListKota(); // Ini akan mengambil rit aktif secara otomatis
+      await _getUserData();
+      await _getListKotaTerakhir();
+
+      // Set default values untuk dropdown jika kosong
+      if (mounted && listKota.isNotEmpty && selectedKotaBerangkat == null) {
+        setState(() {
+          selectedKotaBerangkat = '${listKota[0]['id_kota_berangkat']} - ${listKota[0]['jarak']}';
+          if (listKota.length > 1) {
+            selectedKotaTujuan = '${listKota[listKota.length-1]['id_kota_berangkat']} - ${listKota[listKota.length-1]['jarak']}';
+          }
+        });
+      }
+
+      // Set initial value for tagihanController
+      if (mounted) {
+        setState(() {
+          _hargaKmController.text = formatter.format(jumlahTagihan);
+        });
+      }
+    } catch (e) {
+      print('Error in _refreshData: $e');
+      if (mounted) {
+        Fluttertoast.showToast(msg: "Gagal memuat data: $e");
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   // Fungsi untuk mengambil gambar dari kamera atau galeri
   Future<void> _ambilGambar(bool fromCamera) async {
@@ -296,14 +337,29 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       Fluttertoast.showToast(msg: toastMessage);
       // ===============================
       // 🔁 PINDAH KE FORM BAGASI BUS
-      // ===============================
-      if (context.mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => FormBagasiBus(),
-          ),
-        );
+      // 🔥 TAMBAHKAN: Refresh data setelah simpan
+      await _refreshData();
+
+      // Reset form
+      if (mounted) {
+        _namaPengirimController.clear();
+        _noTlpPengirimController.clear();
+        _namaPenerimaController.clear();
+        _noTlpPenerimaController.clear();
+        _qtyBarangController.clear();
+        _keteranganController.clear();
+        _hargaKmController.clear();
+
+        setState(() {
+          _image = null;
+          _base64Image = null;
+          _fileName = null;
+          selectedJenisPaket = jenisPaket.isNotEmpty ? '${jenisPaket[0]['id']} - ${jenisPaket[0]['persen']} - ${jenisPaket[0]['harga_paket']}' : null;
+          selectedKotaBerangkat = listKota.isNotEmpty ? '${listKota[0]['id_kota_berangkat']} - ${listKota[0]['jarak']}' : null;
+          selectedKotaTujuan = listKota.isNotEmpty && listKota.length > 1 ? '${listKota[listKota.length-1]['id_kota_berangkat']} - ${listKota[listKota.length-1]['jarak']}' : null;
+          qtyBarang = 0;
+          tagihan = 0;
+        });
       }
 
     } catch (error) {
@@ -311,13 +367,15 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       Fluttertoast.showToast(msg: "Gagal menyimpan data");
     } finally {
       _hideLoading();
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   Future<void> _loadLastKotaTerakhir() async {
     // await databaseHelper.initDatabase();
-    await _getListKota();
+    // await _getListKota();
     await _getUserData();
     await _getListKotaTerakhir();
     // await databaseHelper.closeDatabase();
@@ -409,12 +467,18 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
       print('[RIT] RIT digunakan = $ritDigunakan');
 
-      List<Map<String, dynamic>> kotaData =
-      await databaseHelper.getRuteTrayekUrutan(ritDigunakan);
+      // Pastikan database terbuka
+      await databaseHelper.initDatabase();
+      List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan(ritDigunakan);
+      await databaseHelper.closeDatabase();
 
-      setState(() {
-        listKota = kotaData;
-      });
+      if (mounted) {
+        setState(() {
+          listKota = kotaData;
+        });
+      }
+
+      print('[DEBUG] Jumlah kota: ${listKota.length}');
 
       if (listKota.isEmpty) {
         print('Tidak ada data dalam tabel rute_trayek_urutan.');
@@ -676,6 +740,24 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
   @override
   Widget build(BuildContext context) {
+    // Tampilkan loading HANYA saat sedang proses loading data
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Form Bagasi Bus'),
+        ),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Memuat data...'),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       resizeToAvoidBottomInset: true, // biar layout bergeser saat keyboard muncul
       appBar: AppBar(
