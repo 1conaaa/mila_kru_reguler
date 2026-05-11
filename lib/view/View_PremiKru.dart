@@ -419,13 +419,26 @@ class _PremiKruState extends State<PremiKru> {
       }
 
       // ===============================
-      // HITUNG TOTAL
+      // AMBIL DATA RIT (dari setoran pertama)
+      // ===============================
+      int rit = 1;
+      if (setoranList.isNotEmpty && setoranList.first.rit != null) {
+        rit = int.tryParse(setoranList.first.rit.toString()) ?? 1;
+      }
+
+      // ===============================
+      // HITUNG TOTAL & DETAIL PENDAPATAN
       // ===============================
 
       double totalPendapatan = 0;
       double totalPengeluaran = 0;
       double pendapatanBersih = 0;
       double pendapatanDisetor = 0;
+
+      // Detail pendapatan
+      double pendapatanTiketReguler = 0;
+      double pendapatanTiketOnline = 0;
+      double pendapatanBagasi = 0;
 
       for (var item in setoranList) {
 
@@ -440,12 +453,6 @@ class _PremiKruState extends State<PremiKru> {
           tag = null;
         }
 
-        // DEBUG PRINT
-        print("ID Tag Setoran : ${item.idTagTransaksi}");
-        print("Nama Tag       : ${tag?.nama}");
-        print("Kategori       : ${tag?.kategoriTransaksi}");
-        print("-----------------------------");
-
         // ==========================
         // PENJUMLAHAN BERDASARKAN KATEGORI
         // ==========================
@@ -457,6 +464,15 @@ class _PremiKruState extends State<PremiKru> {
 
           if (kategori == 1) {
             totalPendapatan += item.nilai ?? 0;
+
+            // Detail pendapatan berdasarkan ID tag
+            if (item.idTagTransaksi == 1) {
+              pendapatanTiketReguler = item.nilai ?? 0;
+            } else if (item.idTagTransaksi == 2) {
+              pendapatanTiketOnline = item.nilai ?? 0;
+            } else if (item.idTagTransaksi == 3) {
+              pendapatanBagasi = item.nilai ?? 0;
+            }
           }
           else if (kategori == 2) {
             totalPengeluaran += item.nilai ?? 0;
@@ -479,50 +495,52 @@ class _PremiKruState extends State<PremiKru> {
       DateFormat('dd-MM-yyyy').format(tanggalDipilih);
 
       // ===============================
-      // FORMAT TEXT THERMAL
+      // FORMAT TEXT THERMAL (DIPERBAIKI)
       // ===============================
 
       String text = "";
 
-      // text += "LAPORAN SETORAN KRU\n";
-      // text += "--------------------------------\n";
-      // text += "Tanggal : $tanggalLaporan\n";
-      // text += "No Pol : ${user?.noPol ?? '-'}\n";
-      // text += "Trayek : ${user?.namaTrayek ?? '-'}\n";
-      // text += "Kondektur : ${user?.namaLengkap ?? '-'}\n";
-      // text += "--------------------------------\n";
-      // text += "Pendapatan : ${formatPrinter(totalPendapatan)}\n";
-      // text += "Pengeluaran: ${formatPrinter(totalPengeluaran)}\n";
-      // text += "Bersih     : ${formatPrinter(pendapatanBersih)}\n";
-      // text += "Disetor    : ${formatPrinter(pendapatanDisetor)}\n";
-      // text += "--------------------------------\n\n\n";
+      // Header
+      text += "=" * 32 + "\n";
+      text += "   LAPORAN SETORAN KRU   \n";
+      text += "=" * 32 + "\n\n";
 
-      text += "LAPORAN SETORAN KRU\n";
-      text += "--------------------------------\n";
-      text += "Tanggal :\n$tanggalLaporan\n";
-      text += "No Pol :\n${user?.noPol ?? '-'}\n";
-      text += "Trayek :\n${user?.namaTrayek ?? '-'}\n";
-      // text += "Kondektur\n${user?.namaLengkap ?? '-'}\n";
-      text += "--------------------------------\n";
-      text += "DATA KRU\n";
+      // Informasi Umum
+      text += "Tanggal    : $tanggalLaporan\n";
+      text += "Rit ke     : $rit\n";
+      text += "No. Polisi : ${user?.noPol ?? '-'}\n";
+      text += "Trayek     : ${user?.namaTrayek ?? '-'}\n";
+      text += "-" * 32 + "\n\n";
+
+      // Data Kru
+      text += "DATA KRU:\n";
       for (var kru in kruList) {
         final group = kru['group_name'] ?? '-';
         final nama = kru['nama_lengkap'] ?? '-';
         final nik = kru['nik'] ?? '-';
-
-        text += "$group - $nama ($nik)\n";
+        text += "• $group - $nama\n";
+        text += "  (NIK: $nik)\n";
       }
-      text += "--------------------------------\n";
+      text += "-" * 32 + "\n\n";
 
-      text += "Pendapatan :\n${formatPrinter(totalPendapatan)}\n";
-      text += "--------------------------------\n";
-      text += "Pengeluaran :\n${formatPrinter(totalPengeluaran)}\n";
-      text += "--------------------------------\n";
-      text += "Bersih :\n${formatPrinter(pendapatanBersih)}\n";
-      text += "--------------------------------\n";
-      text += "Disetor :\n${formatPrinter(pendapatanDisetor)}\n";
+      // Detail Pendapatan
+      text += "DETAIL PENDAPATAN:\n";
+      text += "├ Tiket Reguler : Rp ${formatPrinter(pendapatanTiketReguler)}\n";
+      text += "├ Tiket Online  : Rp ${formatPrinter(pendapatanTiketOnline)}\n";
+      text += "└ Bagasi        : Rp ${formatPrinter(pendapatanBagasi)}\n";
+      text += "-" * 32 + "\n";
+      text += "TOTAL PENDAPATAN : Rp ${formatPrinter(totalPendapatan)}\n\n";
 
-      text += "--------------------------------\n\n\n";
+      // Pengeluaran
+      text += "TOTAL PENGELUARAN : Rp ${formatPrinter(totalPengeluaran)}\n";
+      text += "-" * 32 + "\n\n";
+
+      // Hasil Akhir
+      text += "PENDAPATAN BERSIH : Rp ${formatPrinter(pendapatanBersih)}\n";
+      text += "PENDAPATAN DISETOR: Rp ${formatPrinter(pendapatanDisetor)}\n";
+      text += "=" * 32 + "\n";
+      text += "Terima kasih\n";
+      text += "\n\n\n";
 
       // kirim ke printer
       await printerService.bluetooth.writeBytes(

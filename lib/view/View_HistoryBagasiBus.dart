@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:convert'; // Untuk jsonEncode
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:mila_kru_reguler/database/database_helper.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
-import 'dart:typed_data';
+import 'package:mila_kru_reguler/database/database_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HistoryBagasiBus extends StatefulWidget {
   @override
@@ -14,20 +15,23 @@ class HistoryBagasiBus extends StatefulWidget {
 
 class _HistoryBagasiBusState extends State<HistoryBagasiBus> {
   List<Map<String, dynamic>> inspectionItemsResults = [];
+
   late int idUser;
   int? idGarasi;
   int idBus = 0;
   String? noPol;
   late String token;
-  bool _isSending = false;
 
+  bool _isSending = false;
 
   DatabaseHelper databaseHelper = DatabaseHelper.instance;
 
   @override
   void initState() {
     super.initState();
+
     _getInspectionResults();
+
     SharedPreferences.getInstance().then((prefs) {
       setState(() {
         idUser = prefs.getInt('idUser') ?? 0;
@@ -42,146 +46,469 @@ class _HistoryBagasiBusState extends State<HistoryBagasiBus> {
   Future<void> _getInspectionResults() async {
     await databaseHelper.initDatabase();
 
-    // Mengambil hasil pengecekan dari database
-    List<Map<String, dynamic>> itemsResults = await databaseHelper.getAllTransaksiBagasi();
+    List<Map<String, dynamic>> itemsResults =
+    await databaseHelper.getAllTransaksiBagasi();
 
     await databaseHelper.closeDatabase();
 
     print('object results : $itemsResults');
 
-    // Update state dengan hasil pengecekan
     setState(() {
       inspectionItemsResults = itemsResults;
     });
   }
 
-  // Fungsi untuk mengirim hasil inspeksi ke API
-  Future<void> sendInspectionResult(Map<String, dynamic> inspectionResult) async {
+  // =========================
+  // KIRIM SATU DATA
+  // =========================
+  Future<void> sendInspectionResult(
+      Map<String, dynamic> inspectionResult) async {
     String apiUrl = 'https://apimila.milaberkah.com/api/orderbagasi';
+
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token', // Gunakan token autentikasi jika diperlukan
+          'Authorization': 'Bearer $token',
         },
         body: jsonEncode(inspectionResult),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        Fluttertoast.showToast(msg: 'Hasil pengecekan berhasil dikirim');
-        // Update status_qc di database menjadi 'Y' jika berhasil
-        await databaseHelper.updateTransaksiBagasiStatusQc(inspectionResult['id']);
-        Fluttertoast.showToast(msg: 'Hasil pengecekan berhasil dikirim');
+        await databaseHelper
+            .updateTransaksiBagasiStatusQc(inspectionResult['id']);
+
+        Fluttertoast.showToast(
+          msg: 'Data berhasil dikirim',
+          gravity: ToastGravity.BOTTOM,
+        );
       } else {
-        Fluttertoast.showToast(msg: 'Gagal mengirim hasil pengecekan. Kode: ${response.statusCode}');
+        Fluttertoast.showToast(
+          msg: 'Gagal mengirim data (${response.statusCode})',
+          gravity: ToastGravity.BOTTOM,
+        );
+
         print('Error response: ${response.body}');
       }
     } catch (e) {
-      Fluttertoast.showToast(msg: 'Terjadi kesalahan saat mengirim data');
+      Fluttertoast.showToast(
+        msg: 'Terjadi kesalahan saat mengirim data',
+        gravity: ToastGravity.BOTTOM,
+      );
+
       print('Error: $e');
     }
   }
 
-  // Fungsi untuk mengirim semua hasil inspeksi ke API
+  // =========================
+  // KIRIM SEMUA DATA
+  // =========================
   Future<void> sendAllInspectionResults() async {
     for (var item in inspectionItemsResults) {
-      print('Mengirim data berikut: $item'); // Menampilkan nilai yang dikirim
+      print('Mengirim data berikut: $item');
       await sendInspectionResult(item);
     }
-    // 🔥 REFRESH DATA SETELAH SEMUA TERKIRIM
+
     await _getInspectionResults();
   }
 
+  // =========================
+  // WARNA STATUS
+  // =========================
+  Color getStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'SELESAI':
+        return Colors.green;
+
+      case 'PENDING':
+        return Colors.orange;
+
+      case 'BATAL':
+        return Colors.red;
+
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  // =========================
+  // ITEM INFORMASI
+  // =========================
+  Widget buildInfoItem(
+      IconData icon,
+      String label,
+      String value,
+      ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: Colors.grey[600],
+          ),
+
+          const SizedBox(width: 6),
+
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 12,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$label : ',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(
+                    text: value,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // UI
+  // =========================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xffF5F7FA),
+
       appBar: AppBar(
-        automaticallyImplyLeading: false, // Menghilangkan tanda panah kembali
+        elevation: 0,
+        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+
+        title: const Text(
+          'History Bagasi',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 16.0), // Margin kanan
-            child: Tooltip(
-              message: 'Kirim Hasil Pengecekan', // Label tooltip
-              child: IconButton(
-                icon: _isSending
-                    ? CircularProgressIndicator(color: Colors.green)
-                    : Icon(
-                  Icons.cloud_upload,
-                  color: Colors.green,
-                  size: 30.0,
+            padding: const EdgeInsets.only(right: 12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+
+              onTap: _isSending
+                  ? null
+                  : () async {
+                setState(() => _isSending = true);
+
+                await sendAllInspectionResults();
+
+                setState(() => _isSending = false);
+              },
+
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
                 ),
-                onPressed: _isSending
-                    ? null
-                    : () async {
-                  setState(() => _isSending = true);
-                  await sendAllInspectionResults();
-                  setState(() => _isSending = false);
-                },
+
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+
+                child: Row(
+                  children: [
+                    _isSending
+                        ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.green,
+                      ),
+                    )
+                        : const Icon(
+                      Icons.cloud_upload_rounded,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+
+                    const SizedBox(width: 6),
+
+                    Text(
+                      _isSending ? 'Mengirim...' : 'Upload',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ],
       ),
 
-      body: Column(
-        children: [
-          Expanded(
-            child: inspectionItemsResults.isEmpty
-                ? Center(child: CircularProgressIndicator())
-                : ListView.builder(
-              itemCount: inspectionItemsResults.length,
-              itemBuilder: (context, index) {
-                var item = inspectionItemsResults[index];
-                // Ambil data base64 dari database
-                String? base64Image = item['fupload'];
-                Uint8List? imageBytes;
+      body: inspectionItemsResults.isEmpty
+          ? const Center(
+        child: CircularProgressIndicator(),
+      )
+          : RefreshIndicator(
+        onRefresh: _getInspectionResults,
 
-                // Jika base64 image ada, konversi menjadi Uint8List
-                if (base64Image != null && base64Image.isNotEmpty) {
-                  imageBytes = base64Decode(base64Image);
-                }
+        child: ListView.builder(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
+          itemCount: inspectionItemsResults.length,
 
-                return ListTile(
-                  title: Text(
-                    '${item['jenis_paket']} ${item['id']}-${item['id_order']} (${item['status']})', // Menggabungkan string dengan benar
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold, // Menentukan teks menjadi tebal
-                    ),
+          itemBuilder: (context, index) {
+            var item = inspectionItemsResults[index];
+
+            String? base64Image = item['fupload'];
+            Uint8List? imageBytes;
+
+            if (base64Image != null && base64Image.isNotEmpty) {
+              imageBytes = base64Decode(base64Image);
+            }
+
+            final status =
+                item['status']?.toString() ?? 'PENDING';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
+                ],
+              ),
 
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Kode Trayek: ${item['kode_trayek']}'),
-                      Text('Keterangan: ${item['keterangan']}'),
-                      Text('Kota Pengiriman: ${item['kota_berangkat']}'),
-                      Text('Kota Tujuan: ${item['kota_tujuan']}'),
-                      Text('Biaya Pengiriman: ${item['jml_harga']}'),
-                      Text('Pengirim: ${item['nama_pengirim']}.-.${item['no_tlp_pengirim']}'),
-                      Text('Penerima: ${item['nama_penerima']}.-.${item['no_tlp_penerima']}'),
-                      // Tampilkan gambar jika ada
-                      if (imageBytes != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Image.memory(
-                            imageBytes, // Gambar dalam bentuk Uint8List
-                            width: 100, // Sesuaikan lebar gambar
-                            height: 100, // Sesuaikan tinggi gambar
-                            fit: BoxFit.cover,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+
+                child: Column(
+                  children: [
+                    // =========================
+                    // HEADER
+                    // =========================
+                    Row(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.1),
+                            borderRadius:
+                            BorderRadius.circular(14),
+                          ),
+
+                          child: const Icon(
+                            Icons.inventory_2_rounded,
+                            color: Colors.blue,
+                            size: 26,
                           ),
                         ),
 
-                      // Text('Gambar: ${item['file_name']}'),
+                        const SizedBox(width: 10),
 
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-          SizedBox(height: 20),
-        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${item['jenis_paket']}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+
+                              const SizedBox(height: 2),
+
+                              Text(
+                                'ID : ${item['id']} - ${item['id_order']}',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 11,
+                                ),
+                              ),
+
+                              const SizedBox(height: 4),
+
+                              Container(
+                                padding:
+                                const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 3,
+                                ),
+
+                                decoration: BoxDecoration(
+                                  color: getStatusColor(status)
+                                      .withOpacity(0.12),
+                                  borderRadius:
+                                  BorderRadius.circular(20),
+                                ),
+
+                                child: Text(
+                                  status,
+                                  style: TextStyle(
+                                    color:
+                                    getStatusColor(status),
+                                    fontWeight:
+                                    FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Text(
+                          'Rp ${item['jml_harga']}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    Divider(
+                      height: 1,
+                      color: Colors.grey[300],
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // =========================
+                    // CONTENT
+                    // =========================
+                    Row(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        // DETAIL
+                        Expanded(
+                          child: Column(
+                            children: [
+                              buildInfoItem(
+                                Icons.route_rounded,
+                                'Trayek',
+                                '${item['kode_trayek']}',
+                              ),
+
+                              buildInfoItem(
+                                Icons.repeat_rounded,
+                                'Rit',
+                                '${item['rit']}',
+                              ),
+
+                              buildInfoItem(
+                                Icons.location_on_outlined,
+                                'Asal',
+                                '${item['kota_berangkat']}',
+                              ),
+
+                              buildInfoItem(
+                                Icons.flag_outlined,
+                                'Tujuan',
+                                '${item['kota_tujuan']}',
+                              ),
+
+                              buildInfoItem(
+                                Icons.person_outline,
+                                'Pengirim',
+                                '${item['nama_pengirim']}',
+                              ),
+
+                              buildInfoItem(
+                                Icons.phone_outlined,
+                                'HP Pengirim',
+                                '${item['no_tlp_pengirim']}',
+                              ),
+
+                              buildInfoItem(
+                                Icons.person_2_outlined,
+                                'Penerima',
+                                '${item['nama_penerima']}',
+                              ),
+
+                              buildInfoItem(
+                                Icons.phone_android_outlined,
+                                'HP Penerima',
+                                '${item['no_tlp_penerima']}',
+                              ),
+
+                              if (item['keterangan'] != null &&
+                                  item['keterangan']
+                                      .toString()
+                                      .isNotEmpty)
+                                buildInfoItem(
+                                  Icons.notes_rounded,
+                                  'Ket',
+                                  '${item['keterangan']}',
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        // FOTO
+                        if (imageBytes != null)
+                          Padding(
+                            padding:
+                            const EdgeInsets.only(left: 10),
+
+                            child: ClipRRect(
+                              borderRadius:
+                              BorderRadius.circular(12),
+
+                              child: Image.memory(
+                                imageBytes,
+                                width: 78,
+                                height: 78,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }

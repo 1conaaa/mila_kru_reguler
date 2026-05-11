@@ -629,9 +629,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
       // Handle null values untuk variabel lainnya
       String jenisTrayekSafe = jenisTrayek ?? 'REGULER';
       String kelasBusSafe = kelasBus ?? 'EKONOMI';
-      String selectedPilihRitSafe = selectedPilihRit.toString() ?? '1';
+      String selectedPilihRitSafe = selectedPilihRit?.toString() ?? '1';
       String selectedKategoriTiketSafe = selectedKategoriTiket ?? 'REGULER';
-      String jumlahTiketSafe = jumlahTiket.toString() ?? '1';
+      String jumlahTiketSafe = lastTransaksi.isNotEmpty
+          ? (lastTransaksi[0]['jumlah_tiket']?.toString() ?? '1')
+          : '1';
 
       List<int> bytes = [];
       CapabilityProfile profile = await CapabilityProfile.load();
@@ -662,8 +664,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
       // Menambahkan kota keberangkatan dan tujuan
       bytes += generator.row([
-        PosColumn(text: "$namaKotaAwal -", width: 6, styles: PosStyles(align: PosAlign.right, bold: true)),
-        PosColumn(text: " $namaKotaAkhir", width: 6, styles: PosStyles(align: PosAlign.left, bold: true)),
+        PosColumn(text: namaKotaAwal,width: 5,styles: PosStyles(align: PosAlign.right, bold: true,),),
+        PosColumn( text: "-",width: 2,styles: PosStyles( align: PosAlign.center, bold: true,),),
+        PosColumn(text: namaKotaAkhir,width: 5,styles: PosStyles(align: PosAlign.left,bold: true, ),),
       ]);
 
       bytes += generator.text("$jenisTrayekSafe-$kelasBusSafe", styles: PosStyles(align: PosAlign.center));
@@ -705,6 +708,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
       bytes += generator.text('Tiket ini, bukti transaksi yang sah dan mohon simpan tiket ini selama perjalanan Anda.', styles: PosStyles(align: PosAlign.center, bold: false));
       bytes += generator.text('Semoga selamat sampai tujuan.', styles: PosStyles(align: PosAlign.center, bold: false));
       bytes += generator.hr();
+      // Spasi bawah agar tidak kepotong
+      bytes += generator.feed(4);
 
       return bytes;
     } catch (e) {
@@ -2415,30 +2420,27 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                         namaPembeli,
                                         noTelepon,
                                         keteranganTagihan,
-                                      ).then((_) {
-                                        printTicket();
-                                        // ✅ RESET SETELAH SUKSES
-                                        setState(() {
-                                          jumlahTiketController.clear();
-                                          jumlahTiket = 0;
+                                      );
 
-                                          // reset harga tarikan
-                                          tagihanController.clear();
-                                          jumlahTagihan = 0;
+                                      await printTicket();
 
-                                          // reset harga kantor
-                                          hargaKantorController.clear();
-                                          _hargaKantorCalculated = 0;
+                                    // ✅ RESET SETELAH PRINT
+                                      setState(() {
+                                        jumlahTiketController.clear();
+                                        jumlahTiket = 0;
 
-                                          // reset total admin jika ada
-                                          totalDenganAdminController.clear();
-                                          biayaAdmin = 0;
+                                        tagihanController.clear();
+                                        jumlahTagihan = 0;
 
-                                          // reset bayar & kembalian
-                                          bayarController.clear();
-                                          kembalianController.clear();
-                                          jumlahBayar = 0;
-                                        });
+                                        hargaKantorController.clear();
+                                        _hargaKantorCalculated = 0;
+
+                                        totalDenganAdminController.clear();
+                                        biayaAdmin = 0;
+
+                                        bayarController.clear();
+                                        kembalianController.clear();
+                                        jumlahBayar = 0;
                                       });
                                     }
                                   }

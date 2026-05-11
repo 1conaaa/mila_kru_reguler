@@ -270,6 +270,9 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     final dbHelper = DatabaseHelper.instance;
     Database db = await dbHelper.database;
 
+    // 🔥 AMBIL RIT AKTIF
+    final int ritAktif = await RitUserService.instance.getActiveRit();
+
     // Hitung jumlahTagihan dari controller
     double jumlahTagihan = tagihan;
 
@@ -294,7 +297,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         'tgl_order': formattedDate,
         'id_jenis_paket': idjenisPaket,
         'id_order': '${idBus}${idUser}${formattedIdOrder}',
-        'rit': 0,
+        'rit': ritAktif,
         'id_bus': idBus,
         'no_pol': noPol,
         'kode_trayek': kodeTrayek,
@@ -693,6 +696,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.hr();
+    bytes += generator.feed(4);
 
     return bytes;
   }
