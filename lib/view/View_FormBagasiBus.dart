@@ -13,11 +13,10 @@ import 'dart:io';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-// Untuk Uint8List
 import 'package:flutter/services.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:provider/provider.dart';
-import 'package:mila_kru_reguler/page/bluetooth_service.dart'; // BluetoothPrinterService
+import 'package:mila_kru_reguler/page/bluetooth_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class FormBagasiBus extends StatefulWidget {
@@ -27,15 +26,17 @@ class FormBagasiBus extends StatefulWidget {
 
 class _FormBagasiBusState extends State<FormBagasiBus> {
   List<Map<String, dynamic>> jenisPaket = [];
-  Map<int, String?> selectedItems = {}; // Untuk menyimpan status dropdown
-  Map<int, String> deskripsi = {}; // Untuk menyimpan komentar dari TextField
-  Map<int, double> persen = {}; // Untuk menyimpan nilai persen sebagai double
-  String? selectedJenisPaket; // Ubah tipe data menjadi String?
-  final UserService _userService = UserService(); // Tambahkan ini
+  Map<int, String?> selectedItems = {};
+  Map<int, String> deskripsi = {};
+  Map<int, double> persen = {};
+  String? selectedJenisPaket;
+  final UserService _userService = UserService();
 
   bool _isLoading = false;
+  bool _isPrinterConnected = false;
+  bool _isCheckingPrinter = true;
+  bool _isSubmitting = false;
 
-  // Definisikan variabel yang belum ada
   int qtyBarang = 0;
   String? selectedKotaBerangkat;
   String? selectedKotaTujuan;
@@ -75,21 +76,17 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   var jarakPP;
   var namaKotaTerakhir;
 
-  late String namaPembeli = ''; // Initialize with an empty string
-  late String noTelepon = ''; // Initialize with an empty string
-  late String keterangan = ''; // Initialize with an empty string
+  late String namaPembeli = '';
+  late String noTelepon = '';
+  late String keterangan = '';
 
   get hasBluetoothPermission => null;
   List availableBluetoothDevices = [];
 
-  //image picker
-  File? _image; // Untuk menyimpan file gambar yang diambil
+  File? _image;
   final ImagePicker _picker = ImagePicker();
-
-  // Tambahkan ini untuk mengubah gambar menjadi base64
   String? _base64Image;
   String? _fileName;
-
 
   List<Map<String, dynamic>> listKota = [];
 
@@ -108,13 +105,9 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     decimalDigits: 0,
   );
 
-
   @override
   void initState() {
     super.initState();
-    // _getJenisPaket();
-    // _getListKota();
-    // _loadLastKotaTerakhir();
     _refreshData();
     SharedPreferences.getInstance().then((prefs) {
       setState(() {
@@ -126,11 +119,20 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         token = prefs.getString('token') ?? '';
       });
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPrinterConnection();
+    });
   }
 
   @override
   void dispose() {
-    // Putuskan koneksi printer saat dispose
+    _namaPengirimController.dispose();
+    _noTlpPengirimController.dispose();
+    _namaPenerimaController.dispose();
+    _noTlpPenerimaController.dispose();
+    _qtyBarangController.dispose();
+    _hargaKmController.dispose();
+    _keteranganController.dispose();
     super.dispose();
   }
 
@@ -160,31 +162,86 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     }
   }
 
+  Future<void> _connectPrinter() async {
+    final printer = context.read<BluetoothPrinterService>();
+    final devices = await printer.bluetooth.getBondedDevices();
+
+    if (devices.isEmpty) {
+      Fluttertoast.showToast(msg: "Tidak ada printer Bluetooth yang dipasangkan");
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Pilih Printer Bluetooth"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: devices.length,
+            itemBuilder: (_, i) {
+              final device = devices[i];
+              return ListTile(
+                title: Text(device.name ?? "Printer"),
+                subtitle: Text(device.address ?? ""),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await printer.connect(device);
+                    await _checkPrinterConnection();
+                    Fluttertoast.showToast(msg: "Terhubung ke ${device.name}");
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: "Gagal connect printer: ${e.toString()}");
+                    await _checkPrinterConnection();
+                  }
+                },
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkPrinterConnection() async {
+    setState(() {
+      _isCheckingPrinter = true;
+    });
+
+    try {
+      final printer = context.read<BluetoothPrinterService>();
+      final isConnected = await printer.checkConnection();
+      final selectedDevice = printer.selectedDevice;
+
+      setState(() {
+        _isPrinterConnected = isConnected && selectedDevice != null;
+        _isCheckingPrinter = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isPrinterConnected = false;
+        _isCheckingPrinter = false;
+      });
+    }
+  }
+
   Future<void> _refreshData() async {
     setState(() {
-      _isLoading = true; // Tambahkan loading state
+      _isLoading = true;
     });
 
     try {
       await _getJenisPaket();
-      await _getListKota(); // Ini akan mengambil rit aktif secara otomatis
+      await _getListKota();
       await _getUserData();
       await _getListKotaTerakhir();
 
-      // Set default values untuk dropdown jika kosong
-      if (mounted && listKota.isNotEmpty && selectedKotaBerangkat == null) {
-        setState(() {
-          selectedKotaBerangkat = '${listKota[0]['id_kota_berangkat']} - ${listKota[0]['jarak']}';
-          if (listKota.length > 1) {
-            selectedKotaTujuan = '${listKota[listKota.length-1]['id_kota_berangkat']} - ${listKota[listKota.length-1]['jarak']}';
-          }
-        });
-      }
-
-      // Set initial value for tagihanController
       if (mounted) {
         setState(() {
-          _hargaKmController.text = formatter.format(jumlahTagihan);
+          // Set nilai default ke 0 dengan format Rupiah
+          _hargaKmController.text = formatRupiah.format(0);
+          tagihan = 0;
         });
       }
     } catch (e) {
@@ -201,9 +258,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     }
   }
 
-  // Fungsi untuk mengambil gambar dari kamera atau galeri
   Future<void> _ambilGambar(bool fromCamera) async {
-    // Memastikan izin sudah diberikan sebelum melanjutkan
     await _requestPermission();
 
     final pickedFile = await _picker.pickImage(
@@ -212,12 +267,11 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
     if (pickedFile != null) {
       setState(() {
-        _image = File(pickedFile.path); // Menyimpan file gambar yang diambil
+        _image = File(pickedFile.path);
       });
     }
   }
 
-  // Fungsi untuk meminta izin akses kamera dan galeri
   Future<void> _requestPermission() async {
     var status = await Permission.camera.status;
     if (!status.isGranted) {
@@ -230,23 +284,15 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     }
   }
 
-  /// Kompresi gambar menggunakan library 'image'
   Future<File?> compressImage(File file) async {
     try {
-      // Baca file asli sebagai byte
       final bytes = await file.readAsBytes();
-
-      // Decode gambar ke format image dari package 'image'
       final image = img.decodeImage(bytes);
       if (image == null) return null;
 
-      // Resize atau ubah ukuran jika perlu (misalnya max width 800px)
       final resizedImage = img.copyResize(image, width: 800);
-
-      // Encode ulang ke JPG dengan kualitas tertentu
       final compressedBytes = img.encodeJpg(resizedImage, quality: 75);
 
-      // Simpan file hasil kompresi ke temporary directory
       final tempDir = await getTemporaryDirectory();
       final outPath = p.join(tempDir.path, '${DateTime.now().millisecondsSinceEpoch}_compressed.jpg');
       final compressedFile = await File(outPath).writeAsBytes(compressedBytes);
@@ -259,7 +305,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   }
 
   Future<void> _submitForm(int idjenisPaket, int idkotaAwal, int idkotaAkhir) async {
-
     setState(() => _isLoading = true);
     _showLoading();
 
@@ -270,28 +315,21 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     final dbHelper = DatabaseHelper.instance;
     Database db = await dbHelper.database;
 
-    // 🔥 AMBIL RIT AKTIF
     final int ritAktif = await RitUserService.instance.getActiveRit();
-
-    // Hitung jumlahTagihan dari controller
     double jumlahTagihan = tagihan;
 
-    // Jika gambar diambil, kompres gambar terlebih dahulu
     if (_image != null) {
-      // Mengkompres gambar
       File? compressedImage = await compressImage(_image!);
       if (compressedImage != null) {
-        // Mengambil path gambar dan nama file
         _fileName = compressedImage.path.split('/').last;
         final bytes = await compressedImage.readAsBytes();
-        _base64Image = base64Encode(bytes);  // Konversi gambar terkompresi ke base64
+        _base64Image = base64Encode(bytes);
       } else {
         Fluttertoast.showToast(msg: "Gagal mengkompres gambar");
         return;
       }
     }
 
-    // Simpan data ke database
     try {
       await db.insert('t_order_bagasi', {
         'tgl_order': formattedDate,
@@ -306,8 +344,8 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         'id_kota_berangkat': idkotaAwal,
         'id_kota_tujuan': idkotaAkhir,
         'qty_barang': _qtyBarangController.text,
-        'harga_km': jumlahTagihan, // Gunakan jumlahTagihan yang sudah dihitung
-        'jml_harga': jumlahTagihan, // ✅ SIMPAN NUMERIC
+        'harga_km': jumlahTagihan,
+        'jml_harga': jumlahTagihan,
         'nama_pengirim': _namaPengirimController.text,
         'no_tlp_pengirim': _noTlpPengirimController.text,
         'nama_penerima': _namaPenerimaController.text,
@@ -318,53 +356,12 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         'status': 'N',
       });
 
-
-      String toastMessage = "Data berhasil disimpan:\n"
-          "Nama Pengirim: ${_namaPengirimController.text}\n"
-          "No. Telp Pengirim: ${_noTlpPengirimController.text}\n"
-          "Nama Penerima: ${_namaPenerimaController.text}\n"
-          "No. Telp Penerima: ${_noTlpPenerimaController.text}\n"
-          "Qty Barang: ${_qtyBarangController.text}\n"
-          "Jenis Paket: $idjenisPaket\n"
-          "Kota Berangkat: $idkotaAwal\n"
-          "Kota Tujuan: $idkotaAkhir\n"
-          "Kota Trayek: $kodeTrayek\n"
-          "Tagihan: ${_hargaKmController.text}\n"
-          "Keterangan: ${_keteranganController.text}\n";
-      if (_image != null) {
-        toastMessage += "Gambar berhasil diunggah: $_fileName\n";
-      } else {
-        toastMessage += "Tidak ada gambar yang diunggah.\n";
-      }
-
-      Fluttertoast.showToast(msg: toastMessage);
-      // ===============================
-      // 🔁 PINDAH KE FORM BAGASI BUS
-      // 🔥 TAMBAHKAN: Refresh data setelah simpan
+      Fluttertoast.showToast(msg: "Data berhasil disimpan");
       await _refreshData();
 
-      // Reset form
       if (mounted) {
-        _namaPengirimController.clear();
-        _noTlpPengirimController.clear();
-        _namaPenerimaController.clear();
-        _noTlpPenerimaController.clear();
-        _qtyBarangController.clear();
-        _keteranganController.clear();
-        _hargaKmController.clear();
-
-        setState(() {
-          _image = null;
-          _base64Image = null;
-          _fileName = null;
-          selectedJenisPaket = jenisPaket.isNotEmpty ? '${jenisPaket[0]['id']} - ${jenisPaket[0]['persen']} - ${jenisPaket[0]['harga_paket']}' : null;
-          selectedKotaBerangkat = listKota.isNotEmpty ? '${listKota[0]['id_kota_berangkat']} - ${listKota[0]['jarak']}' : null;
-          selectedKotaTujuan = listKota.isNotEmpty && listKota.length > 1 ? '${listKota[listKota.length-1]['id_kota_berangkat']} - ${listKota[listKota.length-1]['jarak']}' : null;
-          qtyBarang = 0;
-          tagihan = 0;
-        });
+        _resetForm();
       }
-
     } catch (error) {
       print("Error inserting data: $error");
       Fluttertoast.showToast(msg: "Gagal menyimpan data");
@@ -377,16 +374,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   }
 
   Future<void> _loadLastKotaTerakhir() async {
-    // await databaseHelper.initDatabase();
-    // await _getListKota();
     await _getUserData();
     await _getListKotaTerakhir();
-    // await databaseHelper.closeDatabase();
-
-    // Set initial value for tagihanController
     _hargaKmController.text = formatter.format(jumlahTagihan);
   }
-
 
   NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ');
 
@@ -398,12 +389,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           jarakPP = kotaTerakhir['jarak'] != null ? (kotaTerakhir['jarak'] as num).toDouble() : 0.0;
           namaKotaTerakhir = kotaTerakhir['nama_kota'] ?? '';
           biayaPerkursi = kotaTerakhir['biaya_perkursi'] != null ? (kotaTerakhir['biaya_perkursi'] as num).toDouble() : 0.0;
-          // hargaKantor = kotaTerakhir['harga_kantor'] != null ? (kotaTerakhir['harga_kantor'] as num).toDouble() : 0.0;
           marginKantor = kotaTerakhir['margin_kantor'] != null ? (kotaTerakhir['margin_kantor'] as num).toDouble() : 0.0;
           marginTarikan = kotaTerakhir['margin_tarikan'] != null ? (kotaTerakhir['margin_tarikan'] as num).toDouble() : 0.0;
         });
       }
-      print('kota terakhir $jarakPP $namaKotaTerakhir');
     } catch (e) {
       print('Error retrieving kota terakhir: $e');
     }
@@ -411,7 +400,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
   Future<void> _getUserData() async {
     try {
-      // GUNAKAN UserService instead of databaseHelper
       List<Map<String, dynamic>> users = await _userService.getUsersRaw();
 
       if (users.isNotEmpty) {
@@ -433,44 +421,19 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           persenPremikru = firstUser['persenPremikru'];
         });
       }
-    }catch (e) {
+    } catch (e) {
       print('Error saat mengambil data: $e');
     }
-
   }
 
-  // Future<void> _getListKota() async {
-  //   try {
-  //     List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan();
-  //     setState(() {
-  //       listKota = kotaData; // Pastikan 'listKota' adalah list yang sesuai
-  //     });
-  //
-  //     if (listKota.isEmpty) {
-  //       print('Tidak ada data dalam tabel list_kota.');
-  //     } else {
-  //       print('Data ditemukan dalam tabel list_kota.');
-  //     }
-  //   } catch (e) {
-  //     print('Error saat mengambil data: $e');
-  //   }
-  // }
-
   Future<int> getActiveRit() async {
-    final int ritAktif =
-    await RitUserService.instance.getActiveRit();
-
-    print('[RIT] RIT aktif dari service = $ritAktif');
+    final int ritAktif = await RitUserService.instance.getActiveRit();
     return ritAktif;
   }
 
   Future<void> _getListKota({int? rit}) async {
     try {
       final int ritDigunakan = rit ?? await getActiveRit();
-
-      print('[RIT] RIT digunakan = $ritDigunakan');
-
-      // Pastikan database terbuka
       await databaseHelper.initDatabase();
       List<Map<String, dynamic>> kotaData = await databaseHelper.getRuteTrayekUrutan(ritDigunakan);
       await databaseHelper.closeDatabase();
@@ -479,14 +442,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         setState(() {
           listKota = kotaData;
         });
-      }
-
-      print('[DEBUG] Jumlah kota: ${listKota.length}');
-
-      if (listKota.isEmpty) {
-        print('Tidak ada data dalam tabel rute_trayek_urutan.');
-      } else {
-        print('Data rute ditemukan (${listKota.length})');
       }
     } catch (e) {
       print('Error saat mengambil data rute: $e');
@@ -499,68 +454,50 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     await databaseHelper.closeDatabase();
     setState(() {
       jenisPaket = items;
-      // Optional: Set default value jika ada data
       if (items.isNotEmpty) {
         selectedJenisPaket = '${items[0]['id']} - ${items[0]['persen']} - ${items[0]['harga_paket']}';
       }
     });
   }
 
+  String getCurrentDateTime() {
+    final now = DateTime.now();
+    String jamMenit = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+    String tanggalBulanTahun = "${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}";
+    return "$jamMenit $tanggalBulanTahun"; // tanpa koma
+  }
+
 
   Future<List<int>> getTicketBagasi() async {
-    // Ambil SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090';
 
-    List<Map<String, dynamic>> lastTransaksi =
-    await DatabaseHelper.instance.getDataTransaksiBagasiTerakhir();
+    List<Map<String, dynamic>> lastTransaksi = await DatabaseHelper.instance.getDataTransaksiBagasiTerakhir();
 
-    String noOrderTransaksiTerakhir =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['id_order'] : '';
-    String kotaBerangkat =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_berangkat'] : '';
-    String noPol =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_pol'] : '';
-    String kotaTujuan =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_tujuan'] : '';
-    String namaPengirim =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_pengirim'] : '';
-    String noTeleponPengirim =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_pengirim'] : '';
-    String jenisPaket =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['jenis_paket'] : '';
-
-    String namaPenerima =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_penerima'] : '';
-    String noTeleponPenerima =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_penerima'] : '';
-
-    double jumlahTagihan =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['jml_harga'] : 0.0;
+    String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ? lastTransaksi[0]['id_order'] : '';
+    String kotaBerangkat = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_berangkat'] : '';
+    String noPol = lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_pol'] : '';
+    String kotaTujuan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['kota_tujuan'] : '';
+    String namaPengirim = lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_pengirim'] : '';
+    String noTeleponPengirim = lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_pengirim'] : '';
+    String jenisPaket = lastTransaksi.isNotEmpty ? lastTransaksi[0]['jenis_paket'] : '';
+    String namaPenerima = lastTransaksi.isNotEmpty ? lastTransaksi[0]['nama_penerima'] : '';
+    String noTeleponPenerima = lastTransaksi.isNotEmpty ? lastTransaksi[0]['no_tlp_penerima'] : '';
+    double jumlahTagihan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['jml_harga'] : 0.0;
     String jumlahTagihanCetak = formatter.format(jumlahTagihan);
+    // TAMBAHKAN baris ini:
+    String formattedDateTime = getCurrentDateTime(); // Hasil: "14:30, 29 Mei 2026"
 
-    String tanggalTransaksi =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['tgl_order'] : '';
-    var dateParts = tanggalTransaksi.split('-');
-    var formattedDate =
-    dateParts.length == 3 ? '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}' : tanggalTransaksi;
-
-    int qtyBarang =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['qty_barang'] : 0;
-    String keterangan =
-    lastTransaksi.isNotEmpty ? lastTransaksi[0]['keterangan'] : '';
+    int qtyBarang = lastTransaksi.isNotEmpty ? lastTransaksi[0]['qty_barang'] : 0;
+    String keterangan = lastTransaksi.isNotEmpty ? lastTransaksi[0]['keterangan'] : '';
 
     List<int> bytes = [];
     CapabilityProfile profile = await CapabilityProfile.load();
     final generator = Generator(PaperSize.mm58, profile);
     bytes += generator.reset();
 
-    // ===============================
-    // 🔹 TAMBAHKAN LOGO (SAMA DENGAN getTicket)
-    // ===============================
     try {
-      final ByteData logoData =
-      await rootBundle.load('assets/images/icon_mila.png');
+      final ByteData logoData = await rootBundle.load('assets/images/icon_mila.png');
       final Uint8List logoBytes = logoData.buffer.asUint8List();
       final img.Image? image = img.decodeImage(logoBytes);
 
@@ -572,9 +509,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       print('Gagal memuat logo bagasi: $e');
     }
 
-    // ===============================
-    // 🔹 HEADER
-    // ===============================
     bytes += generator.text(
       "PT. MILA AKAS BERKAH SEJAHTERA",
       styles: PosStyles(
@@ -596,12 +530,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       "WA: $noWhatsapp",
       styles: PosStyles(align: PosAlign.center),
     );
-
     bytes += generator.hr();
-
-    // ===============================
-    // 🔹 RUTE
-    // ===============================
     bytes += generator.row([
       PosColumn(
         text: kotaBerangkat,
@@ -614,82 +543,47 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         styles: PosStyles(align: PosAlign.left, bold: true),
       ),
     ]);
-
     bytes += generator.text(
       noOrderTransaksiTerakhir,
       styles: PosStyles(align: PosAlign.center),
     );
     bytes += generator.text(
-      formattedDate,
+      formattedDateTime,
       styles: PosStyles(align: PosAlign.center),
     );
-
-    bytes += generator.row([
-      PosColumn(
-        text: "No.Pol: $noPol",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(
-        text: "Pengirim: $namaPengirim",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(
-        text: "Telepon: $noTeleponPengirim",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(
-        text: "Penerima: $namaPenerima",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(
-        text: "Telepon: $noTeleponPenerima",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(
-        text: "Jumlah Barang: $qtyBarang ($jenisPaket)",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(
-        text: "Biaya : $jumlahTagihanCetak",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
-    bytes += generator.row([
-      PosColumn(
-        text: "Keterangan: $keterangan",
-        width: 12,
-        styles: PosStyles(align: PosAlign.left),
-      ),
-    ]);
-
+    bytes += generator.text(
+      "No.Pol: $noPol",
+      styles: PosStyles(align: PosAlign.left),
+    );
+    bytes += generator.text(
+      "Pengirim: $namaPengirim",
+      styles: PosStyles(align: PosAlign.left),
+    );
+    bytes += generator.text(
+      "Telepon: $noTeleponPengirim",
+      styles: PosStyles(align: PosAlign.left),
+    );
+    bytes += generator.text(
+      "Penerima: $namaPenerima",
+      styles: PosStyles(align: PosAlign.left),
+    );
+    bytes += generator.text(
+      "Telepon: $noTeleponPenerima",
+      styles: PosStyles(align: PosAlign.left),
+    );
+    bytes += generator.text(
+      "Jumlah Barang: $qtyBarang ($jenisPaket)",
+      styles: PosStyles(align: PosAlign.left),
+    );
+    bytes += generator.text(
+      "Biaya : $jumlahTagihanCetak",
+      styles: PosStyles(align: PosAlign.left),
+    );
+    bytes += generator.text(
+      "Keterangan: $keterangan",
+      styles: PosStyles(align: PosAlign.left),
+    );
     bytes += generator.hr();
-
     bytes += generator.qrcode("https://www.milaberkah.com/");
     bytes += generator.text(
       'Semoga selamat sampai tujuan.',
@@ -701,382 +595,344 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     return bytes;
   }
 
+
   void _calculateTagihan(int qtyBarang, String? selectedJenisPaket) {
-    if (selectedJenisPaket != null) {
+    if (selectedJenisPaket != null && qtyBarang > 0) {
       try {
-        // Parsing ID jenis paket dan harga paket
         List<String> parts = selectedJenisPaket.split(' - ');
-        int idJenisPaket = int.tryParse(parts[0]) ?? 1;
         double hargaPaket = double.tryParse(parts[2]) ?? 0.0;
-
-        print('ID Jenis Paket: $idJenisPaket');
-        print('Harga Paket: $hargaPaket');
-        print('Qty Barang: $qtyBarang');
-
-        // Hitung jumlah tagihan
         double jumlahTagihan = hargaPaket * qtyBarang;
 
         setState(() {
-          tagihan = jumlahTagihan; // ✅ TAMBAHAN PENTING (ANGKA ASLI)
-
-          _hargaKmController.text =
-              NumberFormat.decimalPattern('id')
-                  .format(jumlahTagihan.toInt()); // ✅ FORMAT RUPIAH
+          tagihan = jumlahTagihan;
+          _hargaKmController.text = formatRupiah.format(jumlahTagihan);
         });
-
-        print('Jumlah Tagihan (numeric): $tagihan');
-
       } catch (e) {
         print('Error calculating tagihan: $e');
-        setState(() {
-          tagihan = 0;
-          _hargaKmController.text = '0';
-        });
       }
-    } else {
-      print('Jenis paket belum dipilih');
+    } else if (qtyBarang == 0) {
       setState(() {
         tagihan = 0;
-        _hargaKmController.text = '0';
+        _hargaKmController.text = formatRupiah.format(0); // Gunakan format Rupiah
       });
+    }
+  }
+
+  void _resetForm() {
+    _namaPengirimController.clear();
+    _noTlpPengirimController.clear();
+    _namaPenerimaController.clear();
+    _noTlpPenerimaController.clear();
+    _qtyBarangController.clear();
+    _keteranganController.clear();
+
+    setState(() {
+      selectedKotaBerangkat = null;
+      selectedKotaTujuan = null;
+      _image = null;
+      _base64Image = null;
+      _fileName = null;
+      qtyBarang = 0;
+      tagihan = 0;
+
+      // Reset ke nilai 0 dengan format Rupiah
+      _hargaKmController.text = formatRupiah.format(0);
+
+      if (jenisPaket.isNotEmpty) {
+        selectedJenisPaket = '${jenisPaket[0]['id']} - ${jenisPaket[0]['persen']} - ${jenisPaket[0]['harga_paket']}';
+      }
+    });
+
+    // Fokus ke field pertama setelah reset
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
+
+  void _onHargaKmChanged(String value) {
+    // Hapus semua karakter non-digit
+    String cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (cleanValue.isEmpty) {
+      // Biarkan kosong sementara, jangan set nilai apapun
+      // User sedang menghapus semua angka
+      return;
+    }
+
+    double newTagihan = double.tryParse(cleanValue) ?? 0;
+
+    setState(() {
+      tagihan = newTagihan;
+    });
+
+    // Format ulang text dengan format Rupiah
+    String formatted = formatRupiah.format(newTagihan);
+    if (_hargaKmController.text != formatted) {
+      _hargaKmController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+    }
+  }
+
+  void _onHargaKmEditingComplete() {
+    // Saat selesai edit, cek apakah field kosong
+    if (_hargaKmController.text.isEmpty ||
+        _hargaKmController.text == 'Rp ' ||
+        _hargaKmController.text == 'Rp' ||
+        _hargaKmController.text == 'Rp 0') {
+
+      // Jika kosong dan ada qty barang, hitung ulang dari qty
+      if (qtyBarang > 0 && selectedJenisPaket != null) {
+        _calculateTagihan(qtyBarang, selectedJenisPaket!);
+      } else {
+        // Jika tidak ada qty, set ke 0
+        setState(() {
+          tagihan = 0;
+          _hargaKmController.text = formatRupiah.format(0);
+        });
+      }
+    } else if (tagihan == 0 && qtyBarang > 0 && selectedJenisPaket != null) {
+      // Jika tagihan 0 tapi ada qty, hitung ulang
+      _calculateTagihan(qtyBarang, selectedJenisPaket!);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Tampilkan loading HANYA saat sedang proses loading data
-    if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Form Bagasi Bus'),
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Memuat data...'),
-            ],
-          ),
-        ),
-      );
-    }
     return Scaffold(
-      resizeToAvoidBottomInset: true, // biar layout bergeser saat keyboard muncul
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Form Bagasi Bus'),
-        actions: [
-          Consumer<BluetoothPrinterService>(
-            builder: (context, printer, _) {
-              return IconButton(
-                icon: Icon(
-                  printer.isConnected
-                      ? Icons.print
-                      : Icons.print_disabled,
-                  color: printer.isConnected
-                      ? Colors.green
-                      : Colors.red,
-                ),
-                tooltip: printer.isConnected
-                    ? 'Cetak Tiket'
-                    : 'Printer belum diset',
-                onPressed: printer.isConnected
-                    ? () async {
-                  // final bytes = await getTicketBagasi();
-                  // await printer.bluetooth.writeBytes(
-                  //   Uint8List.fromList(bytes),
-                  // );
-                }
-                    : () {
-                  Fluttertoast.showToast(
-                    msg: "Printer belum diset di Penjualan Tiket",
-                  );
-                },
-              );
-            },
-          ),
-        ],
+        title: const Text(
+          'Form Bagasi Bus',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.white,
+        elevation: 2,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          // padding bawah memperhitungkan keyboard (viewInsets) dan system padding (nav bar)
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom +
-                MediaQuery.of(context).padding.bottom +
-                20,
-          ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Form(
+          key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _namaPengirimController,
-                      decoration: InputDecoration(labelText: 'Nama Pengirim'),
-                    ),
-                  ),
-                  SizedBox(width: 20),
-                  Expanded(
-                    child: TextField(
-                      controller: _noTlpPengirimController,
-                      decoration: InputDecoration(labelText: 'No. Telp Pengirim'),
-                      keyboardType: TextInputType.phone,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _namaPenerimaController,
-                      decoration: InputDecoration(labelText: 'Nama Penerima'),
-                    ),
-                  ),
-                  SizedBox(width: 20),
-                  Expanded(
-                    child: TextField(
-                      controller: _noTlpPenerimaController,
-                      decoration: InputDecoration(labelText: 'No. Telp Penerima'),
-                      keyboardType: TextInputType.phone,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: _qtyBarangController,
-                decoration: InputDecoration(labelText: 'Qty Barang'),
-                keyboardType: TextInputType.number,
-                onChanged: (value) {
-                  if (value.isNotEmpty) {
-                    setState(() {
-                      qtyBarang = int.tryParse(value) ?? 0;
-                    });
-                    if (qtyBarang > 0 && selectedJenisPaket != null) {
-                      _calculateTagihan(qtyBarang, selectedJenisPaket!);
-                    }
-                  }
-                },
-              ),
-              SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Pilih Jenis Paket'),
-                initialValue: selectedJenisPaket,
-                items: jenisPaket.map((item) {
-                  String combinedValue =
-                      '${item['id']} - ${item['persen']} - ${item['harga_paket']}';
-                  String displayText =
-                      '${item['jenis_paket']} - Rp ${NumberFormat('#,###').format(item['harga_paket'])}';
-                  return DropdownMenuItem<String>(
-                    value: combinedValue,
-                    child: Text(displayText),
-                  );
-                }).toList(),
-                onChanged: (String? newValue) {
-                  setState(() {
-                    selectedJenisPaket = newValue;
-                  });
-                  if (qtyBarang > 0 && newValue != null) {
-                    _calculateTagihan(qtyBarang, newValue);
-                  }
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Harap pilih jenis paket';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Kota Berangkat'),
-                items: listKota.map((kota) {
-                  String valueText = '${kota['id_kota_berangkat']} - ${kota['jarak']}';
-                  return DropdownMenuItem<String>(
-                    child: Text(kota['nama_kota']),
-                    value: valueText,
-                  );
-                }).toList(),
-                onChanged: (String? value) {
-                  setState(() {
-                    selectedKotaBerangkat = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Kota Berangkat harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: 'Kota Tujuan'),
-                items: listKota.map((kota) {
-                  String valueText = '${kota['id_kota_berangkat']} - ${kota['jarak']}';
-                  return DropdownMenuItem<String>(
-                    child: Text(kota['nama_kota']),
-                    value: valueText,
-                  );
-                }).toList(),
-                onChanged: (String? value) {
-                  setState(() {
-                    selectedKotaTujuan = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Kota Tujuan harus diisi';
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: _keteranganController,
-                onChanged: (value) {
-                  setState(() {
-                    keterangan = value;
-                  });
-                },
-                decoration: InputDecoration(labelText: 'Keterangan'),
-                maxLines: 1,
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: _hargaKmController,
-                decoration: const InputDecoration(
-                  labelText: 'Tagihan',
-                  prefixText: 'Rp ',
-                ),
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  RupiahInputFormatter(),
-                ],
-                textAlign: TextAlign.center,
-                onChanged: (value) {
-                  final clean = value.replaceAll(RegExp(r'[^0-9]'), '');
-                  setState(() {
-                    tagihan = double.tryParse(clean) ?? 0;
-                  });
+              // Printer Status Card
+              _buildPrinterStatusCard(),
+              const SizedBox(height: 20),
 
-                  print('INPUT: $value');
-                  print('TAGIHAN NUMERIC: $tagihan');
-                },
-              ),
-              SizedBox(height: 20),
-              Row(
+              // Form Sections
+              _buildSectionCard(
+                title: 'Informasi Pengirim',
+                icon: Icons.person,
                 children: [
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () => _ambilGambar(true),
+                  _buildTextField(
+                    controller: _namaPengirimController,
+                    label: 'Nama Pengirim',
+                    icon: Icons.badge,
+                    // validator: (value) => value?.isEmpty ?? true ? 'Nama pengirim harus diisi' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _noTlpPengirimController,
+                    label: 'No. Telepon Pengirim',
+                    icon: Icons.phone,
+                    keyboardType: TextInputType.phone,
+                    // validator: (value) => value?.isEmpty ?? true ? 'No. telepon harus diisi' : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildSectionCard(
+                title: 'Informasi Penerima',
+                icon: Icons.person_outline,
+                children: [
+                  _buildTextField(
+                    controller: _namaPenerimaController,
+                    label: 'Nama Penerima',
+                    icon: Icons.badge,
+                    // validator: (value) => value?.isEmpty ?? true ? 'Nama penerima harus diisi' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _noTlpPenerimaController,
+                    label: 'No. Telepon Penerima',
+                    icon: Icons.phone,
+                    keyboardType: TextInputType.phone,
+                    // validator: (value) => value?.isEmpty ?? true ? 'No. telepon harus diisi' : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildSectionCard(
+                title: 'Detail Barang',
+                icon: Icons.inventory,
+                children: [
+                  _buildTextField(
+                    controller: _qtyBarangController,
+                    label: 'Jumlah Barang',
+                    icon: Icons.numbers,
+                    keyboardType: TextInputType.number,
+                    onChanged: (value) {
+                      if (value.isNotEmpty) {
+                        int newQty = int.tryParse(value) ?? 0;
+                        setState(() {
+                          qtyBarang = newQty;
+                        });
+                        // Selalu hitung ulang dari qty barang
+                        if (selectedJenisPaket != null) {
+                          _calculateTagihan(newQty, selectedJenisPaket!);
+                        }
+                      } else {
+                        setState(() {
+                          qtyBarang = 0;
+                          tagihan = 0;
+                          _hargaKmController.text = formatRupiah.format(0);
+                        });
+                      }
+                    },
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Jumlah barang harus diisi';
+                      if (int.tryParse(value!) == null) return 'Jumlah harus angka';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDropdownField(
+                    value: selectedJenisPaket,
+                    items: jenisPaket.map((item) {
+                      return DropdownMenuItem<String>(
+                        value: '${item['id']} - ${item['persen']} - ${item['harga_paket']}',
+                        child: Text(
+                          '${item['jenis_paket']} - ${formatRupiah.format(item['harga_paket'])}',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      );
+                    }).toList(),
+                    label: 'Jenis Paket',
+                    icon: Icons.category,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedJenisPaket = value;
+                      });
+                      // Selalu hitung ulang dari qty barang
+                      if (qtyBarang > 0 && value != null) {
+                        _calculateTagihan(qtyBarang, value);
+                      } else if (qtyBarang == 0) {
+                        setState(() {
+                          tagihan = 0;
+                          _hargaKmController.text = formatRupiah.format(0);
+                        });
+                      }
+                    },
+                    validator: (value) => value == null ? 'Pilih jenis paket' : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildSectionCard(
+                title: 'Rute Perjalanan',
+                icon: Icons.route,
+                children: [
+                  _buildDropdownField(
+                    value: selectedKotaBerangkat,
+                    items: listKota.map((kota) {
+                      return DropdownMenuItem<String>(
+                        value: '${kota['id_kota_berangkat']} - ${kota['jarak']}',
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.camera_alt),
-                            SizedBox(width: 8),
+                            const Icon(Icons.location_on, size: 16, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Text(kota['nama_kota']),
                           ],
                         ),
-                      ),
-                      SizedBox(height: 20),
+                      );
+                    }).toList(),
+                    label: 'Kota Keberangkatan',
+                    icon: Icons.departure_board,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedKotaBerangkat = value;
+                      });
+                    },
+                    validator: (value) => value == null ? 'Pilih kota keberangkatan' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDropdownField(
+                    value: selectedKotaTujuan,
+                    items: listKota.map((kota) {
+                      return DropdownMenuItem<String>(
+                        value: '${kota['id_kota_berangkat']} - ${kota['jarak']}',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_city, size: 16, color: Colors.red),
+                            const SizedBox(width: 8),
+                            Text(kota['nama_kota']),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    label: 'Kota Tujuan',
+                    icon: Icons.tour,
+                    onChanged: (value) {
+                      setState(() {
+                        selectedKotaTujuan = value;
+                      });
+                    },
+                    validator: (value) => value == null ? 'Pilih kota tujuan' : null,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildSectionCard(
+                title: 'Pembayaran & Keterangan',
+                icon: Icons.payment,
+                children: [
+                  _buildTextField(
+                    controller: _hargaKmController,
+                    label: 'Total Tagihan',
+                    icon: Icons.price_change,
+                    keyboardType: TextInputType.number,
+                    readOnly: false,
+                    suffix: const Text('  Rupiah'),
+                    onChanged: _onHargaKmChanged, // Gunakan method baru
+                    onEditingComplete: _onHargaKmEditingComplete, // Tambahkan ini
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly, // Hanya menerima angka
                     ],
                   ),
-                  SizedBox(width: 20),
-                  if (_image != null)
-                    Image.file(
-                      _image!,
-                      height: 200,
-                      width: 200,
-                      fit: BoxFit.cover,
-                    ),
-                ],
-              ),
-              SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        if (selectedKotaBerangkat != null &&
-                            selectedKotaTujuan != null &&
-                            selectedJenisPaket != null) {
-
-                          int idkotaAwal =
-                              int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
-                          int idkotaAkhir =
-                              int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
-                          int idjenisPaket =
-                              int.tryParse(selectedJenisPaket!.split(' - ')[0]) ?? 1;
-
-                          print('cek nilai: $idkotaAwal , $idkotaAkhir , $idjenisPaket');
-
-                          try {
-                            // 1️⃣ Simpan data bagasi
-                            await _submitForm(
-                              idjenisPaket,
-                              idkotaAwal,
-                              idkotaAkhir,
-                            );
-
-                            // 2️⃣ Ambil printer global
-                            final printer =
-                            context.read<BluetoothPrinterService>();
-
-                            if (!printer.isConnected) {
-                              Fluttertoast.showToast(
-                                msg: "Printer belum diset di Penjualan Tiket",
-                              );
-                              return;
-                            }
-
-                            // 3️⃣ Print tiket bagasi
-                            final bytes = await getTicketBagasi();
-                            await printer.bluetooth.writeBytes(
-                              Uint8List.fromList(bytes),
-                            );
-
-                            Fluttertoast.showToast(
-                              msg: "Data tersimpan & tiket dicetak",
-                            );
-                          } catch (e) {
-                            print("Error during submit/print: $e");
-                            Fluttertoast.showToast(
-                              msg: "Gagal simpan / cetak",
-                            );
-                          }
-                        }
-                      },
-                      child: Text('Simpan'),
-                      style: ButtonStyle(
-                        minimumSize:
-                        WidgetStateProperty.all(Size(double.infinity, 48.0)),
-                        backgroundColor:
-                        WidgetStateProperty.resolveWith<Color>(
-                              (Set<WidgetState> states) {
-                            if (states.contains(WidgetState.pressed)) {
-                              return Colors.grey;
-                            } else {
-                              return Colors.green;
-                            }
-                          },
-                        ),
-                        foregroundColor:
-                        WidgetStateProperty.all(Colors.white),
-                      ),
-                    ),
+                  const SizedBox(height: 16),
+                  _buildTextField(
+                    controller: _keteranganController,
+                    label: 'Keterangan (Opsional)',
+                    icon: Icons.description,
+                    maxLines: 2,
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
+
+              // Image Section
+              _buildImageSection(),
+              const SizedBox(height: 24),
+
+              // Submit Button
+              _buildSubmitButton(),
+              const SizedBox(height: 30),
             ],
           ),
         ),
@@ -1084,7 +940,481 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     );
   }
 
+  Widget _buildPrinterStatusCard() {
+    if (_isCheckingPrinter) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.blue[50],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.blue[200]!),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Memeriksa koneksi printer...',
+                style: TextStyle(color: Colors.blue[700]),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _isPrinterConnected ? Colors.green[50] : Colors.orange[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _isPrinterConnected ? Colors.green[200]! : Colors.orange[200]!,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            _isPrinterConnected ? Icons.print : Icons.print_disabled,
+            color: _isPrinterConnected ? Colors.green : Colors.orange,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isPrinterConnected ? "Printer Siap Digunakan" : "Printer Belum Terhubung",
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: _isPrinterConnected ? Colors.green[700] : Colors.orange[700],
+                  ),
+                ),
+                if (!_isPrinterConnected)
+                  Text(
+                    "Hubungkan printer Bluetooth untuk mencetak tiket",
+                    style: TextStyle(fontSize: 12, color: Colors.orange[600]),
+                  ),
+              ],
+            ),
+          ),
+          if (!_isPrinterConnected)
+            ElevatedButton(
+              onPressed: _connectPrinter,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text("Hubungkan"),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.blue[700], size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: children),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+    void Function(String)? onChanged,
+    void Function()? onEditingComplete, // Tambahkan parameter ini
+    int maxLines = 1,
+    bool readOnly = false,
+    Widget? suffix,
+    List<TextInputFormatter>? inputFormatters, // Tambahkan parameter ini
+    String? hintText, // Tambahkan parameter ini
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.blue[400], size: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[400]!, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        suffixIcon: suffix != null ? Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: suffix,
+        ) : null,
+      ),
+      keyboardType: keyboardType,
+      validator: validator,
+      onChanged: onChanged,
+      onEditingComplete: onEditingComplete, // Tambahkan ini
+      maxLines: maxLines,
+      readOnly: readOnly,
+      inputFormatters: inputFormatters, // Tambahkan ini
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String? value,
+    required List<DropdownMenuItem<String>> items,
+    required String label,
+    required IconData icon,
+    required Function(String?) onChanged,
+    String? Function(String?)? validator,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      items: items,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.blue[400], size: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[400]!, width: 2),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+      onChanged: onChanged,
+      validator: validator,
+      isExpanded: true,
+    );
+  }
+
+  Widget _buildImageSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            spreadRadius: 1,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.image, color: Colors.blue[700], size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  'Dokumentasi Barang',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _ambilGambar(true),
+                        icon: const Icon(Icons.camera_alt),
+                        label: const Text('Kamera'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _ambilGambar(false),
+                        icon: const Icon(Icons.photo_library),
+                        label: const Text('Galeri'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_image != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        _image!,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _image = null;
+                        _base64Image = null;
+                        _fileName = null;
+                      });
+                    },
+                    icon: const Icon(Icons.delete, color: Colors.red),
+                    label: const Text('Hapus Gambar', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 10,
+        top: 8,
+        left: 0,
+        right: 0,
+      ),
+      child: ElevatedButton(
+        onPressed: _isSubmitting ? null : () async {
+          // ==================================================
+          // 🔥 VALIDASI 1: PRINTER HARUS TERHUBUNG
+          // ==================================================
+          if (!_isPrinterConnected) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("❌ Printer belum terhubung. Silakan hubungkan printer terlebih dahulu."),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+
+          // ==================================================
+          // 🔥 VALIDASI 2: FOTO WAJIB DIUNGAH
+          // ==================================================
+          if (_image == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("📸 Foto barang wajib diunggah. Silakan ambil foto terlebih dahulu."),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+
+          // ==================================================
+          // 🔥 VALIDASI 3: FORM HARUS VALID
+          // ==================================================
+          if (!_formKey.currentState!.validate()) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("⚠️ Harap lengkapi semua data yang diperlukan."),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+
+          // ==================================================
+          // 🔥 VALIDASI 4: DROPDOWN TIDAK BOLEH NULL
+          // ==================================================
+          if (selectedKotaBerangkat == null ||
+              selectedKotaTujuan == null ||
+              selectedJenisPaket == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("⚠️ Harap pilih kota keberangkatan, kota tujuan, dan jenis paket."),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            return;
+          }
+
+          // ==================================================
+          // 🔥 SEMUA VALIDASI TERPENUHI, PROSES SIMPAN & PRINT
+          // ==================================================
+          setState(() => _isSubmitting = true);
+
+          int idkotaAwal = int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
+          int idkotaAkhir = int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
+          int idjenisPaket = int.tryParse(selectedJenisPaket!.split(' - ')[0]) ?? 1;
+
+          try {
+            // 1️⃣ Simpan data ke database (termasuk foto)
+            await _submitForm(idjenisPaket, idkotaAwal, idkotaAkhir);
+
+            // 2️⃣ Cetak tiket bagasi
+            final printer = context.read<BluetoothPrinterService>();
+            final bytes = await getTicketBagasi();
+            await printer.printBytes(bytes);
+
+            // 3️⃣ Beri notifikasi sukses
+            Fluttertoast.showToast(
+              msg: "✅ Data tersimpan & tiket dicetak",
+              backgroundColor: Colors.green,
+              textColor: Colors.white,
+            );
+
+            // 4️⃣ Reset form untuk transaksi berikutnya
+            _resetForm();
+
+          } catch (e) {
+            print("Error during submit/print: $e");
+            Fluttertoast.showToast(
+              msg: "❌ Gagal simpan / cetak: $e",
+              backgroundColor: Colors.red,
+              textColor: Colors.white,
+            );
+          } finally {
+            setState(() => _isSubmitting = false);
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(double.infinity, 54),
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+        child: _isSubmitting
+            ? const SizedBox(
+          height: 20,
+          width: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
+          ),
+        )
+            : const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.save, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Simpan & Cetak Tiket',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
+
 class RupiahInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
@@ -1094,7 +1424,6 @@ class RupiahInputFormatter extends TextInputFormatter {
     }
 
     String digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
-
     final number = NumberFormat.decimalPattern('id').format(int.parse(digits));
 
     return TextEditingValue(

@@ -234,7 +234,7 @@ class _PremiKruState extends State<PremiKru> {
               title: const Text("Push Berhasil"),
               content: const Text(
                 "Data berhasil dikirim.\n\n"
-                    "Silakan klik menu KELUAR terlebih dahulu sebelum memulai transaksi kembali.",
+                    "Silakan cetak perincian terlebih dahulu sebelum KELUAR.",
               ),
               actions: [
                 TextButton(
@@ -274,7 +274,13 @@ class _PremiKruState extends State<PremiKru> {
     );
 
     if (picked != null) {
-      setState(() => _selectedDate = picked);
+      setState(() {
+        _selectedDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+        );
+      });
     }
   }
 
@@ -375,6 +381,214 @@ class _PremiKruState extends State<PremiKru> {
     }
   }
 
+  // Tambahkan fungsi ini di dalam class _PremiKruState
+  String _boldText(String text) {
+    // ESC/POS command untuk bold ON = 0x1B, 0x45, 0x01
+    // ESC/POS command untuk bold OFF = 0x1B, 0x45, 0x00
+    final boldOn = String.fromCharCodes([0x1B, 0x45, 0x01]);
+    final boldOff = String.fromCharCodes([0x1B, 0x45, 0x00]);
+    return '$boldOn$text$boldOff';
+  }
+
+  // Future<void> _printSetoran() async {
+  //   print("🖨️ Cek koneksi sebelum print...");
+  //
+  //   if (!printerService.isConnected || printerService.selectedDevice == null) {
+  //     print("❌ Printer belum terhubung");
+  //     Fluttertoast.showToast(msg: "Printer belum terhubung");
+  //
+  //     // langsung tampilkan pilihan bluetooth
+  //     await getBluetooth();
+  //     return;
+  //   }
+  //
+  //   try {
+  //     final setoranList = await setoranKruService.getAllSetoran();
+  //     final tagList = await _getAllTagTransaksi();
+  //     final users = await _userService.getAllUsers();
+  //     final user = users.isNotEmpty ? users.first : null;
+  //     final kruList = await databaseHelper.queryKruBis();
+  //
+  //     String formatPrinter(double value) {
+  //       return NumberFormat("#,###", "id_ID").format(value.toInt());
+  //     }
+  //
+  //     if (setoranList.isEmpty) {
+  //       Fluttertoast.showToast(msg: "Tidak ada data untuk dicetak");
+  //       return;
+  //     }
+  //
+  //     // ===============================
+  //     // CEK SEMUA DATA SUDAH TERKIRIM
+  //     // ===============================
+  //     final allDataSent = setoranList.every((item) => item.status == "Y");
+  //
+  //     if (!allDataSent) {
+  //       _showAlertDialog(
+  //         context,
+  //         "Tidak dapat mencetak laporan.\n\n"
+  //             "Pastikan semua data setoran sudah dikirim ke server.\n"
+  //             "Status harus 'Y' untuk semua data.",
+  //       );
+  //       return;
+  //     }
+  //
+  //     // ===============================
+  //     // AMBIL DATA RIT (dari setoran pertama)
+  //     // ===============================
+  //     int rit = 1;
+  //     if (setoranList.isNotEmpty && setoranList.first.rit != null) {
+  //       rit = int.tryParse(setoranList.first.rit.toString()) ?? 1;
+  //     }
+  //
+  //     // ===============================
+  //     // HITUNG TOTAL & DETAIL PENDAPATAN
+  //     // ===============================
+  //
+  //     double totalPendapatan = 0;
+  //     double totalPengeluaran = 0;
+  //     double pendapatanBersih = 0;
+  //     double pendapatanDisetor = 0;
+  //
+  //     // Detail pendapatan
+  //     double pendapatanTiketReguler = 0;
+  //     double pendapatanTiketOnline = 0;
+  //     double pendapatanBagasi = 0;
+  //
+  //     for (var item in setoranList) {
+  //
+  //       // 🔎 ambil tag berdasarkan id_tag_transaksi
+  //       TagTransaksi? tag;
+  //
+  //       try {
+  //         tag = tagList.firstWhere(
+  //               (e) => e.id == item.idTagTransaksi,
+  //         );
+  //       } catch (e) {
+  //         tag = null;
+  //       }
+  //
+  //       // ==========================
+  //       // PENJUMLAHAN BERDASARKAN KATEGORI
+  //       // ==========================
+  //
+  //       if (tag != null) {
+  //
+  //         // pastikan kategoriTransaksi angka
+  //         int kategori = int.tryParse(tag.kategoriTransaksi ?? '0') ?? 0;
+  //
+  //         if (kategori == 1) {
+  //           totalPendapatan += item.nilai ?? 0;
+  //
+  //           // Detail pendapatan berdasarkan ID tag
+  //           if (item.idTagTransaksi == 1) {
+  //             pendapatanTiketReguler = item.nilai ?? 0;
+  //           } else if (item.idTagTransaksi == 2) {
+  //             pendapatanTiketOnline = item.nilai ?? 0;
+  //           } else if (item.idTagTransaksi == 3) {
+  //             pendapatanBagasi = item.nilai ?? 0;
+  //           }
+  //         }
+  //         // else if (kategori == 2) {
+  //         //   totalPengeluaran += item.nilai ?? 0;
+  //         // }
+  //         // Ganti dengan kode berikut:
+  //         else if (kategori == 2) {
+  //           // SKIP Biaya Tol (id_tag = 15) - TIDAK DIJUMLAH
+  //           if (item.idTagTransaksi == 15) {
+  //             // Biaya Tol diabaikan, tidak masuk ke totalPengeluaran
+  //             continue;
+  //           }
+  //           // Selain Biaya Tol, semua pengeluaran dijumlah (termasuk Persen Susukan id_tag=70)
+  //           else {
+  //             totalPengeluaran += item.nilai ?? 0;
+  //           }
+  //         }
+  //       }
+  //
+  //       // khusus ID tertentu
+  //       if (item.idTagTransaksi == 60) {
+  //         pendapatanBersih = item.nilai ?? 0;
+  //       }
+  //
+  //       if (item.idTagTransaksi == 61) {
+  //         pendapatanDisetor = item.nilai ?? 0;
+  //       }
+  //     }
+  //
+  //     // ===== TANGGAL LAPORAN DARI DATE PICKER =====
+  //     final DateTime rawDate = _selectedDate ?? DateTime.now();
+  //
+  //     final DateTime tanggalDipilih = DateTime(
+  //       rawDate.year,
+  //       rawDate.month,
+  //       rawDate.day,
+  //     );
+  //
+  //     final String tanggalLaporan =
+  //     DateFormat('dd-MM-yyyy').format(tanggalDipilih);
+  //
+  //     // ===============================
+  //     // FORMAT TEXT THERMAL (DIPERBAIKI)
+  //     // ===============================
+  //
+  //     String text = "";
+  //
+  //     // Header
+  //     text += "=" * 32 + "\n";
+  //     text += "   LAPORAN SETORAN KRU   \n";
+  //     text += "=" * 32 + "\n\n";
+  //
+  //     // Informasi Umum
+  //     text += "Tanggal    : $tanggalLaporan\n";
+  //     text += "Rit ke     : $rit\n";
+  //     text += "No. Polisi : ${user?.noPol ?? '-'}\n";
+  //     text += "Trayek     : ${user?.namaTrayek ?? '-'}\n";
+  //     text += "-" * 32 + "\n\n";
+  //
+  //     // Data Kru
+  //     text += "DATA KRU:\n";
+  //     for (var kru in kruList) {
+  //       final group = kru['group_name'] ?? '-';
+  //       final nama = kru['nama_lengkap'] ?? '-';
+  //       final nik = kru['nik'] ?? '-';
+  //       text += "• $group - $nama\n";
+  //       text += "  (NIK: $nik)\n";
+  //     }
+  //     text += "-" * 32 + "\n\n";
+  //
+  //     // Detail Pendapatan
+  //     text += "DETAIL PENDAPATAN:\n";
+  //     text += "├ Tiket Reguler : Rp ${formatPrinter(pendapatanTiketReguler)}\n";
+  //     text += "├ Tiket Online  : Rp ${formatPrinter(pendapatanTiketOnline)}\n";
+  //     text += "└ Bagasi        : Rp ${formatPrinter(pendapatanBagasi)}\n";
+  //     text += "-" * 32 + "\n";
+  //     text += "TOTAL PENDAPATAN : Rp ${formatPrinter(totalPendapatan)}\n\n";
+  //
+  //     // Pengeluaran
+  //     text += "TOTAL PENGELUARAN : Rp ${formatPrinter(totalPengeluaran)}\n";
+  //     text += "-" * 32 + "\n\n";
+  //
+  //     // Hasil Akhir
+  //     text += "PENDAPATAN BERSIH : Rp ${formatPrinter(pendapatanBersih)}\n";
+  //     text += _boldText("PENDAPATAN DISETOR: Rp ${formatPrinter(pendapatanDisetor)}") + "\n";
+  //     text += "=" * 32 + "\n";
+  //     text += "Terima kasih\n";
+  //     text += "\n\n\n";
+  //
+  //     // kirim ke printer
+  //     await printerService.bluetooth.writeBytes(
+  //       Uint8List.fromList(utf8.encode(text)),
+  //     );
+  //
+  //     Fluttertoast.showToast(msg: "Laporan berhasil dicetak");
+  //
+  //   } catch (e) {
+  //     print("❌ Error cetak: $e");
+  //     Fluttertoast.showToast(msg: "Error mencetak: $e");
+  //   }
+  // }
+
   Future<void> _printSetoran() async {
     print("🖨️ Cek koneksi sebelum print...");
 
@@ -440,6 +654,11 @@ class _PremiKruState extends State<PremiKru> {
       double pendapatanTiketOnline = 0;
       double pendapatanBagasi = 0;
 
+      // Variabel untuk menampung nilai Persen Susukan (id_tag = 70)
+      double nilaiPersenSusukan = 0;
+      // Variabel untuk menampung total pengeluaran selain Tol dan Susukan
+      double totalPengeluaranLain = 0;
+
       for (var item in setoranList) {
 
         // 🔎 ambil tag berdasarkan id_tag_transaksi
@@ -456,6 +675,17 @@ class _PremiKruState extends State<PremiKru> {
         // ==========================
         // PENJUMLAHAN BERDASARKAN KATEGORI
         // ==========================
+
+        // Cek dan simpan nilai Persen Susukan (id_tag = 70) terlebih dahulu
+        if (item.idTagTransaksi == 70) {
+          nilaiPersenSusukan = item.nilai ?? 0;
+          continue; // Skip dulu, nanti akan ditambahkan di akhir
+        }
+
+        // Abaikan Biaya Tol (id_tag = 15) - TIDAK DIJUMLAH
+        if (item.idTagTransaksi == 15) {
+          continue; // Biaya Tol tidak dihitung, langsung skip
+        }
 
         if (tag != null) {
 
@@ -475,7 +705,8 @@ class _PremiKruState extends State<PremiKru> {
             }
           }
           else if (kategori == 2) {
-            totalPengeluaran += item.nilai ?? 0;
+            // Semua pengeluaran selain Tol dan Susukan dijumlahkan
+            totalPengeluaranLain += item.nilai ?? 0;
           }
         }
 
@@ -489,8 +720,18 @@ class _PremiKruState extends State<PremiKru> {
         }
       }
 
+      // ===== LOGIKA UTAMA: Total Pengeluaran = Pengeluaran Lain + Persen Susukan =====
+      totalPengeluaran = totalPengeluaranLain + nilaiPersenSusukan;
+
       // ===== TANGGAL LAPORAN DARI DATE PICKER =====
-      final DateTime tanggalDipilih = _selectedDate ?? DateTime.now();
+      final DateTime rawDate = _selectedDate ?? DateTime.now();
+
+      final DateTime tanggalDipilih = DateTime(
+        rawDate.year,
+        rawDate.month,
+        rawDate.day,
+      );
+
       final String tanggalLaporan =
       DateFormat('dd-MM-yyyy').format(tanggalDipilih);
 
@@ -537,7 +778,7 @@ class _PremiKruState extends State<PremiKru> {
 
       // Hasil Akhir
       text += "PENDAPATAN BERSIH : Rp ${formatPrinter(pendapatanBersih)}\n";
-      text += "PENDAPATAN DISETOR: Rp ${formatPrinter(pendapatanDisetor)}\n";
+      text += _boldText("PENDAPATAN DISETOR: Rp ${formatPrinter(pendapatanDisetor)}") + "\n";
       text += "=" * 32 + "\n";
       text += "Terima kasih\n";
       text += "\n\n\n";

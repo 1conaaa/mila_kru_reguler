@@ -119,6 +119,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
   List<BluetoothDevice> _devices = [];
   BluetoothDevice? _selectedDevice;
   bool _isConnected = false;
+  bool _isPrinterConnected = false; // Tambahkan variabel ini
+  bool _isCheckingPrinter = true; // Untuk menampilkan loading saat cek printer
 
   XFile? fotoPenumpang;
   bool isFotoVisible = false;
@@ -144,6 +146,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
     tagihanController.addListener(_updateTotalDenganBiayaAdmin);
     sarantagihanController.addListener(_updateTotalDenganBiayaAdmin);
     _checkPrinterConnection();
+    // TAMBAHKAN INI
+    printerService.addListener(_onPrinterConnectionChanged);
   }
 
   DatabaseHelper databaseHelper = DatabaseHelper.instance;
@@ -234,6 +238,14 @@ class _PenjualanFormState extends State<PenjualanForm> {
     for (var item in list) {
       print(item.toString());
     }
+  }
+
+  // TAMBAHKAN METHOD INI
+  void _onPrinterConnectionChanged() {
+    setState(() {
+      _isPrinterConnected = printerService.isConnected && printerService.selectedDevice != null;
+    });
+    print('Status koneksi printer berubah: $_isPrinterConnected');
   }
 
   Future<void> _getListKotaTerakhir() async {
@@ -369,12 +381,15 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
   }
 
+
   @override
   void dispose() {
     // Putuskan koneksi printer saat dispose
     // if (_isConnected) {
     //   _bluetooth.disconnect();
     // }
+    // HAPUS LISTENER
+    printerService.removeListener(_onPrinterConnectionChanged);
     jumlahTiketController.dispose();
     tagihanController.removeListener(_updateTotalDenganBiayaAdmin);
     sarantagihanController.removeListener(_updateTotalDenganBiayaAdmin);
@@ -383,7 +398,33 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<void> _checkPrinterConnection() async {
-    await printerService.checkConnection();
+    setState(() {
+      _isCheckingPrinter = true;
+    });
+
+    try {
+      // Gunakan method checkConnection dari service
+      final isConnected = await printerService.checkConnection();
+      final selectedDevice = printerService.selectedDevice;
+
+      setState(() {
+        _isPrinterConnected = isConnected && selectedDevice != null;
+        _isCheckingPrinter = false;
+      });
+
+      print('Status koneksi printer: $_isPrinterConnected');
+      if (_isPrinterConnected) {
+        print('Printer terhubung: ${selectedDevice?.name}');
+      } else {
+        print('⚠️ Printer belum terhubung');
+      }
+    } catch (e) {
+      print('Error cek koneksi printer: $e');
+      setState(() {
+        _isPrinterConnected = false;
+        _isCheckingPrinter = false;
+      });
+    }
   }
 
   // Function to request the Bluetooth permission.
@@ -415,12 +456,13 @@ class _PenjualanFormState extends State<PenjualanForm> {
       await _bluetooth.disconnect();
 
       setState(() {
-        _isConnected = false;
+        _isPrinterConnected = false;
         _selectedDevice = null;
       });
 
       print("✅ Printer berhasil diputuskan");
       Fluttertoast.showToast(msg: "Printer terputus");
+      await _checkPrinterConnection(); // Refresh status
     } catch (e) {
       print("❌ Error memutuskan koneksi: ${e.toString()}");
       Fluttertoast.showToast(msg: "Error memutuskan koneksi: ${e.toString()}");
@@ -448,29 +490,43 @@ class _PenjualanFormState extends State<PenjualanForm> {
   Future<void> pilihPrinter(BuildContext context) async {
     final devices = await printerService.bluetooth.getBondedDevices();
 
+    if (devices.isEmpty) {
+      Fluttertoast.showToast(msg: "Tidak ada printer Bluetooth yang dipasangkan");
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text("Pilih Printer"),
-        content: ListView.builder(
-          shrinkWrap: true,
-          itemCount: devices.length,
-          itemBuilder: (_, i) {
-            final device = devices[i];
-            return ListTile(
-              title: Text(device.name ?? "Printer"),
-              subtitle: Text(device.address ?? ""),
-              onTap: () async {
-                Navigator.pop(context);
-                await printerService.connect(device);
-              },
-            );
-          },
+        title: Text("Pilih Printer Bluetooth"),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: devices.length,
+            itemBuilder: (_, i) {
+              final device = devices[i];
+              return ListTile(
+                title: Text(device.name ?? "Printer"),
+                subtitle: Text(device.address ?? ""),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await printerService.connect(device);
+                    await _checkPrinterConnection(); // Refresh status
+                    Fluttertoast.showToast(msg: "Terhubung ke ${device.name}");
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: "Gagal connect printer: ${e.toString()}");
+                    await _checkPrinterConnection(); // Refresh status meskipun gagal
+                  }
+                },
+              );
+            },
+          ),
         ),
       ),
     );
   }
-
 
   Future<void> getBluetooth() async {
     try {
@@ -520,27 +576,70 @@ class _PenjualanFormState extends State<PenjualanForm> {
   Future<void> _connectToDevice(BluetoothDevice device) async {
     try {
       await printerService.connect(device);
+      // Jangan set manual, biarkan service yang mengelola
+      // Tunggu sebentar agar koneksi stabil
+      await Future.delayed(Duration(milliseconds: 500));
+      await _checkPrinterConnection(); // Refresh status dari service
       Fluttertoast.showToast(msg: "Terhubung ke printer ${device.name}");
     } catch (e) {
+      setState(() {
+        _isPrinterConnected = false;
+      });
       Fluttertoast.showToast(msg: "Gagal terhubung ke printer: ${e.toString()}");
     }
   }
 
   Future<void> printTicket() async {
     print("🖨️ Cek koneksi sebelum print...");
+
+    // Refresh status koneksi terlebih dahulu
+    await _checkPrinterConnection();
+
     print("Status isConnected: ${printerService.isConnected}");
     print("Printer terpilih: ${printerService.selectedDevice?.name}");
+    print("State _isPrinterConnected: $_isPrinterConnected");
 
-    if (!printerService.isConnected || printerService.selectedDevice == null) {
+    if (!_isPrinterConnected || printerService.selectedDevice == null) {
       print("❌ Printer belum terhubung");
-      Fluttertoast.showToast(msg: "Printer belum terhubung");
-      return;
+
+      final shouldConnect = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Printer Belum Terhubung"),
+            content: Text("Silakan hubungkan printer Bluetooth terlebih dahulu sebelum mencetak tiket."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text("Batal"),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text("Hubungkan Printer"),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (shouldConnect == true) {
+        await pilihPrinter(context);
+        await _checkPrinterConnection();
+        if (!_isPrinterConnected) {
+          Fluttertoast.showToast(msg: "Printer gagal terhubung, cetak dibatalkan");
+          return;
+        }
+      } else {
+        return;
+      }
     }
 
+    // Langsung cetak di sini tanpa method terpisah
     try {
       print("📄 Mendapatkan data tiket untuk dicetak...");
       final bytes = await getTicket();
-      await printerService.bluetooth.writeBytes(Uint8List.fromList(bytes));
+      await printerService.printBytes(bytes);
       print("✅ Tiket berhasil dikirim ke printer");
       Fluttertoast.showToast(msg: "Tiket berhasil dicetak");
     } catch (e) {
@@ -614,16 +713,49 @@ class _PenjualanFormState extends State<PenjualanForm> {
       (lastTransaksi[0]['tanggal_transaksi']?.toString() ?? '') : '';
 
       // Format tanggal dengan null safety
-      String formattedDate = '';
+      // String formattedDate = '';
+      // if (tanggalTransaksi.isNotEmpty && tanggalTransaksi.contains('-')) {
+      //   var dateParts = tanggalTransaksi.split('-');
+      //   if (dateParts.length >= 3) {
+      //     formattedDate = '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}';
+      //   } else {
+      //     formattedDate = tanggalTransaksi;
+      //   }
+      // } else {
+      //   formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.now());
+      // }
+
+      // GANTI dengan kode berikut:
+      String formattedDateTime = '';
       if (tanggalTransaksi.isNotEmpty && tanggalTransaksi.contains('-')) {
         var dateParts = tanggalTransaksi.split('-');
         if (dateParts.length >= 3) {
-          formattedDate = '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}';
+          // Asumsi format tanggalTransaksi: yyyy-MM-dd HH:mm:ss atau yyyy-MM-dd
+          String tahun = dateParts[0];
+          String bulan = dateParts[1];
+          String tanggal = dateParts[2].split(' ')[0]; // Ambil tanggal saja jika ada waktu
+
+          // Ambil jam jika ada
+          String jam = '';
+          if (tanggalTransaksi.contains(' ')) {
+            var waktuParts = tanggalTransaksi.split(' ');
+            if (waktuParts.length >= 2) {
+              jam = waktuParts[1].substring(0, 5); // Ambil HH:mm
+            }
+          } else {
+            // Jika tidak ada jam, gunakan jam sekarang
+            jam = DateFormat('HH:mm').format(DateTime.now());
+          }
+
+          // Format menjadi: HH:mm, dd-MM-yyyy
+          formattedDateTime = '$jam, $tanggal-$bulan-$tahun';
         } else {
-          formattedDate = tanggalTransaksi;
+          // Fallback jika format tidak sesuai
+          formattedDateTime = DateFormat('HH:mm, dd-MM-yyyy').format(DateTime.now());
         }
       } else {
-        formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.now());
+        // Jika tanggalTransaksi kosong, gunakan waktu sekarang
+        formattedDateTime = DateFormat('HH:mm, dd-MM-yyyy').format(DateTime.now());
       }
 
       // Handle null values untuk variabel lainnya
@@ -670,7 +802,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
       ]);
 
       bytes += generator.text("$jenisTrayekSafe-$kelasBusSafe", styles: PosStyles(align: PosAlign.center));
-      bytes += generator.text("$formattedDate", styles: PosStyles(align: PosAlign.center, bold: false));
+      // bytes += generator.text("$formattedDate", styles: PosStyles(align: PosAlign.center, bold: false));
+      // Ganti menjadi:
+      bytes += generator.text("$formattedDateTime", styles: PosStyles(align: PosAlign.center, bold: false));
 
       // Menambahkan informasi rit dan kategori tiket
       bytes += generator.row([
@@ -718,6 +852,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       rethrow;
     }
   }
+
 
   // TAMBAHKAN VARIABEL GLOBAL di atas class
   double _hargaKantorCalculated = 0.0;
@@ -1485,9 +1620,62 @@ class _PenjualanFormState extends State<PenjualanForm> {
           ),
           child: Column(
             children: [
-              SizedBox(height: 40.0),
+              SizedBox(height: 30.0),
               Text('$namaTrayek $jenisTrayek $kelasBus'),
-              SizedBox(height: 16.0),
+              SizedBox(height: 18.0),
+              // ==================================================
+              // 🖨️ TAMBAHKAN INDIKATOR PRINTER DI SINI (SETELAH TITLE)
+              // ==================================================
+              if (_isCheckingPrinter)
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: LinearProgressIndicator(),
+                )
+              else
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _isPrinterConnected ? Colors.green.shade50 : Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _isPrinterConnected ? Colors.green.shade200 : Colors.orange.shade200,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isPrinterConnected ? Icons.print : Icons.print_disabled,
+                        color: _isPrinterConnected ? Colors.green : Colors.orange,
+                        size: 20,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _isPrinterConnected
+                              ? "Printer siap: ${printerService.selectedDevice?.name ?? 'Terhubung'}"
+                              : "Printer belum terhubung ",
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: _isPrinterConnected ? Colors.green.shade700 : Colors.orange.shade700,
+                          ),
+                        ),
+                      ),
+                      if (!_isPrinterConnected && !_isCheckingPrinter)
+                        TextButton(
+                          onPressed: () => pilihPrinter(context),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: Size(0, 0),
+                          ),
+                          child: Text("Hubungkan", style: TextStyle(fontSize: 14)),
+                        ),
+                    ],
+                  ),
+                ),
+
+              SizedBox(height: 8), // Spacing before form
+
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16.0),
                 child: Form(
@@ -2389,6 +2577,52 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                       );
                                       return;
                                     }
+                                    // === VALIDASI PRINTER UNTUK METODE TUNAI ===
+                                    if (selectedMetodePembayaran == '1') {
+                                      // Cek koneksi printer terlebih dahulu
+                                      await _checkPrinterConnection();
+
+                                      if (!_isPrinterConnected) {
+                                        // Tampilkan dialog peringatan
+                                        final shouldContinue = await showDialog<bool>(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title: Text("Printer Tidak Terhubung"),
+                                              content: Text("Untuk pembayaran TUNAI, printer harus terhubung untuk mencetak tiket.\n\nSilakan hubungkan printer terlebih dahulu."),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context, false),
+                                                  child: Text("Batal"),
+                                                ),
+                                                ElevatedButton(
+                                                  onPressed: () => Navigator.pop(context, true),
+                                                  child: Text("Hubungkan Printer"),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        );
+
+                                        if (shouldContinue == true) {
+                                          await pilihPrinter(context);
+                                          // Cek ulang setelah connect
+                                          await _checkPrinterConnection();
+                                          if (!_isPrinterConnected) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text("Printer gagal terhubung. Simpan dibatalkan."),
+                                                backgroundColor: Colors.red,
+                                              ),
+                                            );
+                                            return;
+                                          }
+                                        } else {
+                                          return; // Batal simpan
+                                        }
+                                      }
+                                    }
 
                                     // Proses pembayaran
                                     if (selectedMetodePembayaran != '1') {
@@ -2514,7 +2748,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isNotlpPembeliVisible = true;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
-        isHargaTarikanEditable = true;
+        isHargaTarikanEditable = false;
       } else if (kelasBus == 'Non Ekonomi') {
         isHargaKantorVisible = false;
         isTombolVisible = true;

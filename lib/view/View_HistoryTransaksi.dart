@@ -16,7 +16,7 @@ class HistroyTransaksi extends StatefulWidget {
 class _HistroyTransaksiState extends State<HistroyTransaksi> {
   DatabaseHelper databaseHelper = DatabaseHelper.instance;
   List<Map<String, dynamic>> listPenjualan = [];
-  NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp');
+  NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp',decimalDigits: 0,);
   bool _isPushingData = false;
   double _pushDataProgress = 0.0;
   String searchQuery = ''; // Field untuk menyimpan nilai pencarian

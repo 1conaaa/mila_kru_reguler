@@ -588,6 +588,11 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
           ),
         );
         return;
+        }
+        // 👇 TAMBAHKAN INI - Validasi foto solar
+      if (!_cekFotoSolar()) {
+        Navigator.of(context).pop(); // tutup progress dialog jika ada
+        return;
       }
 
       // ================= STEP 3–4 =================
@@ -632,6 +637,23 @@ class _FormRekapTransaksiState extends State<FormRekapTransaksi> with SingleTick
 
   bool _isPengeluaran(TagTransaksi tag) {
     return ControllerUtils.isExpense(tag, tagPengeluaran);
+  }
+
+  // Versi paling simple
+  bool _cekFotoSolar() {
+    const int idTagSolar = 16; // ID Biaya Solar dari database
+
+    if (!_uploadedImages.containsKey(idTagSolar)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Foto bukti solar wajib diupload!'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return false;
+    }
+    return true;
   }
 
   @override

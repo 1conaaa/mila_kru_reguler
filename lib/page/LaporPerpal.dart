@@ -16,6 +16,7 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _lokasiController = TextEditingController();
   final TextEditingController _keteranganController = TextEditingController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   String selectedKategori = '1';
   List<File> _imageFiles = [];
@@ -47,24 +48,32 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Pilih Sumber Foto'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.camera_alt, color: Colors.blue),
+            SizedBox(width: 10),
+            Text('Ambil Foto', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const Divider(),
             ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Ambil Foto'),
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.camera_alt, color: Colors.blue.shade700),
+              ),
+              title: const Text('Ambil Foto', style: TextStyle(fontWeight: FontWeight.w500)),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () {
                 Navigator.pop(context);
                 _pickImage(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Pilih dari Galeri'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage(ImageSource.gallery);
               },
             ),
           ],
@@ -90,9 +99,12 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
         if (fileSize > maxSize) {
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Ukuran file melebihi 2MB. Silakan pilih file yang lebih kecil.'),
-              duration: Duration(seconds: 3),
+            SnackBar(
+              content: const Text('Ukuran file melebihi 2MB. Silakan pilih file yang lebih kecil.'),
+              backgroundColor: Colors.red.shade700,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              duration: const Duration(seconds: 3),
             ),
           );
           return;
@@ -107,6 +119,9 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -141,13 +156,21 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
         keterangan: _keteranganController.text.trim(),
         imageFiles: _imageFiles,
       ).then((_) {
-        // Clear form after successful submission
         if (mounted) {
           _clearForm();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Laporan berhasil disimpan'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 10),
+                  Text('Laporan berhasil disimpan'),
+                ],
+              ),
+              backgroundColor: Colors.green.shade700,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              duration: const Duration(seconds: 2),
             ),
           );
           setState(() {
@@ -167,167 +190,421 @@ class _LaporKondisiBusState extends State<LaporKondisiBus> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Laporan Armada'),
-        backgroundColor: Colors.blue[700],
-        foregroundColor: Colors.white,
-      ),
-      drawer: idUser != null ? buildDrawer(context, idUser!) : null,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 20),
-            const Text(
-              'Form Laporan Armada',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Card(
-              elevation: 4.0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10.0),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      // Lokasi Field
-                      TextFormField(
-                        controller: _lokasiController,
-                        decoration: const InputDecoration(
-                          labelText: 'Lokasi',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                        ),
-                        validator: (value) =>
-                        value?.isEmpty ?? true ? 'Lokasi harus diisi' : null,
-                      ),
-                      const SizedBox(height: 16.0),
-
-                      // Kategori Dropdown
-                      DropdownButtonFormField<String>(
-                        decoration: const InputDecoration(
-                          labelText: 'Kategori',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                        ),
-                        initialValue: selectedKategori,
-                        items: const [
-                          DropdownMenuItem(value: '1', child: Text('Operasi')),
-                          DropdownMenuItem(value: '2', child: Text('Kerusakan')),
-                          DropdownMenuItem(value: '3', child: Text('Kecelakaan')),
-                          DropdownMenuItem(value: '4', child: Text('Penumpang')),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => selectedKategori = value ?? '1'),
-                        validator: (value) =>
-                        value == null ? 'Pilih Kategori harus diisi' : null,
-                      ),
-                      const SizedBox(height: 16.0),
-
-                      // Keterangan Field
-                      TextFormField(
-                        controller: _keteranganController,
-                        decoration: const InputDecoration(
-                          labelText: 'Keterangan',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                        ),
-                        maxLines: 3,
-                        validator: (value) =>
-                        value?.isEmpty ?? true ? 'Keterangan harus diisi' : null,
-                        style: const TextStyle(fontSize: 16),
-                      ),
-                      const SizedBox(height: 16.0),
-
-                      // Image Upload Section - Horizontal Scroll
-                      if (_imageFiles.isNotEmpty)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Foto Terpilih:',
-                              style: TextStyle(fontWeight: FontWeight.bold),
+      key: _scaffoldKey,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.blue.shade700, Colors.blue.shade300],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Custom App Bar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.menu, color: Colors.white),
+                      onPressed: idUser != null
+                          ? () => _scaffoldKey.currentState?.openDrawer()
+                          : null,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Laporan Armada',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
                             ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 150,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _imageFiles.length,
-                                itemBuilder: (context, index) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(right: 8.0),
-                                    child: Stack(
+                          ),
+                          Text(
+                            'Laporkan kondisi armada dengan mudah',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.bus_alert, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+              // Main Content
+              Expanded(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(30),
+                      topRight: Radius.circular(30),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header Section
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.blue.shade50, Colors.blue.shade100],
+                            ),
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.edit_note, color: Colors.blue.shade800, size: 28),
+                              ),
+                              const SizedBox(width: 15),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Form Laporan',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Isi data laporan dengan lengkap',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // Form Section
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              // Lokasi Field
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.shade200,
+                                      blurRadius: 5,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: TextFormField(
+                                  controller: _lokasiController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Lokasi',
+                                    hintText: 'Masukkan lokasi kejadian',
+                                    prefixIcon: Icon(Icons.location_on, color: Colors.blue.shade700),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  ),
+                                  validator: (value) =>
+                                  value?.isEmpty ?? true ? 'Lokasi harus diisi' : null,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Kategori Dropdown
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.shade200,
+                                      blurRadius: 5,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: DropdownButtonFormField<String>(
+                                  decoration: InputDecoration(
+                                    labelText: 'Kategori',
+                                    prefixIcon: Icon(Icons.category, color: Colors.blue.shade700),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                                  ),
+                                  initialValue: selectedKategori,
+                                  items: const [
+                                    DropdownMenuItem(value: '1', child: Text('🚌 Operasi')),
+                                    DropdownMenuItem(value: '2', child: Text('🔧 Kerusakan')),
+                                    DropdownMenuItem(value: '3', child: Text('⚠️ Kecelakaan')),
+                                    DropdownMenuItem(value: '4', child: Text('👥 Penumpang')),
+                                  ],
+                                  onChanged: (value) =>
+                                      setState(() => selectedKategori = value ?? '1'),
+                                  validator: (value) =>
+                                  value == null ? 'Pilih Kategori harus diisi' : null,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Keterangan Field
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.grey.shade200,
+                                      blurRadius: 5,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: TextFormField(
+                                  controller: _keteranganController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Keterangan',
+                                    hintText: 'Jelaskan detail kejadian...',
+                                    prefixIcon: Icon(Icons.description, color: Colors.blue.shade700),
+                                    alignLabelWithHint: true,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.grey.shade300),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Colors.blue.shade700, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                  ),
+                                  maxLines: 4,
+                                  validator: (value) =>
+                                  value?.isEmpty ?? true ? 'Keterangan harus diisi' : null,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+
+                              // Image Upload Section
+                              Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.grey.shade50,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
                                       children: [
-                                        Image.file(
-                                          _imageFiles[index],
-                                          height: 150,
-                                          width: 150,
-                                          fit: BoxFit.cover,
-                                        ),
-                                        Positioned(
-                                          top: 4,
-                                          right: 4,
-                                          child: CircleAvatar(
-                                            radius: 14,
-                                            backgroundColor: Colors.red,
-                                            child: IconButton(
-                                              icon: const Icon(Icons.close, size: 14, color: Colors.white),
-                                              onPressed: () => _removeImage(index),
-                                              padding: EdgeInsets.zero,
-                                            ),
+                                        Icon(Icons.photo_camera, color: Colors.blue.shade700),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Dokumentasi Foto',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
                                           ),
                                         ),
                                       ],
                                     ),
-                                  );
-                                },
+                                    const SizedBox(height: 12),
+                                    if (_imageFiles.isNotEmpty) ...[
+                                      SizedBox(
+                                        height: 120,
+                                        child: ListView.builder(
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: _imageFiles.length,
+                                          itemBuilder: (context, index) {
+                                            return Container(
+                                              margin: const EdgeInsets.only(right: 12),
+                                              child: Stack(
+                                                children: [
+                                                  Container(
+                                                    width: 120,
+                                                    height: 120,
+                                                    decoration: BoxDecoration(
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.black26,
+                                                          blurRadius: 4,
+                                                          offset: const Offset(0, 2),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      child: Image.file(
+                                                        _imageFiles[index],
+                                                        width: 120,
+                                                        height: 120,
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Positioned(
+                                                    top: 4,
+                                                    right: 4,
+                                                    child: GestureDetector(
+                                                      onTap: () => _removeImage(index),
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: const BoxDecoration(
+                                                          color: Colors.red,
+                                                          shape: BoxShape.circle,
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.close,
+                                                          size: 16,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                    ],
+                                    ElevatedButton.icon(
+                                      onPressed: _showImageSourceDialog,
+                                      icon: const Icon(Icons.camera_alt),
+                                      label: const Text('Ambil Foto'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.blue.shade700,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 12),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        ),
+                              const SizedBox(height: 24),
 
-                      ElevatedButton.icon(
-                        onPressed: _showImageSourceDialog,
-                        icon: const Icon(Icons.camera_alt),
-                        label: const Text('Ambil/Pilih Foto'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                      const SizedBox(height: 24.0),
-
-                      // Submit Button
-                      ElevatedButton(
-                        onPressed: _isSubmitting ? null : () => _submitForm(context),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8.0),
+                              // Submit Button
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.blue.shade200,
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ElevatedButton(
+                                  onPressed: _isSubmitting ? null : () => _submitForm(context),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue.shade700,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 3,
+                                  ),
+                                  child: _isSubmitting
+                                      ? const SizedBox(
+                                    height: 24,
+                                    width: 24,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                      : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.save),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'Simpan Laporan',
+                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: _isSubmitting
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                          'Simpan Laporan',
-                          style: TextStyle(fontSize: 16),
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+      drawer: idUser != null ? buildDrawer(context, idUser!) : null,
     );
   }
 }
