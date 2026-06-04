@@ -956,6 +956,7 @@ class DatabaseHelper {
         a.pemilik_rekening,a.no_rekening,a.biaya_admin,a.deskripsi
       FROM
         m_metode_pembayaran a 
+      WHERE a.id = 1
     ''');
   }
 

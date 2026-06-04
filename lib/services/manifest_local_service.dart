@@ -131,6 +131,18 @@ class ManifestLocalService {
     print('🚌 idBus: $idBus | noPol: $noPol | kodeTrayek: $kodeTrayek');
     print('==============================');
 
+    String getKategoriTiket(dynamic idAgen) {
+      final int agenId = int.tryParse(idAgen.toString()) ?? 0;
+
+      const Map<int, String> kategoriMap = {
+        29: 'traveloka',
+        30: 'red_bus',
+        31: 'sysconix',
+      };
+
+      return kategoriMap[agenId] ?? 'offline';
+    }
+
     for (var item in manifestList) {
       try {
         final String idInvoice = item['id_order_transaksi']?.toString() ?? '';
@@ -146,6 +158,9 @@ class ManifestLocalService {
           print('⚠️ ID Invoice kosong, dilewati');
           continue;
         }
+
+        final String kategoriTiket =
+        getKategoriTiket(item['id_agen']);
 
         // 🔹 Cek apakah id_invoice sudah ada di DB
         final existing = await database.query(
@@ -178,6 +193,7 @@ class ManifestLocalService {
         print('🔢 id_garasi        : $idGarasi');
         print('🚌 no_pol           : $noPol');
         print('🧭 kode_trayek      : $kodeTrayek');
+        print('🏙️ id_agen          : ${item['id_agen']}');
         print('🏙️ kota_berangkat   : ${item['id_kota_berangkat']}');
         print('🏙️ kota_tujuan      : ${item['id_kota_tujuan']}');
         print('👤 nama_pembeli     : ${item['nama_penumpang']}');
@@ -199,7 +215,7 @@ class ManifestLocalService {
           'id_garasi': idGarasi,
           'id_company': idCompany,
           'jumlah_tiket': 1,
-          'kategori_tiket': 'online',
+          'kategori_tiket': kategoriTiket,
           'rit': 1,
           'kota_berangkat': item['id_kota_berangkat']?.toString() ?? '',
           'kota_tujuan': item['id_kota_tujuan']?.toString() ?? '',

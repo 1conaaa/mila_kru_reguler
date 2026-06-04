@@ -1065,203 +1065,203 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
 
 
-      if(selectedKategoriTiket=='gratis'){
-        jumlahBayar = 0;
-      } else {
-        jumlahBayar = jumlahTagihan.toDouble();
-      }
+    if(selectedKategoriTiket=='gratis'){
+      jumlahBayar = 0;
+    } else {
+      jumlahBayar = jumlahTagihan.toDouble();
+    }
 
-      // jumlahKembalian = (jumlahTagihan - jumlahBayar).toDouble().toInt();
-      jumlahKembalian = (jumlahTagihan - jumlahBayar).abs();
+    // jumlahKembalian = (jumlahTagihan - jumlahBayar).toDouble().toInt();
+    jumlahKembalian = (jumlahTagihan - jumlahBayar).abs();
 
-      print("object : $jumlahKembalian ,$selectedKategoriTiket");
+    print("object : $jumlahKembalian ,$selectedKategoriTiket");
 
-      DateTime now = DateTime.now();
-      // Format tanggal dengan waktu
-      String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+    DateTime now = DateTime.now();
+    // Format tanggal dengan waktu
+    String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
 
-      print('Formatted Date with Time: $formattedDate');
+    print('Formatted Date with Time: $formattedDate');
 
+    print('══════════════════════════════════════════════════');
+    print('║ DEBUG _kirimKeBackendAPI - PARAMETER YANG DIKIRIM');
+    print('╠══════════════════════════════════════════════════');
+    print('║ tanggalTransaksi: $formattedDate');
+    print('║ hargaKantor: $hargaKantor');
+    print('║ totalTagihan: $totalTagihan');
+    print('║ jumlahTiket: $jumlahTiket');
+    print('║ selectedPilihRit: $selectedPilihRit');
+    print('║ selectedKategoriTiket: $selectedKategoriTiket');
+    print('║ selectedKotaBerangkat: $selectedKotaBerangkat');
+    print('║ selectedKotaTujuan: $selectedKotaTujuan');
+    print('║ namaPembeli: $namaPembeli');
+    print('║ noTelepon: $noTelepon');
+    print('║ keteranganTagihan: $keteranganTagihan');
+    print('║ metodePembayaran: $metodePembayaran');
+    print('║ paymentChannel: $paymentChannel');
+    print('║ biayaAdmin: $biayaAdmin');
+    print('╚══════════════════════════════════════════════════');
+
+    // Debug print nilai yang dihitung
+    print('══════════════════════════════════════════════════');
+    print('║ DEBUG _kirimKeBackendAPI - NILAI YANG DIHITUNG');
+    print('╠══════════════════════════════════════════════════');
+    print('║ jarakAwal: $jarakAwal');
+    print('║ idkotaAwal: $idkotaAwal');
+    print('║ jarakAkhir: $jarakAkhir');
+    print('║ idkotaAkhir: $idkotaAkhir');
+    print('║ selisihJarak: $selisihJarak');
+    print('╚══════════════════════════════════════════════════');
+
+    // Debug print sebelum menyimpan ke database
+    print('══════════════════════════════════════════════════');
+    print('║ DEBUG _kirimKeBackendAPI - DATA YANG AKAN DISIMPAN');
+    print('╠══════════════════════════════════════════════════');
+    print('║ no_pol: $noPol');
+    print('║ id_bus: $idBus');
+    print('║ id_user: $idUser');
+    print('║ id_group: $idGroup');
+    print('║ id_garasi: $idGarasi');
+    print('║ id_company: $idCompany');
+    print('║ jumlah_tiket: $jumlahTiket');
+    print('║ kategori_tiket: $selectedKategoriTiket');
+    print('║ rit: $selectedPilihRit');
+    print('║ kota_berangkat: $idkotaAwal');
+    print('║ kota_tujuan: $idkotaAkhir');
+    print('║ nama_pembeli: $namaPembeli');
+    print('║ no_telepon: $noTelepon');
+    print('║ harga_kantor: $hargaKantor');
+    print('║ jumlah_tagihan: $jumlahTagihan');
+    print('║ nominal_bayar: $jumlahBayar');
+    print('║ jumlah_kembalian: $jumlahKembalian');
+    print('║ kode_trayek: $kodeTrayek');
+    print('║ keterangan: $keteranganTagihan');
+    print('╚══════════════════════════════════════════════════');
+
+    try {
+      double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
+      int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
+
+      double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
+      int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
+
+      double selisihJarak = (jarakAwal - jarakAkhir).abs();
+
+      // Prepare request data
+      Map<String, dynamic> requestData = {
+        'tgl_transaksi': formattedDate,
+        'kategori': selectedKategoriTiket,
+        'rit': selectedPilihRit,
+        'no_pol': noPol,
+        'id_bus': idBus,
+        'kode_trayek': kodeTrayek,
+        'id_personil': idUser,
+        'id_group': idGroup,
+        'id_kota_berangkat': idkotaAwal.toString(),
+        'id_kota_tujuan': idkotaAkhir.toString(),
+        'jml_naik': jumlahTiket,
+        'harga_kantor': hargaKantorBulat,
+        'pendapatan': jumlahTagihan,
+        'nama_pelanggan': namaPembeli,
+        'no_telepon': noTelepon,
+        'keterangan': keteranganTagihan,
+        'id_metode_bayar': paymentChannel,
+        'payment_channel': paymentChannel,
+        'biaya_admin': biayaAdmin,
+        'is_turun': 0,
+      };
+
+      // Debug print
       print('══════════════════════════════════════════════════');
-      print('║ DEBUG _kirimKeBackendAPI - PARAMETER YANG DIKIRIM');
+      print('║ DATA YANG AKAN DIKIRIM KE API');
       print('╠══════════════════════════════════════════════════');
-      print('║ tanggalTransaksi: $formattedDate');
-      print('║ hargaKantor: $hargaKantor');
-      print('║ totalTagihan: $totalTagihan');
-      print('║ jumlahTiket: $jumlahTiket');
-      print('║ selectedPilihRit: $selectedPilihRit');
-      print('║ selectedKategoriTiket: $selectedKategoriTiket');
-      print('║ selectedKotaBerangkat: $selectedKotaBerangkat');
-      print('║ selectedKotaTujuan: $selectedKotaTujuan');
-      print('║ namaPembeli: $namaPembeli');
-      print('║ noTelepon: $noTelepon');
-      print('║ keteranganTagihan: $keteranganTagihan');
-      print('║ metodePembayaran: $metodePembayaran');
-      print('║ paymentChannel: $paymentChannel');
-      print('║ biayaAdmin: $biayaAdmin');
+      requestData.forEach((key, value) {
+        print('║ $key: $value');
+      });
       print('╚══════════════════════════════════════════════════');
 
-      // Debug print nilai yang dihitung
-      print('══════════════════════════════════════════════════');
-      print('║ DEBUG _kirimKeBackendAPI - NILAI YANG DIHITUNG');
-      print('╠══════════════════════════════════════════════════');
-      print('║ jarakAwal: $jarakAwal');
-      print('║ idkotaAwal: $idkotaAwal');
-      print('║ jarakAkhir: $jarakAkhir');
-      print('║ idkotaAkhir: $idkotaAkhir');
-      print('║ selisihJarak: $selisihJarak');
-      print('╚══════════════════════════════════════════════════');
+      // Get token from storage
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('token');
 
-      // Debug print sebelum menyimpan ke database
-      print('══════════════════════════════════════════════════');
-      print('║ DEBUG _kirimKeBackendAPI - DATA YANG AKAN DISIMPAN');
-      print('╠══════════════════════════════════════════════════');
-      print('║ no_pol: $noPol');
-      print('║ id_bus: $idBus');
-      print('║ id_user: $idUser');
-      print('║ id_group: $idGroup');
-      print('║ id_garasi: $idGarasi');
-      print('║ id_company: $idCompany');
-      print('║ jumlah_tiket: $jumlahTiket');
-      print('║ kategori_tiket: $selectedKategoriTiket');
-      print('║ rit: $selectedPilihRit');
-      print('║ kota_berangkat: $idkotaAwal');
-      print('║ kota_tujuan: $idkotaAkhir');
-      print('║ nama_pembeli: $namaPembeli');
-      print('║ no_telepon: $noTelepon');
-      print('║ harga_kantor: $hargaKantor');
-      print('║ jumlah_tagihan: $jumlahTagihan');
-      print('║ nominal_bayar: $jumlahBayar');
-      print('║ jumlah_kembalian: $jumlahKembalian');
-      print('║ kode_trayek: $kodeTrayek');
-      print('║ keterangan: $keteranganTagihan');
-      print('╚══════════════════════════════════════════════════');
+      // Make API request
+      final response = await http.post(
+        Uri.parse('https://apimila.milaberkah.com/api/storeregulerfaspay'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestData),
+      );
 
-      try {
-        double jarakAwal = double.tryParse(selectedKotaBerangkat.split(' - ')[1]) ?? 0;
-        int idkotaAwal = int.tryParse(selectedKotaBerangkat.split(' - ')[0]) ?? 1;
+      print("📦 Raw response body: '${response.body}'");
+      print("📦 Response headers: ${response.headers}");
 
-        double jarakAkhir = double.tryParse(selectedKotaTujuan.split(' - ')[1]) ?? 0;
-        int idkotaAkhir = int.tryParse(selectedKotaTujuan.split(' - ')[0]) ?? 1;
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['status'] == 'SUCCESS') {
+          print('✅ Data berhasil dikirim: ${response.body}');
 
-        double selisihJarak = (jarakAwal - jarakAkhir).abs();
+          // TAMBAHKAN KODE INI UNTUK SIMPAN KE DATABASE LOKAL
+          await _simpanKeDatabaseLokal(
+            responseData: responseData,
+            noPol: noPol,
+            idBus: idBus,
+            idUser: idUser,
+            idGroup: idGroup,
+            idGarasi: idGarasi,
+            idCompany: idCompany,
+            jumlahTiket: jumlahTiket,
+            selectedKategoriTiket: selectedKategoriTiket,
+            selectedPilihRit: selectedPilihRit,
+            idkotaAwal: idkotaAwal,
+            idkotaAkhir: idkotaAkhir,
+            namaPembeli: namaPembeli,
+            noTelepon: noTelepon,
+            hargaKantor: hargaKantorBulat,
+            jumlahTagihan: jumlahTagihan,
+            jumlahBayar: jumlahBayar,
+            jumlahKembalian: jumlahKembalian,
+            formattedDate: formattedDate,
+            kodeTrayek: kodeTrayek,
+            keteranganTagihan: keteranganTagihan,
+            paymentChannel: paymentChannel,
+            isTurun: isTurun,
+          );
 
-        // Prepare request data
-        Map<String, dynamic> requestData = {
-          'tgl_transaksi': formattedDate,
-          'kategori': selectedKategoriTiket,
-          'rit': selectedPilihRit,
-          'no_pol': noPol,
-          'id_bus': idBus,
-          'kode_trayek': kodeTrayek,
-          'id_personil': idUser,
-          'id_group': idGroup,
-          'id_kota_berangkat': idkotaAwal.toString(),
-          'id_kota_tujuan': idkotaAkhir.toString(),
-          'jml_naik': jumlahTiket,
-          'harga_kantor': hargaKantorBulat,
-          'pendapatan': jumlahTagihan,
-          'nama_pelanggan': namaPembeli,
-          'no_telepon': noTelepon,
-          'keterangan': keteranganTagihan,
-          'id_metode_bayar': paymentChannel,
-          'payment_channel': paymentChannel,
-          'biaya_admin': biayaAdmin,
-          'is_turun': 0,
-        };
-
-        // Debug print
-        print('══════════════════════════════════════════════════');
-        print('║ DATA YANG AKAN DIKIRIM KE API');
-        print('╠══════════════════════════════════════════════════');
-        requestData.forEach((key, value) {
-          print('║ $key: $value');
-        });
-        print('╚══════════════════════════════════════════════════');
-
-        // Get token from storage
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        String? token = prefs.getString('token');
-
-        // Make API request
-        final response = await http.post(
-          Uri.parse('https://apimila.milaberkah.com/api/storeregulerfaspay'),
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(requestData),
-        );
-
-        print("📦 Raw response body: '${response.body}'");
-        print("📦 Response headers: ${response.headers}");
-
-        if (response.statusCode == 200) {
-          final responseData = jsonDecode(response.body);
-          if (responseData['status'] == 'SUCCESS') {
-            print('✅ Data berhasil dikirim: ${response.body}');
-
-            // TAMBAHKAN KODE INI UNTUK SIMPAN KE DATABASE LOKAL
-            await _simpanKeDatabaseLokal(
-              responseData: responseData,
-              noPol: noPol,
-              idBus: idBus,
-              idUser: idUser,
-              idGroup: idGroup,
-              idGarasi: idGarasi,
-              idCompany: idCompany,
-              jumlahTiket: jumlahTiket,
-              selectedKategoriTiket: selectedKategoriTiket,
-              selectedPilihRit: selectedPilihRit,
-              idkotaAwal: idkotaAwal,
-              idkotaAkhir: idkotaAkhir,
-              namaPembeli: namaPembeli,
-              noTelepon: noTelepon,
-              hargaKantor: hargaKantorBulat,
-              jumlahTagihan: jumlahTagihan,
-              jumlahBayar: jumlahBayar,
-              jumlahKembalian: jumlahKembalian,
-              formattedDate: formattedDate,
-              kodeTrayek: kodeTrayek,
-              keteranganTagihan: keteranganTagihan,
-              paymentChannel: paymentChannel,
-              isTurun: isTurun,
-            );
-
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Penjualan tiket berhasil disimpan. No Invoice: ${responseData['data']['invoice_id']}'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          } else {
-            print('❌ Gagal menyimpan data: ${response.body}');
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Gagal menyimpan data: ${responseData['message']}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        } else {
-          print('❌ Error response: ${response.statusCode} - ${response.body}');
+          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Terjadi kesalahan (${response.statusCode})'),
+              content: Text('Penjualan tiket berhasil disimpan. No Invoice: ${responseData['data']['invoice_id']}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          print('❌ Gagal menyimpan data: ${response.body}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Gagal menyimpan data: ${responseData['message']}'),
               backgroundColor: Colors.red,
             ),
           );
         }
-      } catch (e) {
-        print('❌ Exception: $e');
+      } else {
+        print('❌ Error response: ${response.statusCode} - ${response.body}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Terjadi kesalahan: $e'),
+            content: Text('Terjadi kesalahan (${response.statusCode})'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    } catch (e) {
+      print('❌ Exception: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
 
 
   }
@@ -1437,12 +1437,12 @@ class _PenjualanFormState extends State<PenjualanForm> {
       String keteranganTagihan,
       ) async {
 
-      // 🔒 BLOK DOUBLE SUBMIT
-      if (_isSubmitting) {
-        print('⛔ _kirimValue diblok karena masih proses simpan');
-        return;
-      }
-      _isSubmitting = true;
+    // 🔒 BLOK DOUBLE SUBMIT
+    if (_isSubmitting) {
+      print('⛔ _kirimValue diblok karena masih proses simpan');
+      return;
+    }
+    _isSubmitting = true;
 
     try {
       print('🚀 MEMULAI _kirimValue');
@@ -1614,1097 +1614,1097 @@ class _PenjualanFormState extends State<PenjualanForm> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewPadding.bottom + 20, // ✅ Tambah jarak bawah
-          ),
-          child: Column(
-            children: [
-              SizedBox(height: 30.0),
-              Text('$namaTrayek $jenisTrayek $kelasBus'),
-              SizedBox(height: 18.0),
-              // ==================================================
-              // 🖨️ TAMBAHKAN INDIKATOR PRINTER DI SINI (SETELAH TITLE)
-              // ==================================================
-              if (_isCheckingPrinter)
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: LinearProgressIndicator(),
-                )
-              else
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _isPrinterConnected ? Colors.green.shade50 : Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _isPrinterConnected ? Colors.green.shade200 : Colors.orange.shade200,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isPrinterConnected ? Icons.print : Icons.print_disabled,
-                        color: _isPrinterConnected ? Colors.green : Colors.orange,
-                        size: 20,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _isPrinterConnected
-                              ? "Printer siap: ${printerService.selectedDevice?.name ?? 'Terhubung'}"
-                              : "Printer belum terhubung ",
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: _isPrinterConnected ? Colors.green.shade700 : Colors.orange.shade700,
-                          ),
-                        ),
-                      ),
-                      if (!_isPrinterConnected && !_isCheckingPrinter)
-                        TextButton(
-                          onPressed: () => pilihPrinter(context),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            minimumSize: Size(0, 0),
-                          ),
-                          child: Text("Hubungkan", style: TextStyle(fontSize: 14)),
-                        ),
-                    ],
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewPadding.bottom + 20, // ✅ Tambah jarak bawah
+        ),
+        child: Column(
+          children: [
+            SizedBox(height: 30.0),
+            Text('$namaTrayek $jenisTrayek $kelasBus'),
+            SizedBox(height: 18.0),
+            // ==================================================
+            // 🖨️ TAMBAHKAN INDIKATOR PRINTER DI SINI (SETELAH TITLE)
+            // ==================================================
+            if (_isCheckingPrinter)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: LinearProgressIndicator(),
+              )
+            else
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _isPrinterConnected ? Colors.green.shade50 : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isPrinterConnected ? Colors.green.shade200 : Colors.orange.shade200,
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _isPrinterConnected ? Icons.print : Icons.print_disabled,
+                      color: _isPrinterConnected ? Colors.green : Colors.orange,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _isPrinterConnected
+                            ? "Printer siap: ${printerService.selectedDevice?.name ?? 'Terhubung'}"
+                            : "Printer belum terhubung ",
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: _isPrinterConnected ? Colors.green.shade700 : Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                    if (!_isPrinterConnected && !_isCheckingPrinter)
+                      TextButton(
+                        onPressed: () => pilihPrinter(context),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size(0, 0),
+                        ),
+                        child: Text("Hubungkan", style: TextStyle(fontSize: 14)),
+                      ),
+                  ],
+                ),
+              ),
 
-              SizedBox(height: 8), // Spacing before form
+            SizedBox(height: 8), // Spacing before form
 
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.0),
-                child: Form(
-                  key: _formKey, // Add form key
-                  child: Column(
-                    children: [
-                      DropdownButtonFormField<String>(
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: Form(
+                key: _formKey, // Add form key
+                child: Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      decoration: InputDecoration(
+                        labelText: 'Kategori Tiket',
+                        border: OutlineInputBorder(),
+                      ),
+                      initialValue: selectedKategoriTiket,
+                      items: [
+                        DropdownMenuItem<String>(
+                          child: Text('Pilih'),
+                          value: 'default',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Reguler'),
+                          value: 'reguler',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Traveloka'),
+                          value: 'traveloka',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Red Bus'),
+                          value: 'red_bus',
+                        ),
+                        // DropdownMenuItem<String>(
+                        //   child: Text('12GO'),
+                        //   value: 'go_asia',
+                        // ),
+                        DropdownMenuItem<String>(
+                          child: Text('Pnp.Operan'),
+                          value: 'operan',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Pnp.Sepi'),
+                          value: 'sepi',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Pnp.TNI'),
+                          value: 'tni',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Pnp.Pelajar'),
+                          value: 'pelajar',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Pnp.Gratis'),
+                          value: 'gratis',
+                        ),
+                        DropdownMenuItem<String>(
+                          child: Text('Langganan (LG)'),
+                          value: 'langganan',
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedKategoriTiket = value ?? 'default';
+                          _updateVisibility(selectedKategoriTiket);
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Kategori Tiket harus diisi';
+                        }
+                        return null;
+                      },
+                    ),
+                    SizedBox(height: 16.0),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              labelText: 'Pilih Rit',
+                              border: OutlineInputBorder(),
+                            ),
+                            value: selectedPilihRit, // ⬅️ BUKAN initialValue
+                            items: const [
+                              DropdownMenuItem(
+                                value: '1',
+                                child: Text('Rit-1'),
+                              ),
+                              DropdownMenuItem(
+                                value: '2',
+                                child: Text('Rit-2'),
+                              ),
+                              DropdownMenuItem(
+                                value: '3',
+                                child: Text('Rit-3'),
+                              ),
+                            ],
+                            onChanged: null, // ⬅️ DIJADIKAN READ ONLY
+                            // onChanged: (value) async {
+                            //   if (value == null) return;
+                            //
+                            //   setState(() {
+                            //     selectedPilihRit = value;
+                            //   });
+                            //
+                            //   await _getListKota(rit: int.parse(value));
+                            // },
+                            validator: (value) {
+                              if (value == null) {
+                                return 'Pilih Rit harus diisi';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 16.0),
+                        Expanded(
+                          flex: 1,
+                          child: TextFormField(
+                            controller: jumlahTiketController,
+                            decoration: InputDecoration(
+                              labelText: 'Jml.Tiket',
+                              border: OutlineInputBorder(),
+                            ),
+                            keyboardType: TextInputType.number,
+                            style: TextStyle(fontSize: 18),
+                            onChanged: (value) {
+                              if (value.isNotEmpty) {
+                                setState(() {
+                                  jumlahTiket = int.tryParse(value) ?? 0;
+                                });
+                                _calculateTagihan(
+                                    selectedKategoriTiket ?? '',
+                                    kelasBus,
+                                    jumlahTiket,
+                                    selectedKotaBerangkat ?? '',
+                                    selectedKotaTujuan ?? '',
+                                    namaTrayek,     // 🆕
+                                    jenisTrayek     // 🆕
+                                );
+                              }
+                            },
+                            inputFormatters: <TextInputFormatter>[
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Jumlah Tiket harus diisi';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isNamaPembeliVisible,
+                      child: TextFormField(
                         decoration: InputDecoration(
-                          labelText: 'Kategori Tiket',
+                          labelText: 'Nama Pembeli',
                           border: OutlineInputBorder(),
                         ),
-                        initialValue: selectedKategoriTiket,
-                        items: [
-                          DropdownMenuItem<String>(
-                            child: Text('Pilih'),
-                            value: 'default',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Reguler'),
-                            value: 'reguler',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Traveloka'),
-                            value: 'traveloka',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Red Bus'),
-                            value: 'red_bus',
-                          ),
-                          // DropdownMenuItem<String>(
-                          //   child: Text('12GO'),
-                          //   value: 'go_asia',
-                          // ),
-                          DropdownMenuItem<String>(
-                            child: Text('Pnp.Operan'),
-                            value: 'operan',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Pnp.Sepi'),
-                            value: 'sepi',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Pnp.TNI'),
-                            value: 'tni',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Pnp.Pelajar'),
-                            value: 'pelajar',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Pnp.Gratis'),
-                            value: 'gratis',
-                          ),
-                          DropdownMenuItem<String>(
-                            child: Text('Langganan (LG)'),
-                            value: 'langganan',
-                          ),
-                        ],
+                        keyboardType: TextInputType.text,
                         onChanged: (value) {
                           setState(() {
-                            selectedKategoriTiket = value ?? 'default';
-                            _updateVisibility(selectedKategoriTiket);
+                            namaPembeli = value;
                           });
                         },
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Kategori Tiket harus diisi';
+                            return 'Nama Langganan harus diisi';
+                          }
+                          return null;
+                        },
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isNotlpPembeliVisible,
+                      child: TextFormField(
+                        decoration: InputDecoration(
+                          labelText: 'No.Telepon',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        onChanged: (value) {
+                          setState(() {
+                            noTelepon = value;
+                          });
+                        },
+                        // validator: (value) {
+                        //   if (value == null || value.isEmpty) {
+                        //     return 'Nomor Telepon harus diisi';
+                        //   }
+                        //   return null;
+                        // },
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isKotaBerangkatVisible,
+                      child: DropdownButtonFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Kota Berangkat',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: listKota.map((kota) {
+                          String valueText =
+                              '${kota['id_kota_berangkat']} - ${kota['jarak']}';
+                          return DropdownMenuItem(
+                            child: Text(kota['nama_kota']),
+                            value: valueText,
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedKotaBerangkat = value;
+                          });
+                          _calculateTagihan(
+                              selectedKategoriTiket ?? '',
+                              kelasBus,
+                              jumlahTiket,
+                              selectedKotaBerangkat ?? '',
+                              selectedKotaTujuan ?? '',
+                              namaTrayek,     // 🆕
+                              jenisTrayek     // 🆕
+                          );
+
+                        },
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Kota Berangkat harus diisi';
                           }
                           return null;
                         },
                       ),
-                      SizedBox(height: 16.0),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: DropdownButtonFormField<String>(
-                              decoration: const InputDecoration(
-                                labelText: 'Pilih Rit',
-                                border: OutlineInputBorder(),
-                              ),
-                              value: selectedPilihRit, // ⬅️ BUKAN initialValue
-                              items: const [
-                                DropdownMenuItem(
-                                  value: '1',
-                                  child: Text('Rit-1'),
-                                ),
-                                DropdownMenuItem(
-                                  value: '2',
-                                  child: Text('Rit-2'),
-                                ),
-                                DropdownMenuItem(
-                                  value: '3',
-                                  child: Text('Rit-3'),
-                                ),
-                              ],
-                              onChanged: null, // ⬅️ DIJADIKAN READ ONLY
-                              // onChanged: (value) async {
-                              //   if (value == null) return;
-                              //
-                              //   setState(() {
-                              //     selectedPilihRit = value;
-                              //   });
-                              //
-                              //   await _getListKota(rit: int.parse(value));
-                              // },
-                              validator: (value) {
-                                if (value == null) {
-                                  return 'Pilih Rit harus diisi';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                          SizedBox(width: 16.0),
-                          Expanded(
-                            flex: 1,
-                            child: TextFormField(
-                              controller: jumlahTiketController,
-                              decoration: InputDecoration(
-                                labelText: 'Jml.Tiket',
-                                border: OutlineInputBorder(),
-                              ),
-                              keyboardType: TextInputType.number,
-                              style: TextStyle(fontSize: 18),
-                              onChanged: (value) {
-                                if (value.isNotEmpty) {
-                                  setState(() {
-                                    jumlahTiket = int.tryParse(value) ?? 0;
-                                  });
-                                  _calculateTagihan(
-                                      selectedKategoriTiket ?? '',
-                                      kelasBus,
-                                      jumlahTiket,
-                                      selectedKotaBerangkat ?? '',
-                                      selectedKotaTujuan ?? '',
-                                      namaTrayek,     // 🆕
-                                      jenisTrayek     // 🆕
-                                  );
-                                }
-                              },
-                              inputFormatters: <TextInputFormatter>[
-                                FilteringTextInputFormatter.digitsOnly
-                              ],
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Jumlah Tiket harus diisi';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isKotaTujuanVisible,
+                      child: DropdownButtonFormField(
+                        decoration: InputDecoration(
+                          labelText: 'Kota Tujuan',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: listKota.map((kota) {
+                          String valueText =
+                              '${kota['id_kota_berangkat']} - ${kota['jarak']}';
+                          return DropdownMenuItem(
+                            child: Text(kota['nama_kota']),
+                            value: valueText,
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedKotaTujuan = value;
+                          });
+                          _calculateTagihan(
+                              selectedKategoriTiket ?? '',
+                              kelasBus,
+                              jumlahTiket,
+                              selectedKotaBerangkat ?? '',
+                              selectedKotaTujuan ?? '',
+                              namaTrayek,     // 🆕
+                              jenisTrayek     // 🆕
+                          );
+
+                        },
+                        validator: (value) {
+                          if (value == null) {
+                            return 'Kota Tujuan harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isSarantagihanVisible,
+                      child: TextFormField(
+                        controller: sarantagihanController,
+                        decoration: InputDecoration(
+                          labelText: 'Tagihan',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(fontSize: 18),
+                        enabled: false, // Set enabled to false
+                        onChanged: (value) {},
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Tagihan harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isHargaKantorVisible,
+                      child: TextFormField(
+                        controller: hargaKantorController,
+                        decoration: InputDecoration(
+                          labelText: 'Harga Kantor',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(fontSize: 18),
+                        enabled: false, // Set enabled to false
+                        onChanged: (value) {
+                          setState(() {
+                            hargaKantor = double.tryParse(value) ?? 0.0;
+                          });
+                        },
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly
                         ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Harga Kantor harus diisi';
+                          }
+                          return null;
+                        },
                       ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isNamaPembeliVisible,
-                        child: TextFormField(
-                          decoration: InputDecoration(
-                            labelText: 'Nama Pembeli',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.text,
-                          onChanged: (value) {
-                            setState(() {
-                              namaPembeli = value;
-                            });
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Nama Langganan harus diisi';
-                            }
-                            return null;
-                          },
-                          style: TextStyle(fontSize: 18),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isTagihanVisible,
+                      child: TextFormField(
+                        controller: tagihanController,
+                        decoration: InputDecoration(
+                          labelText: 'Harga Tarikan',
+                          border: OutlineInputBorder(),
                         ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isNotlpPembeliVisible,
-                        child: TextFormField(
-                          decoration: InputDecoration(
-                            labelText: 'No.Telepon',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.phone,
-                          onChanged: (value) {
-                            setState(() {
-                              noTelepon = value;
-                            });
-                          },
-                          // validator: (value) {
-                          //   if (value == null || value.isEmpty) {
-                          //     return 'Nomor Telepon harus diisi';
-                          //   }
-                          //   return null;
-                          // },
-                          style: TextStyle(fontSize: 18),
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isKotaBerangkatVisible,
-                        child: DropdownButtonFormField(
-                          decoration: InputDecoration(
-                            labelText: 'Kota Berangkat',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: listKota.map((kota) {
-                            String valueText =
-                                '${kota['id_kota_berangkat']} - ${kota['jarak']}';
-                            return DropdownMenuItem(
-                              child: Text(kota['nama_kota']),
-                              value: valueText,
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedKotaBerangkat = value;
-                            });
-                            _calculateTagihan(
-                                selectedKategoriTiket ?? '',
-                                kelasBus,
-                                jumlahTiket,
-                                selectedKotaBerangkat ?? '',
-                                selectedKotaTujuan ?? '',
-                                namaTrayek,     // 🆕
-                                jenisTrayek     // 🆕
-                            );
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(fontSize: 18),
+                        enabled: isHargaTarikanEditable, // ← aturan baru
+                        onChanged: (value) async {
+                          // 🔴 cegah loop format
+                          final cleanValue = value.replaceAll('.', '');
 
-                          },
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Kota Berangkat harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isKotaTujuanVisible,
-                        child: DropdownButtonFormField(
-                          decoration: InputDecoration(
-                            labelText: 'Kota Tujuan',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: listKota.map((kota) {
-                            String valueText =
-                                '${kota['id_kota_berangkat']} - ${kota['jarak']}';
-                            return DropdownMenuItem(
-                              child: Text(kota['nama_kota']),
-                              value: valueText,
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedKotaTujuan = value;
-                            });
-                            _calculateTagihan(
-                                selectedKategoriTiket ?? '',
-                                kelasBus,
-                                jumlahTiket,
-                                selectedKotaBerangkat ?? '',
-                                selectedKotaTujuan ?? '',
-                                namaTrayek,     // 🆕
-                                jenisTrayek     // 🆕
-                            );
+                          final number = int.tryParse(cleanValue);
+                          if (number == null) return;
 
-                          },
-                          validator: (value) {
-                            if (value == null) {
-                              return 'Kota Tujuan harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isSarantagihanVisible,
-                        child: TextFormField(
-                          controller: sarantagihanController,
-                          decoration: InputDecoration(
-                            labelText: 'Tagihan',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(fontSize: 18),
-                          enabled: false, // Set enabled to false
-                          onChanged: (value) {},
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Tagihan harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isHargaKantorVisible,
-                        child: TextFormField(
-                          controller: hargaKantorController,
-                          decoration: InputDecoration(
-                            labelText: 'Harga Kantor',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(fontSize: 18),
-                          enabled: false, // Set enabled to false
-                          onChanged: (value) {
-                            setState(() {
-                              hargaKantor = double.tryParse(value) ?? 0.0;
-                            });
-                          },
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Harga Kantor harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isTagihanVisible,
-                        child: TextFormField(
-                          controller: tagihanController,
-                          decoration: InputDecoration(
-                            labelText: 'Harga Tarikan',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(fontSize: 18),
-                          enabled: isHargaTarikanEditable, // ← aturan baru
-                          onChanged: (value) async {
-                            // 🔴 cegah loop format
-                            final cleanValue = value.replaceAll('.', '');
+                          // 🔹 format ribuan
+                          final formatted = ribuanFormatter.format(number);
 
-                            final number = int.tryParse(cleanValue);
-                            if (number == null) return;
-
-                            // 🔹 format ribuan
-                            final formatted = ribuanFormatter.format(number);
-
-                            // 🔹 update controller HANYA jika berbeda
-                            if (tagihanController.text != formatted) {
-                              tagihanController.value = TextEditingValue(
-                                text: formatted,
-                                selection: TextSelection.collapsed(
-                                  offset: formatted.length,
-                                ),
-                              );
-                            }
-
-                            // ==============================
-                            // LOGIC KAMU (TIDAK DIUBAH)
-                            // ==============================
-                            jumlahTagihan = number.toDouble();
-
-                            final prefs = await SharedPreferences.getInstance();
-                            String? persenStr = prefs.getString('persenSusukanKru');
-
-                            double persenKru = 0.0;
-                            if (persenStr != null && persenStr.contains('%')) {
-                              persenKru =
-                                  double.tryParse(persenStr.replaceAll('%', '').trim()) ?? 0.0;
-                            } else if (persenStr != null) {
-                              persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
-                            }
-
-                            double persen = persenKru / 100;
-
-                            double hargaKantorHitung =
-                                jumlahTagihan - (jumlahTagihan * persen);
-
-                            int hargaKantorBulat = hargaKantorHitung.toInt();
-                            if (hargaKantorBulat < 0) hargaKantorBulat = 0;
-
-                            setState(() {
-                              _hargaKantorCalculated = hargaKantorBulat.toDouble();
-                              hargaKantorController.text =
-                                  ribuanFormatter.format(hargaKantorBulat);
-
-                              _calculateKembalian(
-                                  jumlahBayar.toDouble(), jumlahTagihan);
-                            });
-                          },
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Jumlah Tagihan harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isFotoVisible,
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
+                          // 🔹 update controller HANYA jika berbeda
+                          if (tagihanController.text != formatted) {
+                            tagihanController.value = TextEditingValue(
+                              text: formatted,
+                              selection: TextSelection.collapsed(
+                                offset: formatted.length,
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Header dengan icon
-                              Row(
-                                children: [
-                                  Icon(Icons.photo_camera, color: Colors.blue[700], size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "Upload Foto Penumpang",
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.grey[800],
-                                    ),
+                            );
+                          }
+
+                          // ==============================
+                          // LOGIC KAMU (TIDAK DIUBAH)
+                          // ==============================
+                          jumlahTagihan = number.toDouble();
+
+                          final prefs = await SharedPreferences.getInstance();
+                          String? persenStr = prefs.getString('persenSusukanKru');
+
+                          double persenKru = 0.0;
+                          if (persenStr != null && persenStr.contains('%')) {
+                            persenKru =
+                                double.tryParse(persenStr.replaceAll('%', '').trim()) ?? 0.0;
+                          } else if (persenStr != null) {
+                            persenKru = double.tryParse(persenStr.trim()) ?? 0.0;
+                          }
+
+                          double persen = persenKru / 100;
+
+                          double hargaKantorHitung =
+                              jumlahTagihan - (jumlahTagihan * persen);
+
+                          int hargaKantorBulat = hargaKantorHitung.toInt();
+                          if (hargaKantorBulat < 0) hargaKantorBulat = 0;
+
+                          setState(() {
+                            _hargaKantorCalculated = hargaKantorBulat.toDouble();
+                            hargaKantorController.text =
+                                ribuanFormatter.format(hargaKantorBulat);
+
+                            _calculateKembalian(
+                                jumlahBayar.toDouble(), jumlahTagihan);
+                          });
+                        },
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Jumlah Tagihan harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isFotoVisible,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Header dengan icon
+                            Row(
+                              children: [
+                                Icon(Icons.photo_camera, color: Colors.blue[700], size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                  "Upload Foto Penumpang",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey[800],
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
 
-                              // Konten utama: Tombol Ambil Foto & Preview
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Tombol Ambil Foto
-                                  Expanded(
-                                    flex: 2,
-                                    child: Container(
-                                      height: 120,
-                                      decoration: BoxDecoration(
+                            // Konten utama: Tombol Ambil Foto & Preview
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Tombol Ambil Foto
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          Colors.blue.shade50,
+                                          Colors.blue.shade100,
+                                        ],
+                                      ),
+                                      border: Border.all(
+                                        color: Colors.blue.shade200,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        onTap: _ambilFoto,
                                         borderRadius: BorderRadius.circular(10),
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Colors.blue.shade50,
-                                            Colors.blue.shade100,
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue[700],
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.camera_alt,
+                                                color: Colors.white,
+                                                size: 24,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              "Ambil Foto",
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.blue[700],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              "Kamera akan terbuka",
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
                                           ],
                                         ),
-                                        border: Border.all(
-                                          color: Colors.blue.shade200,
-                                          width: 1.5,
-                                        ),
-                                      ),
-                                      child: Material(
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: _ambilFoto,
-                                          borderRadius: BorderRadius.circular(10),
-                                          child: Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(10),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.blue[700],
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: const Icon(
-                                                  Icons.camera_alt,
-                                                  color: Colors.white,
-                                                  size: 24,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 12),
-                                              Text(
-                                                "Ambil Foto",
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Colors.blue[700],
-                                                ),
-                                              ),
-                                              const SizedBox(height: 2),
-                                              Text(
-                                                "Kamera akan terbuka",
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.grey[600],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
                                       ),
                                     ),
                                   ),
+                                ),
 
-                                  const SizedBox(width: 16),
+                                const SizedBox(width: 16),
 
-                                  // Preview Foto
-                                  Expanded(
-                                    flex: 1,
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        AnimatedContainer(
-                                          duration: const Duration(milliseconds: 300),
-                                          height: 150,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color: fotoPenumpang == null
-                                                  ? Colors.grey.shade300
-                                                  : Colors.green.shade300,
-                                              width: 1.5,
-                                            ),
-                                            color: fotoPenumpang == null
-                                                ? Colors.grey.shade50
-                                                : Colors.green.shade50,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.05),
-                                                blurRadius: 6,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
-                                          child: fotoPenumpang == null
-                                              ? Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
-                                            children: [
-                                              Icon(
-                                                Icons.photo,
-                                                size: 40,
-                                                color: Colors.grey.shade400,
-                                              ),
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                "Belum ada foto",
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  color: Colors.grey.shade500,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                              : ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
-                                            child: Stack(
-                                              children: [
-                                                Image.file(
-                                                  File(fotoPenumpang!.path),
-                                                  fit: BoxFit.cover,
-                                                  width: double.infinity,
-                                                  height: double.infinity,
-                                                ),
-                                                // Overlay gradien
-                                                Container(
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      begin: Alignment.topCenter,
-                                                      end: Alignment.bottomCenter,
-                                                      colors: [
-                                                        Colors.transparent,
-                                                        Colors.black.withOpacity(0.1),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                                // Badge OK
-                                                Positioned(
-                                                  top: 8,
-                                                  right: 8,
-                                                  child: Container(
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.green.shade500,
-                                                      borderRadius: BorderRadius.circular(8),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize: MainAxisSize.min,
-                                                      children: const [
-                                                        Icon(
-                                                          Icons.check,
-                                                          color: Colors.white,
-                                                          size: 12,
-                                                        ),
-                                                        SizedBox(width: 2),
-                                                        Text(
-                                                          "OK",
-                                                          style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 10,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              // Status/Info tambahan
-                              if (fotoPenumpang != null) ...[
-                                const SizedBox(height: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.green.shade100,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                // Preview Foto
+                                Expanded(
+                                  flex: 1,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Icon(
-                                        Icons.check_circle,
-                                        color: Colors.green.shade600,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        "Foto penumpang berhasil diambil",
-                                        style: TextStyle(
-                                          color: Colors.green.shade700,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
+                                      AnimatedContainer(
+                                        duration: const Duration(milliseconds: 300),
+                                        height: 150,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: fotoPenumpang == null
+                                                ? Colors.grey.shade300
+                                                : Colors.green.shade300,
+                                            width: 1.5,
+                                          ),
+                                          color: fotoPenumpang == null
+                                              ? Colors.grey.shade50
+                                              : Colors.green.shade50,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.05),
+                                              blurRadius: 6,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
+                                        ),
+                                        child: fotoPenumpang == null
+                                            ? Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.photo,
+                                              size: 40,
+                                              color: Colors.grey.shade400,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              "Belum ada foto",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.grey.shade500,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                            : ClipRRect(
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Stack(
+                                            children: [
+                                              Image.file(
+                                                File(fotoPenumpang!.path),
+                                                fit: BoxFit.cover,
+                                                width: double.infinity,
+                                                height: double.infinity,
+                                              ),
+                                              // Overlay gradien
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topCenter,
+                                                    end: Alignment.bottomCenter,
+                                                    colors: [
+                                                      Colors.transparent,
+                                                      Colors.black.withOpacity(0.1),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              // Badge OK
+                                              Positioned(
+                                                top: 8,
+                                                right: 8,
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6,
+                                                    vertical: 2,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green.shade500,
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: const [
+                                                      Icon(
+                                                        Icons.check,
+                                                        color: Colors.white,
+                                                        size: 12,
+                                                      ),
+                                                      SizedBox(width: 2),
+                                                      Text(
+                                                        "OK",
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
                               ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 16),
-                      Visibility(
-                        visible: isMetodePembayaranVisible,
-                        child: DropdownButtonFormField<String>(
-                          decoration: InputDecoration(
-                            labelText: 'Metode Pembayaran',
-                            border: OutlineInputBorder(),
-                          ),
-                          initialValue: selectedMetodePembayaran,
-                          items: listMetodePembayaran.map((item) {
-                            return DropdownMenuItem<String>(
-                              value: item['id'].toString(),
-                              child: Text(item['nama'] ?? 'Metode Tidak Dikenal'),
-                            );
-                          }).toList(),
-                          // 2. Perbaikan pada bagian onChanged metode pembayaran
-                          onChanged: (value) {
-                            if (value == null) return;
+                            ),
 
-                            print('[DEBUG] Metode pembayaran dipilih: $value');
-
-                            var selected = listMetodePembayaran.firstWhere(
-                                  (el) => el['id'].toString() == value,
-                              orElse: () => {},
-                            );
-
-                            if (selected.isNotEmpty) {
-                              print('[DEBUG] Data metode yang dipilih: $selected');
-                              print('[DEBUG] Payment Channel: ${selected['payment_channel']}');
-
-                              // Perbaikan parsing biaya_admin dengan penanganan persentase
-                              dynamic rawBiayaAdmin = selected['biaya_admin'];
-                              int parsedBiayaAdmin = 0;
-
-                              if (rawBiayaAdmin != null) {
-                                if (rawBiayaAdmin is int) {
-                                  // Jika biaya_admin < 100, anggap sebagai persentase
-                                  parsedBiayaAdmin = rawBiayaAdmin < 100
-                                      ? (jumlahTagihan * rawBiayaAdmin / 100).round()
-                                      : rawBiayaAdmin;
-                                } else if (rawBiayaAdmin is double) {
-                                  // Jika biaya_admin < 100.0, anggap sebagai persentase (baik 0.7% maupun 2.5%)
-                                  if (rawBiayaAdmin < 100.0) {
-                                    parsedBiayaAdmin = (jumlahTagihan * rawBiayaAdmin / 100).round();
-                                    print('[PERHITUNGAN] Biaya admin: $jumlahTagihan * $rawBiayaAdmin% = $parsedBiayaAdmin');
-                                  } else {
-                                    parsedBiayaAdmin = rawBiayaAdmin.round();
-                                  }
-                                } else if (rawBiayaAdmin is String) {
-                                  double? parsedValue = double.tryParse(rawBiayaAdmin);
-                                  if (parsedValue != null) {
-                                    parsedBiayaAdmin = parsedValue < 100.0
-                                        ? (jumlahTagihan * parsedValue / 100).round()
-                                        : parsedValue.round();
-                                  }
-                                }
-                              }
-
-                              print('[DEBUG] Raw biaya_admin: $rawBiayaAdmin (${rawBiayaAdmin.runtimeType})');
-                              print('[DEBUG] Parsed biaya_admin: $parsedBiayaAdmin');
-
-                              setState(() {
-                                selectedMetodePembayaran = value;
-                                biayaAdmin = parsedBiayaAdmin;
-                                paymentChannel = selected['payment_channel'] != null
-                                    ? int.tryParse(selected['payment_channel'].toString()) ?? 0
-                                    : 0;
-
-                                isTotalDenganAdminVisible = value != '1';
-                              });
-
-                              _updateTotalDenganBiayaAdmin();
-                            }
-                          },
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Metode Pembayaran harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isTotalDenganAdminVisible,
-                        child: TextFormField(
-                          controller: totalDenganAdminController,
-                          decoration: InputDecoration(
-                            labelText: 'Total Termasuk Biaya Admin',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          enabled: false,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isKeteranganVisible,
-                        child: TextFormField(
-                          controller: keteranganController,
-                          decoration: InputDecoration(
-                            labelText: 'Keterangan',
-                            border: OutlineInputBorder(),
-                          ),
-                          onChanged: (value) {
-                            setState(() {
-                              keteranganTagihan = value;
-                            });
-                          },
-                          style: TextStyle(fontSize: 18),
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isJumlahBayarVisible,
-                        child: TextFormField(
-                          controller: bayarController,
-                          decoration: InputDecoration(
-                            labelText: 'Ketik Jumlah Bayar',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(fontSize: 18),
-                          onChanged: (value) {
-                            setState(() {
-                              jumlahBayar = double.tryParse(value) ?? 0.0;
-                            });
-                            _calculateKembalian(jumlahBayar, jumlahTagihan);
-                          },
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Jumlah Bayar harus diisi';
-                            }
-                            return null;
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isJumlahKembalianVisible,
-                        child: TextFormField(
-                          controller: kembalianController,
-                          decoration: InputDecoration(
-                            labelText: 'Jumlah Kembalian',
-                            border: OutlineInputBorder(),
-                          ),
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(fontSize: 18),
-                          enabled: false, // Set enabled to false
-                        ),
-                      ),
-                      SizedBox(height: 16.0),
-                      Visibility(
-                        visible: isTombolVisible,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  final printerService = BluetoothPrinterService();
-
-                                  // Ambil printer yang sudah dipairing
-                                  final devices =
-                                  await printerService.bluetooth.getBondedDevices();
-
-                                  if (devices.isEmpty) {
-                                    Fluttertoast.showToast(msg: "Printer tidak ditemukan");
-                                    return;
-                                  }
-
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                      title: const Text("Pilih Printer"),
-                                      content: SizedBox(
-                                        width: double.maxFinite,
-                                        child: ListView.builder(
-                                          shrinkWrap: true,
-                                          itemCount: devices.length,
-                                          itemBuilder: (_, index) {
-                                            final device = devices[index];
-                                            return ListTile(
-                                              title: Text(device.name ?? 'Printer'),
-                                              subtitle: Text(device.address ?? ''),
-                                              onTap: () async {
-                                                Navigator.pop(context);
-                                                try {
-                                                  await printerService.connect(device);
-                                                  Fluttertoast.showToast(
-                                                    msg: "Terhubung ke ${device.name}",
-                                                  );
-                                                } catch (e) {
-                                                  Fluttertoast.showToast(
-                                                    msg: "Gagal connect printer",
-                                                  );
-                                                }
-                                              },
-                                            );
-                                          },
-                                        ),
+                            // Status/Info tambahan
+                            if (fotoPenumpang != null) ...[
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade50,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.green.shade100,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green.shade600,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      "Foto penumpang berhasil diambil",
+                                      style: TextStyle(
+                                        color: Colors.green.shade700,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                  );
-                                },
-                                child: const Text('Set Printer'),
-                                style: ButtonStyle(
-                                  minimumSize: WidgetStateProperty.all(
-                                    const Size(double.infinity, 48),
-                                  ),
-                                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                                        (states) =>
-                                    states.contains(WidgetState.pressed)
-                                        ? Colors.grey
-                                        : Colors.blue,
-                                  ),
-                                  foregroundColor:
-                                  WidgetStateProperty.all(Colors.white),
+                                  ],
                                 ),
                               ),
-                            ),
-                            SizedBox(width: 10), // Spasi antara tombol
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () async {
-                                  if (_formKey.currentState!.validate()) {
-
-                                    // === VALIDASI FOTO HANYA JIKA WAJIB FOTO ===
-                                    if (isFotoVisible == true && fotoPenumpang == null) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text("Silakan ambil foto penumpang terlebih dahulu."),
-                                          backgroundColor: Colors.red,
-                                        ),
-                                      );
-                                      return;
-                                    }
-                                    // === VALIDASI PRINTER UNTUK METODE TUNAI ===
-                                    if (selectedMetodePembayaran == '1') {
-                                      // Cek koneksi printer terlebih dahulu
-                                      await _checkPrinterConnection();
-
-                                      if (!_isPrinterConnected) {
-                                        // Tampilkan dialog peringatan
-                                        final shouldContinue = await showDialog<bool>(
-                                          context: context,
-                                          barrierDismissible: false,
-                                          builder: (BuildContext context) {
-                                            return AlertDialog(
-                                              title: Text("Printer Tidak Terhubung"),
-                                              content: Text("Untuk pembayaran TUNAI, printer harus terhubung untuk mencetak tiket.\n\nSilakan hubungkan printer terlebih dahulu."),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () => Navigator.pop(context, false),
-                                                  child: Text("Batal"),
-                                                ),
-                                                ElevatedButton(
-                                                  onPressed: () => Navigator.pop(context, true),
-                                                  child: Text("Hubungkan Printer"),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                        );
-
-                                        if (shouldContinue == true) {
-                                          await pilihPrinter(context);
-                                          // Cek ulang setelah connect
-                                          await _checkPrinterConnection();
-                                          if (!_isPrinterConnected) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(
-                                                content: Text("Printer gagal terhubung. Simpan dibatalkan."),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                            return;
-                                          }
-                                        } else {
-                                          return; // Batal simpan
-                                        }
-                                      }
-                                    }
-
-                                    // Proses pembayaran
-                                    if (selectedMetodePembayaran != '1') {
-                                      await _kirimKeBackendAPI(
-                                        hargaKantor,
-                                        totalTagihanPlusBiayaAdmin,
-                                        jumlahTiket,
-                                        selectedPilihRit,
-                                        selectedKategoriTiket,
-                                        selectedKotaBerangkat ?? '',
-                                        selectedKotaTujuan ?? '',
-                                        namaPembeli,
-                                        noTelepon,
-                                        keteranganTagihan,
-                                        selectedMetodePembayaran ?? '',
-                                        paymentChannel,
-                                        biayaAdmin,
-                                        isTurun,
-                                      );
-                                    } else {
-                                      await _kirimValue(
-                                        hargaKantor,
-                                        jumlahTagihan,
-                                        jumlahTiket,
-                                        selectedPilihRit,
-                                        selectedKategoriTiket,
-                                        selectedKotaBerangkat ?? '',
-                                        selectedKotaTujuan ?? '',
-                                        namaPembeli,
-                                        noTelepon,
-                                        keteranganTagihan,
-                                      );
-
-                                      await printTicket();
-
-                                    // ✅ RESET SETELAH PRINT
-                                      setState(() {
-                                        jumlahTiketController.clear();
-                                        jumlahTiket = 0;
-
-                                        tagihanController.clear();
-                                        jumlahTagihan = 0;
-
-                                        hargaKantorController.clear();
-                                        _hargaKantorCalculated = 0;
-
-                                        totalDenganAdminController.clear();
-                                        biayaAdmin = 0;
-
-                                        bayarController.clear();
-                                        kembalianController.clear();
-                                        jumlahBayar = 0;
-                                      });
-                                    }
-                                  }
-                                },
-                                child: const Text('Simpan'),
-                                style: ButtonStyle(
-                                  minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
-                                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                                        (Set<WidgetState> states) {
-                                      if (states.contains(WidgetState.pressed)) {
-                                        return Colors.grey; // Warna abu-abu saat tombol ditekan
-                                      } else {
-                                        return Colors.green; // Warna hijau saat tombol tidak ditekan
-                                      }
-                                    },
-                                  ),
-                                  foregroundColor: WidgetStateProperty.all(Colors.white), // Warna teks putih
-                                ),
-                              ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    SizedBox(height: 16),
+                    Visibility(
+                      visible: isMetodePembayaranVisible,
+                      child: DropdownButtonFormField<String>(
+                        decoration: InputDecoration(
+                          labelText: 'Metode Pembayaran',
+                          border: OutlineInputBorder(),
+                        ),
+                        initialValue: selectedMetodePembayaran,
+                        items: listMetodePembayaran.map((item) {
+                          return DropdownMenuItem<String>(
+                            value: item['id'].toString(),
+                            child: Text(item['nama'] ?? 'Metode Tidak Dikenal'),
+                          );
+                        }).toList(),
+                        // 2. Perbaikan pada bagian onChanged metode pembayaran
+                        onChanged: (value) {
+                          if (value == null) return;
+
+                          print('[DEBUG] Metode pembayaran dipilih: $value');
+
+                          var selected = listMetodePembayaran.firstWhere(
+                                (el) => el['id'].toString() == value,
+                            orElse: () => {},
+                          );
+
+                          if (selected.isNotEmpty) {
+                            print('[DEBUG] Data metode yang dipilih: $selected');
+                            print('[DEBUG] Payment Channel: ${selected['payment_channel']}');
+
+                            // Perbaikan parsing biaya_admin dengan penanganan persentase
+                            dynamic rawBiayaAdmin = selected['biaya_admin'];
+                            int parsedBiayaAdmin = 0;
+
+                            if (rawBiayaAdmin != null) {
+                              if (rawBiayaAdmin is int) {
+                                // Jika biaya_admin < 100, anggap sebagai persentase
+                                parsedBiayaAdmin = rawBiayaAdmin < 100
+                                    ? (jumlahTagihan * rawBiayaAdmin / 100).round()
+                                    : rawBiayaAdmin;
+                              } else if (rawBiayaAdmin is double) {
+                                // Jika biaya_admin < 100.0, anggap sebagai persentase (baik 0.7% maupun 2.5%)
+                                if (rawBiayaAdmin < 100.0) {
+                                  parsedBiayaAdmin = (jumlahTagihan * rawBiayaAdmin / 100).round();
+                                  print('[PERHITUNGAN] Biaya admin: $jumlahTagihan * $rawBiayaAdmin% = $parsedBiayaAdmin');
+                                } else {
+                                  parsedBiayaAdmin = rawBiayaAdmin.round();
+                                }
+                              } else if (rawBiayaAdmin is String) {
+                                double? parsedValue = double.tryParse(rawBiayaAdmin);
+                                if (parsedValue != null) {
+                                  parsedBiayaAdmin = parsedValue < 100.0
+                                      ? (jumlahTagihan * parsedValue / 100).round()
+                                      : parsedValue.round();
+                                }
+                              }
+                            }
+
+                            print('[DEBUG] Raw biaya_admin: $rawBiayaAdmin (${rawBiayaAdmin.runtimeType})');
+                            print('[DEBUG] Parsed biaya_admin: $parsedBiayaAdmin');
+
+                            setState(() {
+                              selectedMetodePembayaran = value;
+                              biayaAdmin = parsedBiayaAdmin;
+                              paymentChannel = selected['payment_channel'] != null
+                                  ? int.tryParse(selected['payment_channel'].toString()) ?? 0
+                                  : 0;
+
+                              isTotalDenganAdminVisible = value != '1';
+                            });
+
+                            _updateTotalDenganBiayaAdmin();
+                          }
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Metode Pembayaran harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isTotalDenganAdminVisible,
+                      child: TextFormField(
+                        controller: totalDenganAdminController,
+                        decoration: InputDecoration(
+                          labelText: 'Total Termasuk Biaya Admin',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        enabled: false,
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isKeteranganVisible,
+                      child: TextFormField(
+                        controller: keteranganController,
+                        decoration: InputDecoration(
+                          labelText: 'Keterangan',
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) {
+                          setState(() {
+                            keteranganTagihan = value;
+                          });
+                        },
+                        style: TextStyle(fontSize: 18),
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isJumlahBayarVisible,
+                      child: TextFormField(
+                        controller: bayarController,
+                        decoration: InputDecoration(
+                          labelText: 'Ketik Jumlah Bayar',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(fontSize: 18),
+                        onChanged: (value) {
+                          setState(() {
+                            jumlahBayar = double.tryParse(value) ?? 0.0;
+                          });
+                          _calculateKembalian(jumlahBayar, jumlahTagihan);
+                        },
+                        inputFormatters: <TextInputFormatter>[
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Jumlah Bayar harus diisi';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isJumlahKembalianVisible,
+                      child: TextFormField(
+                        controller: kembalianController,
+                        decoration: InputDecoration(
+                          labelText: 'Jumlah Kembalian',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(fontSize: 18),
+                        enabled: false, // Set enabled to false
+                      ),
+                    ),
+                    SizedBox(height: 16.0),
+                    Visibility(
+                      visible: isTombolVisible,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                final printerService = BluetoothPrinterService();
+
+                                // Ambil printer yang sudah dipairing
+                                final devices =
+                                await printerService.bluetooth.getBondedDevices();
+
+                                if (devices.isEmpty) {
+                                  Fluttertoast.showToast(msg: "Printer tidak ditemukan");
+                                  return;
+                                }
+
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: const Text("Pilih Printer"),
+                                    content: SizedBox(
+                                      width: double.maxFinite,
+                                      child: ListView.builder(
+                                        shrinkWrap: true,
+                                        itemCount: devices.length,
+                                        itemBuilder: (_, index) {
+                                          final device = devices[index];
+                                          return ListTile(
+                                            title: Text(device.name ?? 'Printer'),
+                                            subtitle: Text(device.address ?? ''),
+                                            onTap: () async {
+                                              Navigator.pop(context);
+                                              try {
+                                                await printerService.connect(device);
+                                                Fluttertoast.showToast(
+                                                  msg: "Terhubung ke ${device.name}",
+                                                );
+                                              } catch (e) {
+                                                Fluttertoast.showToast(
+                                                  msg: "Gagal connect printer",
+                                                );
+                                              }
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: const Text('Set Printer'),
+                              style: ButtonStyle(
+                                minimumSize: WidgetStateProperty.all(
+                                  const Size(double.infinity, 48),
+                                ),
+                                backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                                      (states) =>
+                                  states.contains(WidgetState.pressed)
+                                      ? Colors.grey
+                                      : Colors.blue,
+                                ),
+                                foregroundColor:
+                                WidgetStateProperty.all(Colors.white),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 10), // Spasi antara tombol
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                if (_formKey.currentState!.validate()) {
+
+                                  // === VALIDASI FOTO HANYA JIKA WAJIB FOTO ===
+                                  if (isFotoVisible == true && fotoPenumpang == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Silakan ambil foto penumpang terlebih dahulu."),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
+                                  // === VALIDASI PRINTER UNTUK METODE TUNAI ===
+                                  if (selectedMetodePembayaran == '1') {
+                                    // Cek koneksi printer terlebih dahulu
+                                    await _checkPrinterConnection();
+
+                                    if (!_isPrinterConnected) {
+                                      // Tampilkan dialog peringatan
+                                      final shouldContinue = await showDialog<bool>(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (BuildContext context) {
+                                          return AlertDialog(
+                                            title: Text("Printer Tidak Terhubung"),
+                                            content: Text("Untuk pembayaran TUNAI, printer harus terhubung untuk mencetak tiket.\n\nSilakan hubungkan printer terlebih dahulu."),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context, false),
+                                                child: Text("Batal"),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () => Navigator.pop(context, true),
+                                                child: Text("Hubungkan Printer"),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+
+                                      if (shouldContinue == true) {
+                                        await pilihPrinter(context);
+                                        // Cek ulang setelah connect
+                                        await _checkPrinterConnection();
+                                        if (!_isPrinterConnected) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text("Printer gagal terhubung. Simpan dibatalkan."),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                          return;
+                                        }
+                                      } else {
+                                        return; // Batal simpan
+                                      }
+                                    }
+                                  }
+
+                                  // Proses pembayaran
+                                  if (selectedMetodePembayaran != '1') {
+                                    await _kirimKeBackendAPI(
+                                      hargaKantor,
+                                      totalTagihanPlusBiayaAdmin,
+                                      jumlahTiket,
+                                      selectedPilihRit,
+                                      selectedKategoriTiket,
+                                      selectedKotaBerangkat ?? '',
+                                      selectedKotaTujuan ?? '',
+                                      namaPembeli,
+                                      noTelepon,
+                                      keteranganTagihan,
+                                      selectedMetodePembayaran ?? '',
+                                      paymentChannel,
+                                      biayaAdmin,
+                                      isTurun,
+                                    );
+                                  } else {
+                                    await _kirimValue(
+                                      hargaKantor,
+                                      jumlahTagihan,
+                                      jumlahTiket,
+                                      selectedPilihRit,
+                                      selectedKategoriTiket,
+                                      selectedKotaBerangkat ?? '',
+                                      selectedKotaTujuan ?? '',
+                                      namaPembeli,
+                                      noTelepon,
+                                      keteranganTagihan,
+                                    );
+
+                                    await printTicket();
+
+                                    // ✅ RESET SETELAH PRINT
+                                    setState(() {
+                                      jumlahTiketController.clear();
+                                      jumlahTiket = 0;
+
+                                      tagihanController.clear();
+                                      jumlahTagihan = 0;
+
+                                      hargaKantorController.clear();
+                                      _hargaKantorCalculated = 0;
+
+                                      totalDenganAdminController.clear();
+                                      biayaAdmin = 0;
+
+                                      bayarController.clear();
+                                      kembalianController.clear();
+                                      jumlahBayar = 0;
+                                    });
+                                  }
+                                }
+                              },
+                              child: const Text('Simpan'),
+                              style: ButtonStyle(
+                                minimumSize: WidgetStateProperty.all(Size(double.infinity, 48.0)),
+                                backgroundColor: WidgetStateProperty.resolveWith<Color>(
+                                      (Set<WidgetState> states) {
+                                    if (states.contains(WidgetState.pressed)) {
+                                      return Colors.grey; // Warna abu-abu saat tombol ditekan
+                                    } else {
+                                      return Colors.green; // Warna hijau saat tombol tidak ditekan
+                                    }
+                                  },
+                                ),
+                                foregroundColor: WidgetStateProperty.all(Colors.white), // Warna teks putih
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
+      ),
     );
   }
 
