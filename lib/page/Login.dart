@@ -490,7 +490,7 @@ class _LoginState extends State<Login> {
                             ),
                             SizedBox(height: 20.0),
                             DropdownButtonFormField<int>(
-                              value: _selectedRit,
+                              initialValue: _selectedRit,
                               decoration: InputDecoration(
                                 labelText: 'Pilih RIT',
                                 border: OutlineInputBorder(),

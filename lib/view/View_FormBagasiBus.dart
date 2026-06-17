@@ -1088,7 +1088,6 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     bool readOnly = false,
     Widget? suffix,
     List<TextInputFormatter>? inputFormatters, // Tambahkan parameter ini
-    String? hintText, // Tambahkan parameter ini
   }) {
     return TextFormField(
       controller: controller,
@@ -1131,7 +1130,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     String? Function(String?)? validator,
   }) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       items: items,
       decoration: InputDecoration(
         labelText: label,

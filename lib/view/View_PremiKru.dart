@@ -636,7 +636,7 @@ class _PremiKruState extends State<PremiKru> {
       // AMBIL DATA RIT (dari setoran pertama)
       // ===============================
       int rit = 1;
-      if (setoranList.isNotEmpty && setoranList.first.rit != null) {
+      if (setoranList.isNotEmpty) {
         rit = int.tryParse(setoranList.first.rit.toString()) ?? 1;
       }
 

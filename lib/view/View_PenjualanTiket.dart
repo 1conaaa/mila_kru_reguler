@@ -761,7 +761,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
       // Handle null values untuk variabel lainnya
       String jenisTrayekSafe = jenisTrayek ?? 'REGULER';
       String kelasBusSafe = kelasBus ?? 'EKONOMI';
-      String selectedPilihRitSafe = selectedPilihRit?.toString() ?? '1';
+      String selectedPilihRitSafe = selectedPilihRit.toString() ?? '1';
       String selectedKategoriTiketSafe = selectedKategoriTiket ?? 'REGULER';
       String jumlahTiketSafe = lastTransaksi.isNotEmpty
           ? (lastTransaksi[0]['jumlah_tiket']?.toString() ?? '1')
@@ -1757,7 +1757,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                               labelText: 'Pilih Rit',
                               border: OutlineInputBorder(),
                             ),
-                            value: selectedPilihRit, // ⬅️ BUKAN initialValue
+                            initialValue: selectedPilihRit, // ⬅️ BUKAN initialValue
                             items: const [
                               DropdownMenuItem(
                                 value: '1',
