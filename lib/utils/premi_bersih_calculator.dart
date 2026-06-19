@@ -271,12 +271,36 @@ class PremiBersihCalculator {
                 print('TPR LLA: $pengeluaranLainLain');
                 print('Total Pengeluaran: $totalPengeluaran');
 
-                if (operan > 0) {
-                  pendBersih = (pendapatanKotor - totalPengeluaran) - (operan + nominalTiketOnline);
-                  print('1. Pendapatan Bersih (Kotor - Pengeluaran) - (operan + nominalTiketOnline): $pendBersih');
-                }else{
-                  pendBersih = (pendapatanKotor - totalPengeluaran) + (nominalTiketOperan + nominalTiketOnline);
-                  print('2. Pendapatan Bersih (Kotor - Pengeluaran) + (nominalTiketOperan + nominalTiketOnline): $pendBersih');
+                // if (operan > 0) {
+                //   pendBersih = (pendapatanKotor - totalPengeluaran) - (operan + nominalTiketOnline);
+                //   print('1. Pendapatan Bersih (Kotor - Pengeluaran) - (operan + nominalTiketOnline): $pendBersih');
+                // }else{
+                //   pendBersih = (pendapatanKotor - totalPengeluaran) + (nominalTiketOperan + nominalTiketOnline);
+                //   print('2. Pendapatan Bersih (Kotor - Pengeluaran) + (nominalTiketOperan + nominalTiketOnline): $pendBersih');
+                // }
+
+                if (operan > 0 && nominalTiketOperan > 0) {
+                  pendBersih =(pendapatanKotor - totalPengeluaran)- operan+ nominalTiketOperan + nominalTiketOnline ;
+                  print(
+                      '1. Pendapatan Bersih (Kotor - Pengeluaran) - Operan + Tiket Operan + nominalTiketOnline: $pendBersih'
+                  );
+                } else if (operan > 0) {
+                  pendBersih =(pendapatanKotor - totalPengeluaran)- operan + nominalTiketOnline ;
+                  print(
+                      '2. Pendapatan Bersih (Kotor - Pengeluaran) - Operan + nominalTiketOnline: $pendBersih'
+                  );
+
+                } else if (nominalTiketOperan > 0) {
+                  pendBersih = (pendapatanKotor - totalPengeluaran) + nominalTiketOperan + nominalTiketOnline;
+                  print(
+                      '3. Pendapatan Bersih (Kotor - Pengeluaran) + Tiket Operan + nominalTiketOnline: $pendBersih'
+                  );
+
+                } else {
+                  pendBersih = (pendapatanKotor - totalPengeluaran) + nominalTiketOnline;
+                  print(
+                      '4. Pendapatan Bersih (Kotor - Pengeluaran) + nominalTiketOnline: $pendBersih'
+                  );
                 }
 
                 // Premi berdasarkan pendapatan bersih
@@ -358,26 +382,26 @@ class PremiBersihCalculator {
                 // }
 
                 if (operan > 0 && nominalTiketOperan > 0) {
-                  pendBersih =(pendapatanKotor - totalPengeluaran)- operan+ nominalTiketOperan;
+                  pendBersih =(pendapatanKotor - totalPengeluaran)- operan+ nominalTiketOperan + nominalTiketOnline;
                   print(
-                      '1. Pendapatan Bersih (Kotor - Pengeluaran) - Operan + Tiket Operan: $pendBersih'
+                      '1. Pendapatan Bersih (Kotor - Pengeluaran) - Operan + Tiket Operan + nominalTiketOnline: $pendBersih'
                   );
                 } else if (operan > 0) {
                   pendBersih =(pendapatanKotor - totalPengeluaran)- operan;
                   print(
-                      '2. Pendapatan Bersih (Kotor - Pengeluaran) - Operan: $pendBersih'
+                      '2. Pendapatan Bersih (Kotor - Pengeluaran) - Operan + nominalTiketOnline: $pendBersih'
                   );
 
                 } else if (nominalTiketOperan > 0) {
-                  pendBersih = (pendapatanKotor - totalPengeluaran) + nominalTiketOperan;
+                  pendBersih = (pendapatanKotor - totalPengeluaran) + nominalTiketOperan + nominalTiketOnline;
                   print(
-                      '3. Pendapatan Bersih (Kotor - Pengeluaran) + Tiket Operan: $pendBersih'
+                      '3. Pendapatan Bersih (Kotor - Pengeluaran) + Tiket Operan + nominalTiketOnline: $pendBersih'
                   );
 
                 } else {
                   pendBersih = (pendapatanKotor - totalPengeluaran);
                   print(
-                      '4. Pendapatan Bersih (Kotor - Pengeluaran): $pendBersih'
+                      '4. Pendapatan Bersih (Kotor - Pengeluaran) + nominalTiketOnline: $pendBersih'
                   );
                 }
 
