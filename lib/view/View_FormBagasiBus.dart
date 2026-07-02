@@ -122,6 +122,19 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPrinterConnection();
     });
+    // ✅ TAMBAHKAN INI: SUBSCRIBE STREAM STATUS PRINTER
+    final printer = context.read<BluetoothPrinterService>();
+    printer.connectionStatusStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isPrinterConnected = isConnected;
+          if (!isConnected) {
+            // Reset selected device jika terputus
+          }
+        });
+        print('📡 Status printer berubah: $_isPrinterConnected');
+      }
+    });
   }
 
   @override
@@ -189,10 +202,11 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
                   Navigator.pop(context);
                   try {
                     await printer.connect(device);
+                    // ✅ LANGSUNG UPDATE STATUS
                     await _checkPrinterConnection();
-                    Fluttertoast.showToast(msg: "Terhubung ke ${device.name}");
+                    Fluttertoast.showToast(msg: "✅ Terhubung ke ${device.name}");
                   } catch (e) {
-                    Fluttertoast.showToast(msg: "Gagal connect printer: ${e.toString()}");
+                    Fluttertoast.showToast(msg: "❌ Gagal connect: ${e.toString()}");
                     await _checkPrinterConnection();
                   }
                 },
@@ -218,7 +232,10 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         _isPrinterConnected = isConnected && selectedDevice != null;
         _isCheckingPrinter = false;
       });
+
+      print('✅ Status printer: $_isPrinterConnected');
     } catch (e) {
+      print('❌ Error cek printer: $e');
       setState(() {
         _isPrinterConnected = false;
         _isCheckingPrinter = false;
@@ -1284,21 +1301,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       child: ElevatedButton(
         onPressed: _isSubmitting ? null : () async {
           // ==================================================
-          // 🔥 VALIDASI 1: PRINTER HARUS TERHUBUNG
-          // ==================================================
-          if (!_isPrinterConnected) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text("❌ Printer belum terhubung. Silakan hubungkan printer terlebih dahulu."),
-                backgroundColor: Colors.red,
-                duration: Duration(seconds: 3),
-              ),
-            );
-            return;
-          }
-
-          // ==================================================
-          // 🔥 VALIDASI 2: FOTO WAJIB DIUNGAH
+          // 🔥 VALIDASI 1: FOTO WAJIB DIUNGAH
           // ==================================================
           if (_image == null) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1312,7 +1315,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           }
 
           // ==================================================
-          // 🔥 VALIDASI 3: FORM HARUS VALID
+          // 🔥 VALIDASI 2: FORM HARUS VALID
           // ==================================================
           if (!_formKey.currentState!.validate()) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1326,7 +1329,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           }
 
           // ==================================================
-          // 🔥 VALIDASI 4: DROPDOWN TIDAK BOLEH NULL
+          // 🔥 VALIDASI 3: DROPDOWN TIDAK BOLEH NULL
           // ==================================================
           if (selectedKotaBerangkat == null ||
               selectedKotaTujuan == null ||
@@ -1342,6 +1345,22 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           }
 
           // ==================================================
+          // 🔥 VALIDASI 4: CEK PRINTER (SEBELUM SIMPAN!)
+          // ==================================================
+          await _checkPrinterConnection();
+
+          if (!_isPrinterConnected) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("❌ Printer belum terhubung. Silakan hubungkan printer terlebih dahulu."),
+                backgroundColor: Colors.red,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            return;
+          }
+
+          // ==================================================
           // 🔥 SEMUA VALIDASI TERPENUHI, PROSES SIMPAN & PRINT
           // ==================================================
           setState(() => _isSubmitting = true);
@@ -1351,7 +1370,22 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           int idjenisPaket = int.tryParse(selectedJenisPaket!.split(' - ')[0]) ?? 1;
 
           try {
-            // 1️⃣ Simpan data ke database (termasuk foto)
+            // ✅ CEK PRINTER LAGI (DOUBLE CHECK)
+            await _checkPrinterConnection();
+
+            if (!_isPrinterConnected) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("❌ Printer terputus. Silakan hubungkan printer terlebih dahulu."),
+                  backgroundColor: Colors.red,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+              setState(() => _isSubmitting = false);
+              return;
+            }
+
+            // 1️⃣ Simpan data ke database (SETELAH PRINTER OK)
             await _submitForm(idjenisPaket, idkotaAwal, idkotaAkhir);
 
             // 2️⃣ Cetak tiket bagasi
@@ -1359,20 +1393,20 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
             final bytes = await getTicketBagasi();
             await printer.printBytes(bytes);
 
-            // 3️⃣ Beri notifikasi sukses
+            // 3️⃣ Notifikasi sukses
             Fluttertoast.showToast(
               msg: "✅ Data tersimpan & tiket dicetak",
               backgroundColor: Colors.green,
               textColor: Colors.white,
             );
 
-            // 4️⃣ Reset form untuk transaksi berikutnya
+            // 4️⃣ Reset form
             _resetForm();
 
           } catch (e) {
-            print("Error during submit/print: $e");
+            print("❌ Error: $e");
             Fluttertoast.showToast(
-              msg: "❌ Gagal simpan / cetak: $e",
+              msg: "❌ Gagal: ${e.toString()}",
               backgroundColor: Colors.red,
               textColor: Colors.white,
             );
@@ -1382,7 +1416,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         },
         style: ElevatedButton.styleFrom(
           minimumSize: const Size(double.infinity, 54),
-          backgroundColor: Colors.green,
+          backgroundColor: _isPrinterConnected ? Colors.green : Colors.grey,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -1398,14 +1432,18 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
             color: Colors.white,
           ),
         )
-            : const Row(
+            : Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.save, size: 20),
-            SizedBox(width: 8),
+            Icon(
+              _isPrinterConnected ? Icons.print : Icons.print_disabled,
+              size: 20,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 8),
             Text(
-              'Simpan & Cetak Tiket',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              _isPrinterConnected ? 'Simpan & Cetak Tiket' : 'Printer Offline',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),

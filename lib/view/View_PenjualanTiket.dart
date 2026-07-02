@@ -43,6 +43,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
   bool isKeteranganVisible = false;
   bool isMetodePembayaranVisible = false;
   bool isHargaTarikanEditable = true;
+
   //bagian dari printer
   get hasBluetoothPermission => null;
   bool connected = false;
@@ -90,6 +91,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
   double marginKantor = 0;
   double marginTarikan = 0;
   double hargaKantor = 0;
+  StreamSubscription? _printerSubscription;
 
   var jarakPP;
   var namaKotaTerakhir;
@@ -146,8 +148,20 @@ class _PenjualanFormState extends State<PenjualanForm> {
     tagihanController.addListener(_updateTotalDenganBiayaAdmin);
     sarantagihanController.addListener(_updateTotalDenganBiayaAdmin);
     _checkPrinterConnection();
-    // TAMBAHKAN INI
+
     printerService.addListener(_onPrinterConnectionChanged);
+    // ✅ SIMPAN SUBSCRIPTION
+    _printerSubscription = printerService.connectionStatusStream.listen((isConnected) {
+      if (mounted) {
+        setState(() {
+          _isPrinterConnected = isConnected;
+          if (!isConnected) {
+            _selectedDevice = null;
+          }
+        });
+        print('📡 Status printer berubah: $_isPrinterConnected');
+      }
+    });
   }
 
   DatabaseHelper databaseHelper = DatabaseHelper.instance;
@@ -390,6 +404,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
     // }
     // HAPUS LISTENER
     printerService.removeListener(_onPrinterConnectionChanged);
+    // printerService.dispose(); // ✅ TAMBAHKAN INI
+    _printerSubscription?.cancel();
+
     jumlahTiketController.dispose();
     tagihanController.removeListener(_updateTotalDenganBiayaAdmin);
     sarantagihanController.removeListener(_updateTotalDenganBiayaAdmin);
@@ -403,7 +420,6 @@ class _PenjualanFormState extends State<PenjualanForm> {
     });
 
     try {
-      // Gunakan method checkConnection dari service
       final isConnected = await printerService.checkConnection();
       final selectedDevice = printerService.selectedDevice;
 
@@ -413,11 +429,6 @@ class _PenjualanFormState extends State<PenjualanForm> {
       });
 
       print('Status koneksi printer: $_isPrinterConnected');
-      if (_isPrinterConnected) {
-        print('Printer terhubung: ${selectedDevice?.name}');
-      } else {
-        print('⚠️ Printer belum terhubung');
-      }
     } catch (e) {
       print('Error cek koneksi printer: $e');
       setState(() {
@@ -572,6 +583,12 @@ class _PenjualanFormState extends State<PenjualanForm> {
       Fluttertoast.showToast(msg: "Error: ${e.toString()}");
     }
   }
+  String _formatAngkaPrinter(double nilai) {
+    int nilaiBulat = nilai.toInt();
+    // Format dengan pemisah ribuan pakai titik
+    String formatted = NumberFormat("#,###", "id_ID").format(nilaiBulat);
+    return formatted; // contoh: 48000 -> "48.000"
+  }
 
   Future<void> _connectToDevice(BluetoothDevice device) async {
     try {
@@ -590,63 +607,390 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<void> printTicket() async {
-    print("🖨️ Cek koneksi sebelum print...");
+    print("🖨️ ===== MULAI PROSES CETAK TIKET =====");
 
-    // Refresh status koneksi terlebih dahulu
+    // ==========================================
+    // 1. CEK KONEKSI PRINTER
+    // ==========================================
     await _checkPrinterConnection();
 
-    print("Status isConnected: ${printerService.isConnected}");
-    print("Printer terpilih: ${printerService.selectedDevice?.name}");
-    print("State _isPrinterConnected: $_isPrinterConnected");
+    print("📊 Status koneksi:");
+    print("   - printerService.isConnected: ${printerService.isConnected}");
+    print("   - printerService.selectedDevice: ${printerService.selectedDevice?.name ?? 'null'}");
+    print("   - _isPrinterConnected: $_isPrinterConnected");
 
+    // ==========================================
+    // 2. JIKA PRINTER TIDAK TERHUBUNG
+    // ==========================================
     if (!_isPrinterConnected || printerService.selectedDevice == null) {
-      print("❌ Printer belum terhubung");
+      print("❌ Printer tidak terhubung, menampilkan dialog...");
 
       final shouldConnect = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text("Printer Belum Terhubung"),
-            content: Text("Silakan hubungkan printer Bluetooth terlebih dahulu sebelum mencetak tiket."),
+            title: Row(
+              children: [
+                Icon(Icons.print_disabled, color: Colors.orange, size: 28),
+                SizedBox(width: 10),
+                Text("Printer Tidak Terhubung"),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Printer Bluetooth belum terhubung atau dalam keadaan mati.",
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  "Silakan:\n"
+                      "1. Pastikan printer dalam keadaan ON\n"
+                      "2. Pastikan Bluetooth perangkat aktif\n"
+                      "3. Hubungkan printer melalui tombol di bawah",
+                  style: TextStyle(fontSize: 13, color: Colors.grey[700]),
+                ),
+              ],
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: Text("Batal"),
+                child: Text("Batal", style: TextStyle(color: Colors.grey)),
               ),
-              ElevatedButton(
+              ElevatedButton.icon(
                 onPressed: () => Navigator.pop(context, true),
-                child: Text("Hubungkan Printer"),
+                icon: Icon(Icons.bluetooth, size: 18),
+                label: Text("Hubungkan Printer"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
               ),
             ],
           );
         },
       );
 
+      // User memilih "Hubungkan Printer"
       if (shouldConnect == true) {
+        print("📌 User memilih hubungkan printer...");
         await pilihPrinter(context);
+
+        // Cek ulang setelah connect
         await _checkPrinterConnection();
-        if (!_isPrinterConnected) {
-          Fluttertoast.showToast(msg: "Printer gagal terhubung, cetak dibatalkan");
+
+        // Jika masih gagal
+        if (!_isPrinterConnected || printerService.selectedDevice == null) {
+          print("❌ Printer gagal terhubung");
+          Fluttertoast.showToast(
+            msg: "⚠️ Printer gagal terhubung, cetak dibatalkan",
+            gravity: ToastGravity.BOTTOM,
+            toastLength: Toast.LENGTH_LONG,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+          );
           return;
         }
+
+        print("✅ Printer berhasil terhubung, melanjutkan cetak...");
       } else {
+        // User memilih "Batal"
+        print("❌ User membatalkan cetak");
+        Fluttertoast.showToast(
+          msg: "Cetak dibatalkan",
+          gravity: ToastGravity.BOTTOM,
+        );
         return;
       }
     }
 
-    // Langsung cetak di sini tanpa method terpisah
-    try {
-      print("📄 Mendapatkan data tiket untuk dicetak...");
-      final bytes = await getTicket();
-      await printerService.printBytes(bytes);
-      print("✅ Tiket berhasil dikirim ke printer");
-      Fluttertoast.showToast(msg: "Tiket berhasil dicetak");
-    } catch (e) {
-      print("❌ Error mencetak: ${e.toString()}");
-      Fluttertoast.showToast(msg: "Error mencetak: ${e.toString()}");
+    // ==========================================
+    // 3. CEK KEMBALI KONEKSI (HATI-HATI)
+    // ==========================================
+    // Cek sekali lagi apakah printer masih terhubung
+    bool isConnected = await printerService.checkConnection();
+    if (!isConnected || printerService.selectedDevice == null) {
+      print("❌ Printer terputus sebelum cetak");
+      Fluttertoast.showToast(
+        msg: "⚠️ Printer terputus, silakan coba lagi",
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+      return;
     }
+
+    // ==========================================
+    // 4. PROSES CETAK
+    // ==========================================
+    try {
+      print("📄 Mengambil data tiket...");
+      final bytes = await getTicket();
+
+      if (bytes.isEmpty) {
+        print("❌ Data tiket kosong");
+        Fluttertoast.showToast(
+          msg: "⚠️ Gagal membuat data tiket",
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+        return;
+      }
+
+      print("📤 Mengirim data ke printer (${bytes.length} bytes)...");
+      await printerService.printBytes(bytes);
+
+      print("✅ Tiket berhasil dicetak!");
+      Fluttertoast.showToast(
+        msg: "✅ Tiket berhasil dicetak",
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.green,
+        textColor: Colors.white,
+      );
+
+    } catch (e) {
+      print("❌ Error saat mencetak: ${e.toString()}");
+
+      // Cek apakah error karena printer mati
+      if (e.toString().contains("disconnected") ||
+          e.toString().contains("write") ||
+          e.toString().contains("connection")) {
+
+        // Set status printer menjadi disconnected
+        setState(() {
+          _isPrinterConnected = false;
+          _selectedDevice = null;
+        });
+
+        Fluttertoast.showToast(
+          msg: "⚠️ Printer terputus saat mencetak, silakan hubungkan kembali",
+          gravity: ToastGravity.BOTTOM,
+          toastLength: Toast.LENGTH_LONG,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+      } else {
+        Fluttertoast.showToast(
+          msg: "❌ Gagal mencetak: ${e.toString()}",
+          gravity: ToastGravity.BOTTOM,
+          toastLength: Toast.LENGTH_LONG,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+      }
+    }
+
+    print("🖨️ ===== SELESAI PROSES CETAK =====");
   }
+
+  // Future<List<int>> getTicket() async {
+  //   try {
+  //     // Ambil SharedPreferences
+  //     final prefs = await SharedPreferences.getInstance();
+  //     String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090';
+  //
+  //     // Handle null values untuk kota
+  //     int idkotaAwal = 1;
+  //     int idkotaAkhir = 1;
+  //
+  //     if (selectedKotaBerangkat != null && selectedKotaBerangkat!.contains(' - ')) {
+  //       idkotaAwal = int.tryParse(selectedKotaBerangkat!.split(' - ')[0]) ?? 1;
+  //     }
+  //
+  //     if (selectedKotaTujuan != null && selectedKotaTujuan!.contains(' - ')) {
+  //       idkotaAkhir = int.tryParse(selectedKotaTujuan!.split(' - ')[0]) ?? 1;
+  //     }
+  //
+  //     String namaKotaAwal = await DatabaseHelper.instance.getNamaKota(idkotaAwal);
+  //     String namaKotaAkhir = await DatabaseHelper.instance.getNamaKota(idkotaAkhir);
+  //
+  //     // Mengubah string menjadi uppercase dengan null safety
+  //     namaKotaAwal = namaKotaAwal.toUpperCase();
+  //     namaKotaAkhir = namaKotaAkhir.toUpperCase();
+  //
+  //     List<Map<String, dynamic>> lastTransaksi = await PenjualanTiketService.instance.getDataPenjualanTerakhir();
+  //
+  //     // Handle null values untuk data transaksi
+  //     String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['noOrderTransaksi']?.toString() ?? '') : '';
+  //
+  //     int rit = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['rit'] as int? ?? 0) : 0;
+  //
+  //     String kotaBerangkat = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['kota_berangkat']?.toString() ?? '') : '';
+  //
+  //     String kotaTujuan = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['kota_tujuan']?.toString() ?? '') : '';
+  //
+  //     String namaPembeli = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['nama_pembeli']?.toString() ?? '') : '';
+  //
+  //     String noTelepon = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['no_telepon']?.toString() ?? '') : '';
+  //
+  //     double jumlahTagihan = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['jumlah_tagihan'] as double? ?? 0.0) : 0.0;
+  //
+  //     String jumlahTagihanCetak = formatter.format(jumlahTagihan);
+  //
+  //     double nominalBayar = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['nominal_bayar'] as double? ?? 0.0) : 0.0;
+  //
+  //     String jumlahBayarCetak = formatter.format(nominalBayar);
+  //
+  //     double jumlahKembalian = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['jumlah_kembalian'] as double? ?? 0.0) : 0.0;
+  //
+  //     String jumlahKembalianCetak = formatter.format(jumlahKembalian);
+  //
+  //     String tanggalTransaksi = lastTransaksi.isNotEmpty ?
+  //     (lastTransaksi[0]['tanggal_transaksi']?.toString() ?? '') : '';
+  //
+  //     // Format tanggal dengan null safety
+  //     // String formattedDate = '';
+  //     // if (tanggalTransaksi.isNotEmpty && tanggalTransaksi.contains('-')) {
+  //     //   var dateParts = tanggalTransaksi.split('-');
+  //     //   if (dateParts.length >= 3) {
+  //     //     formattedDate = '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}';
+  //     //   } else {
+  //     //     formattedDate = tanggalTransaksi;
+  //     //   }
+  //     // } else {
+  //     //   formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.now());
+  //     // }
+  //
+  //     // GANTI dengan kode berikut:
+  //     String formattedDateTime = '';
+  //     if (tanggalTransaksi.isNotEmpty && tanggalTransaksi.contains('-')) {
+  //       var dateParts = tanggalTransaksi.split('-');
+  //       if (dateParts.length >= 3) {
+  //         // Asumsi format tanggalTransaksi: yyyy-MM-dd HH:mm:ss atau yyyy-MM-dd
+  //         String tahun = dateParts[0];
+  //         String bulan = dateParts[1];
+  //         String tanggal = dateParts[2].split(' ')[0]; // Ambil tanggal saja jika ada waktu
+  //
+  //         // Ambil jam jika ada
+  //         String jam = '';
+  //         if (tanggalTransaksi.contains(' ')) {
+  //           var waktuParts = tanggalTransaksi.split(' ');
+  //           if (waktuParts.length >= 2) {
+  //             jam = waktuParts[1].substring(0, 5); // Ambil HH:mm
+  //           }
+  //         } else {
+  //           // Jika tidak ada jam, gunakan jam sekarang
+  //           jam = DateFormat('HH:mm').format(DateTime.now());
+  //         }
+  //
+  //         // Format menjadi: HH:mm, dd-MM-yyyy
+  //         formattedDateTime = '$jam, $tanggal-$bulan-$tahun';
+  //       } else {
+  //         // Fallback jika format tidak sesuai
+  //         formattedDateTime = DateFormat('HH:mm, dd-MM-yyyy').format(DateTime.now());
+  //       }
+  //     } else {
+  //       // Jika tanggalTransaksi kosong, gunakan waktu sekarang
+  //       formattedDateTime = DateFormat('HH:mm, dd-MM-yyyy').format(DateTime.now());
+  //     }
+  //
+  //     // Handle null values untuk variabel lainnya
+  //     String jenisTrayekSafe = jenisTrayek ?? 'REGULER';
+  //     String kelasBusSafe = kelasBus ?? 'EKONOMI';
+  //     String selectedPilihRitSafe = selectedPilihRit.toString() ?? '1';
+  //     String selectedKategoriTiketSafe = selectedKategoriTiket ?? 'REGULER';
+  //     String jumlahTiketSafe = lastTransaksi.isNotEmpty
+  //         ? (lastTransaksi[0]['jumlah_tiket']?.toString() ?? '1')
+  //         : '1';
+  //
+  //     List<int> bytes = [];
+  //     CapabilityProfile profile = await CapabilityProfile.load();
+  //     final generator = Generator(PaperSize.mm58, profile);
+  //     bytes += generator.reset();
+  //
+  //     // 1. TAMBAHKAN LOGO
+  //     try {
+  //       final ByteData logoData = await rootBundle.load('assets/images/icon_mila.png');
+  //       final Uint8List logoBytes = logoData.buffer.asUint8List();
+  //       final img.Image? image = img.decodeImage(logoBytes);
+  //
+  //       if (image != null) {
+  //         final img.Image resizedImage = img.copyResize(image, width: 380);
+  //         bytes += generator.image(resizedImage);
+  //       }
+  //     } catch (e) {
+  //       print('Gagal memuat logo: $e');
+  //     }
+  //
+  //     // Menambahkan teks dan informasi tiket lainnya
+  //     bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
+  //         styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
+  //     bytes += generator.text("Probolinggo - Jawa Timur 67214", styles: PosStyles(align: PosAlign.center));
+  //     bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
+  //     bytes += generator.text("WA: $noWhatsapp", styles: PosStyles(align: PosAlign.center));
+  //     bytes += generator.hr();
+  //
+  //     // Menambahkan kota keberangkatan dan tujuan
+  //     bytes += generator.row([
+  //       PosColumn(text: namaKotaAwal,width: 5,styles: PosStyles(align: PosAlign.right, bold: true,),),
+  //       PosColumn( text: "-",width: 2,styles: PosStyles( align: PosAlign.center, bold: true,),),
+  //       PosColumn(text: namaKotaAkhir,width: 5,styles: PosStyles(align: PosAlign.left,bold: true, ),),
+  //     ]);
+  //
+  //     bytes += generator.text("$jenisTrayekSafe-$kelasBusSafe", styles: PosStyles(align: PosAlign.center));
+  //     // bytes += generator.text("$formattedDate", styles: PosStyles(align: PosAlign.center, bold: false));
+  //     // Ganti menjadi:
+  //     bytes += generator.text("$formattedDateTime", styles: PosStyles(align: PosAlign.center, bold: false));
+  //
+  //     // Menambahkan informasi rit dan kategori tiket
+  //     bytes += generator.row([
+  //       PosColumn(text: "Rit-$selectedPilihRitSafe", width: 3, styles: PosStyles(align: PosAlign.left)),
+  //       PosColumn(text: "Tiket $selectedKategoriTiketSafe", width: 9, styles: PosStyles(align: PosAlign.right)),
+  //     ]);
+  //
+  //     // Menambahkan informasi pembeli jika ada
+  //     if (namaPembeli.isNotEmpty) {
+  //       bytes += generator.row([
+  //         PosColumn(text: "$namaPembeli", width: 6, styles: PosStyles(align: PosAlign.left)),
+  //         PosColumn(text: "$noTelepon", width: 6, styles: PosStyles(align: PosAlign.right)),
+  //       ]);
+  //     }
+  //
+  //     // Menambahkan informasi tagihan dan pembayaran
+  //     bytes += generator.row([
+  //       PosColumn(text: "$jumlahTiketSafe Tiket", width: 3, styles: PosStyles(align: PosAlign.left)),
+  //       PosColumn(text: "Tagihan: $jumlahTagihanCetak", width: 9, styles: PosStyles(align: PosAlign.right)),
+  //     ]);
+  //
+  //     bytes += generator.row([
+  //       PosColumn(text: "Bayar", width: 6, styles: PosStyles(align: PosAlign.left)),
+  //       PosColumn(text: "$jumlahBayarCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
+  //     ]);
+  //
+  //     bytes += generator.row([
+  //       PosColumn(text: "Kembalian", width: 6, styles: PosStyles(align: PosAlign.left)),
+  //       PosColumn(text: "$jumlahKembalianCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
+  //     ]);
+  //
+  //     bytes += generator.hr();
+  //     bytes += generator.qrcode("https://www.milaberkah.com/");
+  //     bytes += generator.text('Barang hilang atau rusak resiko penumpang sendiri.', styles: PosStyles(align: PosAlign.center, bold: false));
+  //     bytes += generator.text('Tiket ini, bukti transaksi yang sah dan mohon simpan tiket ini selama perjalanan Anda.', styles: PosStyles(align: PosAlign.center, bold: false));
+  //     bytes += generator.text('Semoga selamat sampai tujuan.', styles: PosStyles(align: PosAlign.center, bold: false));
+  //     bytes += generator.hr();
+  //     // Spasi bawah agar tidak kepotong
+  //     bytes += generator.feed(4);
+  //
+  //     return bytes;
+  //   } catch (e) {
+  //     print('❌ Error dalam getTicket: $e');
+  //     // Return empty bytes atau handle error sesuai kebutuhan
+  //     rethrow;
+  //   }
+  // }
 
   Future<List<int>> getTicket() async {
     try {
@@ -669,24 +1013,16 @@ class _PenjualanFormState extends State<PenjualanForm> {
       String namaKotaAwal = await DatabaseHelper.instance.getNamaKota(idkotaAwal);
       String namaKotaAkhir = await DatabaseHelper.instance.getNamaKota(idkotaAkhir);
 
-      // Mengubah string menjadi uppercase dengan null safety
       namaKotaAwal = namaKotaAwal.toUpperCase();
       namaKotaAkhir = namaKotaAkhir.toUpperCase();
 
       List<Map<String, dynamic>> lastTransaksi = await PenjualanTiketService.instance.getDataPenjualanTerakhir();
 
-      // Handle null values untuk data transaksi
       String noOrderTransaksiTerakhir = lastTransaksi.isNotEmpty ?
       (lastTransaksi[0]['noOrderTransaksi']?.toString() ?? '') : '';
 
       int rit = lastTransaksi.isNotEmpty ?
       (lastTransaksi[0]['rit'] as int? ?? 0) : 0;
-
-      String kotaBerangkat = lastTransaksi.isNotEmpty ?
-      (lastTransaksi[0]['kota_berangkat']?.toString() ?? '') : '';
-
-      String kotaTujuan = lastTransaksi.isNotEmpty ?
-      (lastTransaksi[0]['kota_tujuan']?.toString() ?? '') : '';
 
       String namaPembeli = lastTransaksi.isNotEmpty ?
       (lastTransaksi[0]['nama_pembeli']?.toString() ?? '') : '';
@@ -697,68 +1033,38 @@ class _PenjualanFormState extends State<PenjualanForm> {
       double jumlahTagihan = lastTransaksi.isNotEmpty ?
       (lastTransaksi[0]['jumlah_tagihan'] as double? ?? 0.0) : 0.0;
 
-      String jumlahTagihanCetak = formatter.format(jumlahTagihan);
+      String jumlahTagihanCetak = _formatAngkaPrinter(jumlahTagihan);
 
       double nominalBayar = lastTransaksi.isNotEmpty ?
       (lastTransaksi[0]['nominal_bayar'] as double? ?? 0.0) : 0.0;
 
-      String jumlahBayarCetak = formatter.format(nominalBayar);
+      String jumlahBayarCetak = _formatAngkaPrinter(nominalBayar);
 
       double jumlahKembalian = lastTransaksi.isNotEmpty ?
       (lastTransaksi[0]['jumlah_kembalian'] as double? ?? 0.0) : 0.0;
 
-      String jumlahKembalianCetak = formatter.format(jumlahKembalian);
+      String jumlahKembalianCetak = _formatAngkaPrinter(jumlahKembalian);
 
       String tanggalTransaksi = lastTransaksi.isNotEmpty ?
       (lastTransaksi[0]['tanggal_transaksi']?.toString() ?? '') : '';
 
-      // Format tanggal dengan null safety
-      // String formattedDate = '';
-      // if (tanggalTransaksi.isNotEmpty && tanggalTransaksi.contains('-')) {
-      //   var dateParts = tanggalTransaksi.split('-');
-      //   if (dateParts.length >= 3) {
-      //     formattedDate = '${dateParts[2]}-${dateParts[1]}-${dateParts[0]}';
-      //   } else {
-      //     formattedDate = tanggalTransaksi;
-      //   }
-      // } else {
-      //   formattedDate = DateFormat('dd-MM-yyyy').format(DateTime.now());
-      // }
-
-      // GANTI dengan kode berikut:
-      String formattedDateTime = '';
-      if (tanggalTransaksi.isNotEmpty && tanggalTransaksi.contains('-')) {
-        var dateParts = tanggalTransaksi.split('-');
-        if (dateParts.length >= 3) {
-          // Asumsi format tanggalTransaksi: yyyy-MM-dd HH:mm:ss atau yyyy-MM-dd
-          String tahun = dateParts[0];
-          String bulan = dateParts[1];
-          String tanggal = dateParts[2].split(' ')[0]; // Ambil tanggal saja jika ada waktu
-
-          // Ambil jam jika ada
-          String jam = '';
-          if (tanggalTransaksi.contains(' ')) {
-            var waktuParts = tanggalTransaksi.split(' ');
-            if (waktuParts.length >= 2) {
-              jam = waktuParts[1].substring(0, 5); // Ambil HH:mm
-            }
-          } else {
-            // Jika tidak ada jam, gunakan jam sekarang
-            jam = DateFormat('HH:mm').format(DateTime.now());
-          }
-
-          // Format menjadi: HH:mm, dd-MM-yyyy
-          formattedDateTime = '$jam, $tanggal-$bulan-$tahun';
+      // Format tanggal
+      String formattedDate = '';
+      String formattedTime = '';
+      if (tanggalTransaksi.isNotEmpty) {
+        var parts = tanggalTransaksi.split(' ');
+        if (parts.length >= 2) {
+          formattedDate = parts[0];
+          formattedTime = parts[1].substring(0, 5);
         } else {
-          // Fallback jika format tidak sesuai
-          formattedDateTime = DateFormat('HH:mm, dd-MM-yyyy').format(DateTime.now());
+          formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+          formattedTime = DateFormat('HH:mm').format(DateTime.now());
         }
       } else {
-        // Jika tanggalTransaksi kosong, gunakan waktu sekarang
-        formattedDateTime = DateFormat('HH:mm, dd-MM-yyyy').format(DateTime.now());
+        formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        formattedTime = DateFormat('HH:mm').format(DateTime.now());
       }
 
-      // Handle null values untuk variabel lainnya
       String jenisTrayekSafe = jenisTrayek ?? 'REGULER';
       String kelasBusSafe = kelasBus ?? 'EKONOMI';
       String selectedPilihRitSafe = selectedPilihRit.toString() ?? '1';
@@ -767,12 +1073,37 @@ class _PenjualanFormState extends State<PenjualanForm> {
           ? (lastTransaksi[0]['jumlah_tiket']?.toString() ?? '1')
           : '1';
 
+      // Ambil nama kru
+      String namaKru = '';
+      try {
+        final users = await _userService.getAllUsers();
+        if (users.isNotEmpty) {
+          final user = users.first;
+          namaKru = user.namaLengkap ?? '';
+        }
+      } catch (e) {
+        print('Gagal ambil nama kru: $e');
+        namaKru = '';
+      }
+
+      // Ambil metode pembayaran
+      String metodeBayar = 'cash';
+      if (selectedMetodePembayaran != null && selectedMetodePembayaran != '1') {
+        var selected = listMetodePembayaran.firstWhere(
+              (el) => el['id'].toString() == selectedMetodePembayaran,
+          orElse: () => {'nama': 'cash'},
+        );
+        metodeBayar = selected['nama'] ?? 'cash';
+      }
+
       List<int> bytes = [];
       CapabilityProfile profile = await CapabilityProfile.load();
       final generator = Generator(PaperSize.mm58, profile);
       bytes += generator.reset();
 
-      // 1. TAMBAHKAN LOGO
+      // ==========================================
+      // 1. LOGO
+      // ==========================================
       try {
         final ByteData logoData = await rootBundle.load('assets/images/icon_mila.png');
         final Uint8List logoBytes = logoData.buffer.asUint8List();
@@ -786,69 +1117,252 @@ class _PenjualanFormState extends State<PenjualanForm> {
         print('Gagal memuat logo: $e');
       }
 
-      // Menambahkan teks dan informasi tiket lainnya
-      bytes += generator.text("PT. MILA AKAS BERKAH SEJAHTERA",
-          styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1, width: PosTextSize.size1, bold: true));
-      bytes += generator.text("Probolinggo - Jawa Timur 67214", styles: PosStyles(align: PosAlign.center));
-      bytes += generator.text("IG: akasmilasejahtera_official", styles: PosStyles(align: PosAlign.center));
-      bytes += generator.text("WA: $noWhatsapp", styles: PosStyles(align: PosAlign.center));
+      // ==========================================
+      // 2. HEADER
+      // ==========================================
+      bytes += generator.text(
+        "PT. MILA AKAS BERKAH SEJAHTERA",
+        styles: PosStyles(
+          align: PosAlign.center,
+          height: PosTextSize.size1,
+          width: PosTextSize.size1,
+          bold: true,
+        ),
+      );
+
+      // ✅ TAMBAHKAN CALL CENTER
+      bytes += generator.text(
+        "Call Center: 082-234-909090",
+        styles: PosStyles(
+          align: PosAlign.center,
+          height: PosTextSize.size1,
+          width: PosTextSize.size1,
+        ),
+      );
+
       bytes += generator.hr();
 
-      // Menambahkan kota keberangkatan dan tujuan
+      // ==========================================
+      // 3. RUTE
+      // ==========================================
       bytes += generator.row([
-        PosColumn(text: namaKotaAwal,width: 5,styles: PosStyles(align: PosAlign.right, bold: true,),),
-        PosColumn( text: "-",width: 2,styles: PosStyles( align: PosAlign.center, bold: true,),),
-        PosColumn(text: namaKotaAkhir,width: 5,styles: PosStyles(align: PosAlign.left,bold: true, ),),
+        PosColumn(
+          text: namaKotaAwal,
+          width: 5,
+          styles: PosStyles(
+            align: PosAlign.right,
+            bold: true,
+            height: PosTextSize.size1,
+            width: PosTextSize.size1,
+          ),
+        ),
+        PosColumn(
+          text: "-",
+          width: 2,
+          styles: PosStyles(
+            align: PosAlign.center,
+            bold: true,
+            height: PosTextSize.size1,
+            width: PosTextSize.size1,
+          ),
+        ),
+        PosColumn(
+          text: namaKotaAkhir,
+          width: 5,
+          styles: PosStyles(
+            align: PosAlign.left,
+            bold: true,
+            height: PosTextSize.size1,
+            width: PosTextSize.size1,
+          ),
+        ),
       ]);
 
-      bytes += generator.text("$jenisTrayekSafe-$kelasBusSafe", styles: PosStyles(align: PosAlign.center));
-      // bytes += generator.text("$formattedDate", styles: PosStyles(align: PosAlign.center, bold: false));
-      // Ganti menjadi:
-      bytes += generator.text("$formattedDateTime", styles: PosStyles(align: PosAlign.center, bold: false));
-
-      // Menambahkan informasi rit dan kategori tiket
+      // ==========================================
+      // 4. TANGGAL & JAM (1 BARIS)
+      // ==========================================
       bytes += generator.row([
-        PosColumn(text: "Rit-$selectedPilihRitSafe", width: 3, styles: PosStyles(align: PosAlign.left)),
-        PosColumn(text: "Tiket $selectedKategoriTiketSafe", width: 9, styles: PosStyles(align: PosAlign.right)),
+        PosColumn(
+          text: formattedDate,
+          width: 8,
+          styles: PosStyles(align: PosAlign.center, height: PosTextSize.size1),
+        ),
+        PosColumn(
+          text: formattedTime,
+          width: 4,
+          styles: PosStyles(align: PosAlign.center, bold: true, height: PosTextSize.size1),
+        ),
+      ]);
+      bytes += generator.hr();
+
+      // ==========================================
+      // 5. INFORMASI TIKET & BUS
+      // ==========================================
+      bytes += generator.row([
+        PosColumn(
+          text: "Tiket",
+          width: 6,
+          styles: PosStyles(align: PosAlign.left, bold: true, height: PosTextSize.size1),
+        ),
+        PosColumn(
+          text: noOrderTransaksiTerakhir,
+          width: 6,
+          styles: PosStyles(align: PosAlign.right, height: PosTextSize.size1),
+        ),
       ]);
 
-      // Menambahkan informasi pembeli jika ada
-      if (namaPembeli.isNotEmpty) {
+      // Jumlah Tiket
+      bytes += generator.row([
+        PosColumn(
+          text: "Jumlah Tiket",
+          width: 6,
+          styles: PosStyles(align: PosAlign.left, bold: true, height: PosTextSize.size1),
+        ),
+        PosColumn(
+          text: "$jumlahTiketSafe Tiket",
+          width: 6,
+          styles: PosStyles(align: PosAlign.right, height: PosTextSize.size1),
+        ),
+      ]);
+
+      bytes += generator.row([
+        PosColumn(
+          text: noPol ?? "N 0000 XX",
+          width: 6,
+          styles: PosStyles(align: PosAlign.left, bold: true, height: PosTextSize.size1),
+        ),
+        PosColumn(
+          text: "$jenisTrayekSafe - $kelasBusSafe",
+          width: 6,
+          styles: PosStyles(align: PosAlign.right, height: PosTextSize.size1),
+        ),
+      ]);
+
+      // Kategori Tiket
+      bytes += generator.row([
+        PosColumn(
+          text: "Kategori",
+          width: 6,
+          styles: PosStyles(align: PosAlign.left, height: PosTextSize.size1),
+        ),
+        PosColumn(
+          text: selectedKategoriTiketSafe.toUpperCase(),
+          width: 6,
+          styles: PosStyles(align: PosAlign.right, height: PosTextSize.size1),
+        ),
+      ]);
+
+      // Nama Kru (Kondektur)
+      if (namaKru.isNotEmpty) {
         bytes += generator.row([
-          PosColumn(text: "$namaPembeli", width: 6, styles: PosStyles(align: PosAlign.left)),
-          PosColumn(text: "$noTelepon", width: 6, styles: PosStyles(align: PosAlign.right)),
+          PosColumn(
+            text: "Kondektur",
+            width: 6,
+            styles: PosStyles(align: PosAlign.left, height: PosTextSize.size1),
+          ),
+          PosColumn(
+            text: namaKru.toUpperCase(),
+            width: 6,
+            styles: PosStyles(align: PosAlign.right, bold: true, height: PosTextSize.size1),
+          ),
         ]);
       }
 
-      // Menambahkan informasi tagihan dan pembayaran
-      bytes += generator.row([
-        PosColumn(text: "$jumlahTiketSafe Tiket", width: 3, styles: PosStyles(align: PosAlign.left)),
-        PosColumn(text: "Tagihan: $jumlahTagihanCetak", width: 9, styles: PosStyles(align: PosAlign.right)),
-      ]);
-
-      bytes += generator.row([
-        PosColumn(text: "Bayar", width: 6, styles: PosStyles(align: PosAlign.left)),
-        PosColumn(text: "$jumlahBayarCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
-      ]);
-
-      bytes += generator.row([
-        PosColumn(text: "Kembalian", width: 6, styles: PosStyles(align: PosAlign.left)),
-        PosColumn(text: "$jumlahKembalianCetak", width: 6, styles: PosStyles(align: PosAlign.right)),
-      ]);
+      // // ✅ WA 1 BARIS (Label Kiri, Nomor Kanan)
+      // bytes += generator.row([
+      //   PosColumn(
+      //     text: "WA",
+      //     width: 6,
+      //     styles: PosStyles(align: PosAlign.left, height: PosTextSize.size1),
+      //   ),
+      //   PosColumn(
+      //     text: noWhatsapp,
+      //     width: 6,
+      //     styles: PosStyles(align: PosAlign.right, height: PosTextSize.size1),
+      //   ),
+      // ]);
 
       bytes += generator.hr();
-      bytes += generator.qrcode("https://www.milaberkah.com/");
-      bytes += generator.text('Barang hilang atau rusak resiko penumpang sendiri.', styles: PosStyles(align: PosAlign.center, bold: false));
-      bytes += generator.text('Tiket ini, bukti transaksi yang sah dan mohon simpan tiket ini selama perjalanan Anda.', styles: PosStyles(align: PosAlign.center, bold: false));
-      bytes += generator.text('Semoga selamat sampai tujuan.', styles: PosStyles(align: PosAlign.center, bold: false));
+
+      // ==========================================
+      // 6. PEMBAYARAN
+      // ==========================================
+      bytes += generator.row([
+        PosColumn(
+          text: metodeBayar.toUpperCase(),
+          width: 6,
+          styles: PosStyles(
+            align: PosAlign.left,
+            bold: true,
+            height: PosTextSize.size1,
+            width: PosTextSize.size1,
+          ),
+        ),
+        PosColumn(
+          text: "Rp $jumlahTagihanCetak",
+          width: 6,
+          styles: PosStyles(
+            align: PosAlign.right,
+            bold: true,
+            height: PosTextSize.size1,
+            width: PosTextSize.size1,
+          ),
+        ),
+      ]);
+
+      // ==========================================
+      // 7. FOOTER
+      // ==========================================
       bytes += generator.hr();
-      // Spasi bawah agar tidak kepotong
+
+      // Point 1 - dipecah 2 baris
+      bytes += generator.text(
+        '1.Harga termasuk kursi iuran ',
+        styles: PosStyles(align: PosAlign.left, bold: false, height: PosTextSize.size1),
+      );
+      bytes += generator.text(
+        '  penumpang sesuai UU No. 55',
+        styles: PosStyles(align: PosAlign.left, bold: false, height: PosTextSize.size1),
+      );
+      bytes += generator.text(
+        '  Th.1964',
+        styles: PosStyles(align: PosAlign.left, bold: false, height: PosTextSize.size1),
+      );
+
+      // Point 2 - dipecah 2 baris
+      bytes += generator.text(
+        '2.Barang rusak / hilang jadi',
+        styles: PosStyles(align: PosAlign.left, bold: false, height: PosTextSize.size1),
+      );
+      bytes += generator.text(
+        '  resiko penumpang',
+        styles: PosStyles(align: PosAlign.left, bold: false, height: PosTextSize.size1),
+      );
+
+      // Point 3 - dipecah 3 baris
+      bytes += generator.text(
+        '3.Setiap penumpang wajib ',
+        styles: PosStyles(align: PosAlign.left, bold: false, height: PosTextSize.size1),
+      );
+      bytes += generator.text(
+        '   memilki tiket',
+        styles: PosStyles(align: PosAlign.left, bold: false, height: PosTextSize.size1),
+      );
+
+      bytes += generator.hr();
+      bytes += generator.text(
+        'Laporke Call Center',
+        styles: PosStyles(align: PosAlign.center, bold: false, height: PosTextSize.size1),
+      );
+      bytes += generator.text(
+        'jika tidak mendapatkan tiket',
+        styles: PosStyles(align: PosAlign.center, bold: false, height: PosTextSize.size1),
+      );
       bytes += generator.feed(4);
 
       return bytes;
     } catch (e) {
       print('❌ Error dalam getTicket: $e');
-      // Return empty bytes atau handle error sesuai kebutuhan
       rethrow;
     }
   }
