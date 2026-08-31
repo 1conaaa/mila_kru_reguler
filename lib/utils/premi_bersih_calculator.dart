@@ -243,7 +243,8 @@ class PremiBersihCalculator {
 
                 final double persenSusukanRaw = matchedPersen?.persentase ?? 0.0;
                 final double persenSusukan = persenSusukanRaw > 1 ? persenSusukanRaw / 100 : persenSusukanRaw;
-                nominalSusukan = nominalTiketReguler * persenSusukan;
+                // nominalSusukan = nominalTiketReguler * persenSusukan;
+                nominalSusukan = (nominalTiketReguler + nominalTiketOnline) * persenSusukan;
 
                 double pendapatanKotor = nominalTiketReguler;
 
@@ -352,7 +353,8 @@ class PremiBersihCalculator {
                 final double persenSusukanRaw = matchedPersen?.persentase ?? 0.0;
                 final double persenSusukan = persenSusukanRaw > 1 ? persenSusukanRaw / 100 : persenSusukanRaw;
 
-                nominalSusukan = nominalTiketReguler * persenSusukan;
+                // nominalSusukan = nominalTiketReguler * persenSusukan;
+                nominalSusukan = (nominalTiketReguler + nominalTiketOnline) * persenSusukan;
                 double pendapatanKotor = nominalTiketReguler;
 
                 // ===============================

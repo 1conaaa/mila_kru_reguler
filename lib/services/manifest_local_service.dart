@@ -84,13 +84,208 @@ class ManifestLocalService {
     }
   }
 
-  /// 🔹 Simpan manifest ke database lokal
+  /// 🔹 Ambil RIT terakhir dari database t_rit_user
+  Future<int> getCurrentRit(Database db, int idUser) async {
+    try {
+      final result = await db.rawQuery(
+          'SELECT rit FROM t_rit_user WHERE id_user = ? ORDER BY id DESC LIMIT 1',
+          [idUser]
+      );
+
+      if (result.isNotEmpty) {
+        final int rit = result.first['rit'] as int? ?? 1;
+        print('📊 RIT terakhir untuk user $idUser: $rit');
+        return rit;
+      }
+      print('⚠️ Tidak ada data RIT untuk user $idUser, default ke 1');
+      return 1;
+    } catch (e) {
+      print('❌ Error mengambil RIT: $e');
+      return 1;
+    }
+  }
+
+  // /// 🔹 Simpan manifest ke database lokal
+  // Future<List<String>> simpanManifestKeDatabase({
+  //   required List<dynamic> manifestList,
+  //   required BuildContext context,
+  // }) async {
+  //   if (manifestList.isEmpty) {
+  //     // Tampilkan snackbar langsung tanpa ScaffoldMessenger
+  //     WidgetsBinding.instance.addPostFrameCallback((_) {
+  //       final scaffold = ScaffoldMessenger.of(context);
+  //       scaffold.showSnackBar(
+  //         const SnackBar(content: Text('Tidak ada data manifest untuk disimpan')),
+  //       );
+  //     });
+  //     return [];
+  //   }
+  //
+  //   final SharedPreferences prefs = await SharedPreferences.getInstance();
+  //   final int idUser = prefs.getInt('idUser') ?? 0;
+  //   final int idGroup = prefs.getInt('idGroup') ?? 0;
+  //   final int idCompany = prefs.getInt('idCompany') ?? 0;
+  //   final int idGarasi = prefs.getInt('idGarasi') ?? 0;
+  //   final int idBus = prefs.getInt('idBus') ?? 0;
+  //   final String? noPol = prefs.getString('noPol');
+  //   final String? kodeTrayek = prefs.getString('kode_trayek');
+  //
+  //   final DateTime now = DateTime.now();
+  //   final String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
+  //
+  //   final Database database = await databaseHelper.database;
+  //
+  //   // Pastikan tabel sudah ada
+  //   final bool tableExists = await _isTableExists(database, 'penjualan_tiket');
+  //   if (!tableExists) {
+  //     await _createPenjualanTable(database);
+  //   }
+  //
+  //   int jumlahSukses = 0;
+  //   int detikOffset = 0;
+  //   List<String> insertedInvoices = [];
+  //
+  //   print('==============================');
+  //   print('💾 MULAI PROSES SIMPAN DATA MANIFEST KE DATABASE LOKAL');
+  //   print('🕒 Waktu: $formattedDate');
+  //   print('👤 idUser: $idUser | idGroup: $idGroup | idCompany: $idCompany');
+  //   print('🚌 idBus: $idBus | noPol: $noPol | kodeTrayek: $kodeTrayek');
+  //   print('==============================');
+  //
+  //   String getKategoriTiket(dynamic idAgen) {
+  //     final int agenId = int.tryParse(idAgen.toString()) ?? 0;
+  //
+  //     const Map<int, String> kategoriMap = {
+  //       29: 'traveloka',
+  //       30: 'red_bus',
+  //       31: 'sysconix',
+  //     };
+  //
+  //     return kategoriMap[agenId] ?? 'offline';
+  //   }
+  //
+  //   for (var item in manifestList) {
+  //     try {
+  //       final String idInvoice = item['id_order_transaksi']?.toString() ?? '';
+  //       final DateTime waktuTransaksi =
+  //       DateTime.now().add(Duration(seconds: detikOffset));
+  //
+  //       final String formattedDate =
+  //       DateFormat('yyyy-MM-dd HH:mm:ss').format(waktuTransaksi);
+  //
+  //       detikOffset++; // ⏱️ tambah 1 detik untuk item berikutnya
+  //
+  //       if (idInvoice.isEmpty) {
+  //         print('⚠️ ID Invoice kosong, dilewati');
+  //         continue;
+  //       }
+  //
+  //       final String kategoriTiket =
+  //       getKategoriTiket(item['id_agen']);
+  //
+  //       // 🔹 Cek apakah id_invoice sudah ada di DB
+  //       final existing = await database.query(
+  //         'penjualan_tiket',
+  //         where: 'id_invoice = ?',
+  //         whereArgs: [idInvoice],
+  //       );
+  //
+  //       if (existing.isNotEmpty) {
+  //         final String existingStatus = existing.first['status']?.toString() ?? 'N';
+  //
+  //         if (existingStatus == 'Y') {
+  //           print('⚠️ Data dengan id_invoice $idInvoice sudah ada dan sudah terkirim (status=Y), dilewati');
+  //           continue; // skip data yang sudah dikirim
+  //         } else {
+  //           print('🔁 Data dengan id_invoice $idInvoice sudah ada tapi belum terkirim (status=N), tetap diproses untuk pengiriman ulang');
+  //           insertedInvoices.add(idInvoice); // tambahkan agar tetap bisa dikirim ulang
+  //           continue; // tidak perlu insert ulang, tapi tetap kirim
+  //         }
+  //       }
+  //
+  //       // 🔍 DEBUG sebelum insert
+  //       print('------------------------------');
+  //       print('🧾 Menyimpan data manifest baru:');
+  //       print('📦 id_invoice       : $idInvoice');
+  //       print('👤 id_user          : $idUser');
+  //       print('👥 id_group         : $idGroup');
+  //       print('🏢 id_company       : $idCompany');
+  //       print('🚐 id_bus           : $idBus');
+  //       print('🔢 id_garasi        : $idGarasi');
+  //       print('🚌 no_pol           : $noPol');
+  //       print('🧭 kode_trayek      : $kodeTrayek');
+  //       print('🏙️ id_agen          : ${item['id_agen']}');
+  //       print('🏙️ kota_berangkat   : ${item['id_kota_berangkat']}');
+  //       print('🏙️ kota_tujuan      : ${item['id_kota_tujuan']}');
+  //       print('👤 nama_pembeli     : ${item['nama_penumpang']}');
+  //       print('📞 no_telepon       : ${item['no_tlp']}');
+  //       print('💵 harga_kantor     : ${item['harga_kantor']}');
+  //       print('💰 harga_tercatat   : ${item['harga_tercatat']}');
+  //       print('📅 tanggal_transaksi: $formattedDate');
+  //       print('------------------------------');
+  //
+  //       // Parse harga
+  //       final hargaKantor = double.tryParse(item['harga_kantor']?.toString() ?? '0') ?? 0.0;
+  //       final hargaTercatat = double.tryParse(item['harga_tercatat']?.toString() ?? '0') ?? 0.0;
+  //
+  //       await database.insert('penjualan_tiket', {
+  //         'no_pol': noPol,
+  //         'id_bus': idBus,
+  //         'id_user': idUser,
+  //         'id_group': idGroup,
+  //         'id_garasi': idGarasi,
+  //         'id_company': idCompany,
+  //         'jumlah_tiket': 1,
+  //         'kategori_tiket': kategoriTiket,
+  //         'rit': 1,
+  //         'kota_berangkat': item['id_kota_berangkat']?.toString() ?? '',
+  //         'kota_tujuan': item['id_kota_tujuan']?.toString() ?? '',
+  //         'nama_pembeli': item['nama_penumpang']?.toString() ?? '',
+  //         'no_telepon': item['no_tlp']?.toString() ?? '',
+  //         'harga_kantor': hargaKantor,
+  //         'jumlah_tagihan': hargaTercatat,
+  //         'nominal_bayar': hargaTercatat,
+  //         'jumlah_kembalian': 0.0,
+  //         'tanggal_transaksi': formattedDate,
+  //         'status': 'N',
+  //         'kode_trayek': kodeTrayek,
+  //         'keterangan': 'Penumpang MILA BUS',
+  //         'id_invoice': idInvoice,
+  //         'is_turun': 0,
+  //         'status_bayar': 1,
+  //       });
+  //
+  //       jumlahSukses++;
+  //       insertedInvoices.add(idInvoice);
+  //       print('✅ Data berhasil disimpan untuk id_invoice: $idInvoice');
+  //     } catch (e) {
+  //       print('⚠️ Gagal simpan data manifest: $e');
+  //     }
+  //   }
+  //
+  //   print('==============================');
+  //   print('📊 RINGKASAN PENYIMPANAN');
+  //   print('✅ Jumlah sukses: $jumlahSukses');
+  //   print('🧾 Total ID Invoice baru: ${insertedInvoices.length}');
+  //   print('🧩 Daftar ID Invoice: ${insertedInvoices.join(', ')}');
+  //   print('==============================');
+  //
+  //   // Tampilkan snackbar dengan hasil
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     final scaffold = ScaffoldMessenger.of(context);
+  //     scaffold.showSnackBar(
+  //       SnackBar(content: Text('$jumlahSukses data berhasil disimpan ke database lokal')),
+  //     );
+  //   });
+  //
+  //   return insertedInvoices;
+  // }
+
   Future<List<String>> simpanManifestKeDatabase({
     required List<dynamic> manifestList,
     required BuildContext context,
   }) async {
     if (manifestList.isEmpty) {
-      // Tampilkan snackbar langsung tanpa ScaffoldMessenger
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final scaffold = ScaffoldMessenger.of(context);
         scaffold.showSnackBar(
@@ -114,6 +309,10 @@ class ManifestLocalService {
 
     final Database database = await databaseHelper.database;
 
+    // ✅ AMBIL RIT TERAKHIR DARI DATABASE
+    final int rit = await getCurrentRit(database, idUser);
+    print('📌 RIT yang akan digunakan: $rit');
+
     // Pastikan tabel sudah ada
     final bool tableExists = await _isTableExists(database, 'penjualan_tiket');
     if (!tableExists) {
@@ -129,6 +328,7 @@ class ManifestLocalService {
     print('🕒 Waktu: $formattedDate');
     print('👤 idUser: $idUser | idGroup: $idGroup | idCompany: $idCompany');
     print('🚌 idBus: $idBus | noPol: $noPol | kodeTrayek: $kodeTrayek');
+    print('🔄 RIT: $rit');  // ✅ Tampilkan RIT di log
     print('==============================');
 
     String getKategoriTiket(dynamic idAgen) {
@@ -146,23 +346,19 @@ class ManifestLocalService {
     for (var item in manifestList) {
       try {
         final String idInvoice = item['id_order_transaksi']?.toString() ?? '';
-        final DateTime waktuTransaksi =
-        DateTime.now().add(Duration(seconds: detikOffset));
+        final DateTime waktuTransaksi = DateTime.now().add(Duration(seconds: detikOffset));
+        final String formattedDate = DateFormat('yyyy-MM-dd HH:mm:ss').format(waktuTransaksi);
 
-        final String formattedDate =
-        DateFormat('yyyy-MM-dd HH:mm:ss').format(waktuTransaksi);
-
-        detikOffset++; // ⏱️ tambah 1 detik untuk item berikutnya
+        detikOffset++;
 
         if (idInvoice.isEmpty) {
           print('⚠️ ID Invoice kosong, dilewati');
           continue;
         }
 
-        final String kategoriTiket =
-        getKategoriTiket(item['id_agen']);
+        final String kategoriTiket = getKategoriTiket(item['id_agen']);
 
-        // 🔹 Cek apakah id_invoice sudah ada di DB
+        // Cek apakah id_invoice sudah ada di DB
         final existing = await database.query(
           'penjualan_tiket',
           where: 'id_invoice = ?',
@@ -174,31 +370,22 @@ class ManifestLocalService {
 
           if (existingStatus == 'Y') {
             print('⚠️ Data dengan id_invoice $idInvoice sudah ada dan sudah terkirim (status=Y), dilewati');
-            continue; // skip data yang sudah dikirim
+            continue;
           } else {
             print('🔁 Data dengan id_invoice $idInvoice sudah ada tapi belum terkirim (status=N), tetap diproses untuk pengiriman ulang');
-            insertedInvoices.add(idInvoice); // tambahkan agar tetap bisa dikirim ulang
-            continue; // tidak perlu insert ulang, tapi tetap kirim
+            insertedInvoices.add(idInvoice);
+            continue;
           }
         }
 
-        // 🔍 DEBUG sebelum insert
+        // DEBUG sebelum insert
         print('------------------------------');
         print('🧾 Menyimpan data manifest baru:');
         print('📦 id_invoice       : $idInvoice');
-        print('👤 id_user          : $idUser');
-        print('👥 id_group         : $idGroup');
-        print('🏢 id_company       : $idCompany');
-        print('🚐 id_bus           : $idBus');
-        print('🔢 id_garasi        : $idGarasi');
-        print('🚌 no_pol           : $noPol');
-        print('🧭 kode_trayek      : $kodeTrayek');
-        print('🏙️ id_agen          : ${item['id_agen']}');
+        print('🔄 RIT              : $rit');  // ✅ Tampilkan RIT
         print('🏙️ kota_berangkat   : ${item['id_kota_berangkat']}');
         print('🏙️ kota_tujuan      : ${item['id_kota_tujuan']}');
         print('👤 nama_pembeli     : ${item['nama_penumpang']}');
-        print('📞 no_telepon       : ${item['no_tlp']}');
-        print('💵 harga_kantor     : ${item['harga_kantor']}');
         print('💰 harga_tercatat   : ${item['harga_tercatat']}');
         print('📅 tanggal_transaksi: $formattedDate');
         print('------------------------------');
@@ -207,6 +394,7 @@ class ManifestLocalService {
         final hargaKantor = double.tryParse(item['harga_kantor']?.toString() ?? '0') ?? 0.0;
         final hargaTercatat = double.tryParse(item['harga_tercatat']?.toString() ?? '0') ?? 0.0;
 
+        // ✅ INSERT DENGAN RIT YANG BENAR
         await database.insert('penjualan_tiket', {
           'no_pol': noPol,
           'id_bus': idBus,
@@ -216,7 +404,7 @@ class ManifestLocalService {
           'id_company': idCompany,
           'jumlah_tiket': 1,
           'kategori_tiket': kategoriTiket,
-          'rit': 1,
+          'rit': rit,  // ✅ Gunakan variabel rit, bukan hardcode 1
           'kota_berangkat': item['id_kota_berangkat']?.toString() ?? '',
           'kota_tujuan': item['id_kota_tujuan']?.toString() ?? '',
           'nama_pembeli': item['nama_penumpang']?.toString() ?? '',
@@ -236,7 +424,7 @@ class ManifestLocalService {
 
         jumlahSukses++;
         insertedInvoices.add(idInvoice);
-        print('✅ Data berhasil disimpan untuk id_invoice: $idInvoice');
+        print('✅ Data berhasil disimpan untuk id_invoice: $idInvoice dengan RIT: $rit');
       } catch (e) {
         print('⚠️ Gagal simpan data manifest: $e');
       }
@@ -245,15 +433,15 @@ class ManifestLocalService {
     print('==============================');
     print('📊 RINGKASAN PENYIMPANAN');
     print('✅ Jumlah sukses: $jumlahSukses');
+    print('🔄 RIT yang digunakan: $rit');  // ✅ Tampilkan RIT di ringkasan
     print('🧾 Total ID Invoice baru: ${insertedInvoices.length}');
     print('🧩 Daftar ID Invoice: ${insertedInvoices.join(', ')}');
     print('==============================');
 
-    // Tampilkan snackbar dengan hasil
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final scaffold = ScaffoldMessenger.of(context);
       scaffold.showSnackBar(
-        SnackBar(content: Text('$jumlahSukses data berhasil disimpan ke database lokal')),
+        SnackBar(content: Text('$jumlahSukses data berhasil disimpan ke database lokal (RIT: $rit)')),
       );
     });
 

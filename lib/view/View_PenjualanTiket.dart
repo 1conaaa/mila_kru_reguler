@@ -1132,7 +1132,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
       // ✅ TAMBAHKAN CALL CENTER
       bytes += generator.text(
-        "Call Center: 082-234-909090",
+        "Call Center: 0822-2668-2428",
         styles: PosStyles(
           align: PosAlign.center,
           height: PosTextSize.size1,
