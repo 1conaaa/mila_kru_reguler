@@ -5,8 +5,6 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-    // Hapus baris berikut karena sudah termasuk dalam pluginwhich flutter kotlin-android
-    // id("org.jetbrains.kotlin.jvm") version "1.9.0"
 }
 
 val keystoreProperties = Properties()
@@ -17,25 +15,38 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.milaberkah.mila_kru_reguler"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = "27.0.12077973"
+    compileSdk = 36
+    ndkVersion = "28.0.13004108"
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
     }
 
     defaultConfig {
         applicationId = "com.milaberkah.mila_kru_reguler"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Konfigurasi NDK untuk 16 KB
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+        }
+    }
+
+    // Packaging options untuk native libraries
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        // Kotlin DSL tidak support pickFirsts di packagingOptions
+        // Gunakan cara lain jika perlu
     }
 
     signingConfigs {
@@ -50,17 +61,20 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
-
-// Hapus block kotlin toolchain yang tidak diperlukan
-// Karena sudah dihandle oleh kotlin-android plugin
 
 flutter {
     source = "../.."
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8") // Tanpa versi spesifik
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 }
