@@ -1,5 +1,8 @@
+import 'package:intl/intl.dart';
 import 'package:mila_kru_reguler/models/PersenFeeOTA_model.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:mila_kru_reguler/database/database_helper.dart';
 
 class PenjualanTiketService {
@@ -191,31 +194,41 @@ class PenjualanTiketService {
   }
 
   /// Mengambil total pendapatan reguler (ekonomi vs non-ekonomi)
+  /// Mengambil total pendapatan reguler (ekonomi vs non-ekonomi)
   Future<Map<String, int>> getSumJumlahTagihanReguler(String? kelasBus) async {
     final db = await database;
     List<Map<String, dynamic>> result;
 
     if (kelasBus == 'Ekonomi') {
       result = await db.rawQuery('''
-        SELECT SUM(x.total_tagihan) AS total_tagihan, SUM(x.jumlah_tiket) AS jumlah_tiket, SUM(x.rit) AS rit
-        FROM (
-          SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
-          FROM penjualan_tiket
-          WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan', 'operan','sepi','tni','pelajar', 'online') AND status = 'Y' AND id_metode_bayar = '1'
-          GROUP BY rit
-          UNION ALL
-          SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
-          FROM penjualan_tiket
-          WHERE kategori_tiket IN ('langganan','sepi','tni','pelajar') AND status = 'Y' AND id_metode_bayar = '1'
-          GROUP BY rit
-        ) x
-      ''');
+      SELECT SUM(x.total_tagihan) AS total_tagihan, SUM(x.jumlah_tiket) AS jumlah_tiket, SUM(x.rit) AS rit
+      FROM (
+        SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
+        FROM penjualan_tiket
+        WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'langganan', 'operan','sepi','tni','pelajar', 'online') 
+          AND status = 'Y' 
+          AND id_metode_bayar = '1'
+          AND (is_batal IS NULL OR is_batal = 0)  -- ✅ TAMBAHKAN
+        GROUP BY rit
+        UNION ALL
+        SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
+        FROM penjualan_tiket
+        WHERE kategori_tiket IN ('langganan','sepi','tni','pelajar') 
+          AND status = 'Y' 
+          AND id_metode_bayar = '1'
+          AND (is_batal IS NULL OR is_batal = 0)  -- ✅ TAMBAHKAN
+        GROUP BY rit
+      ) x
+    ''');
     } else if (kelasBus == 'Non Ekonomi') {
       result = await db.rawQuery('''
-        SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, SUM(rit) AS rit
-        FROM penjualan_tiket
-        WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'online') AND status = 'Y' AND id_metode_bayar = '1'
-      ''');
+      SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, SUM(rit) AS rit
+      FROM penjualan_tiket
+      WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'online') 
+        AND status = 'Y' 
+        AND id_metode_bayar = '1'
+        AND (is_batal IS NULL OR is_batal = 0)  -- ✅ TAMBAHKAN
+    ''');
     } else {
       return {'rit': 0, 'totalPendapatanReguler': 0, 'jumlahTiketReguler': 0};
     }
@@ -237,20 +250,26 @@ class PenjualanTiketService {
 
     if (kelasBus == 'Ekonomi') {
       result = await db.rawQuery('''
-        SELECT SUM(x.total_tagihan) AS total_tagihan, SUM(x.jumlah_tiket) AS jumlah_tiket, SUM(x.rit) AS rit
-        FROM (
-          SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
-          FROM penjualan_tiket
-          WHERE kategori_tiket IN ('operan') AND status = 'Y' AND id_metode_bayar = '1'
-          GROUP BY rit
-        ) x
-      ''');
+      SELECT SUM(x.total_tagihan) AS total_tagihan, SUM(x.jumlah_tiket) AS jumlah_tiket, SUM(x.rit) AS rit
+      FROM (
+        SELECT SUM(nominal_bayar) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, rit
+        FROM penjualan_tiket
+        WHERE kategori_tiket IN ('operan') 
+          AND status = 'Y' 
+          AND id_metode_bayar = '1'
+          AND (is_batal IS NULL OR is_batal = 0)  -- ✅ TAMBAHKAN
+        GROUP BY rit
+      ) x
+    ''');
     } else if (kelasBus == 'Non Ekonomi') {
       result = await db.rawQuery('''
-        SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, SUM(rit) AS rit
-        FROM penjualan_tiket
-        WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'online') AND status = 'Y' AND id_metode_bayar = '1'
-      ''');
+      SELECT SUM(jumlah_tagihan) AS total_tagihan, SUM(jumlah_tiket) AS jumlah_tiket, SUM(rit) AS rit
+      FROM penjualan_tiket
+      WHERE kategori_tiket NOT IN ('red_bus', 'traveloka', 'go_asia', 'online') 
+        AND status = 'Y' 
+        AND id_metode_bayar = '1'
+        AND (is_batal IS NULL OR is_batal = 0)  -- ✅ TAMBAHKAN
+    ''');
     } else {
       return {'rit': 0, 'totalPendapatanOperan': 0, 'jumlahTiketOperan': 0};
     }
@@ -298,7 +317,12 @@ class PenjualanTiketService {
 
     print("kelas bus : $kelasBus");
 
-    final cekCount = await db.rawQuery('SELECT COUNT(*) AS total FROM penjualan_tiket WHERE status = "Y"');
+    final cekCount = await db.rawQuery('''
+    SELECT COUNT(*) AS total 
+    FROM penjualan_tiket 
+    WHERE status = "Y" 
+      AND (is_batal IS NULL OR is_batal = 0)
+    ''');
     int total = int.tryParse(cekCount.first['total'].toString()) ?? 0;
 
     if (total == 0) {
@@ -322,8 +346,9 @@ class PenjualanTiketService {
     FROM penjualan_tiket
     WHERE status = 'Y'
       AND kategori_tiket IN ('red_bus','traveloka')
+      AND (is_batal IS NULL OR is_batal = 0)
     GROUP BY kategori_tiket
-  ''');
+    ''');
 
     int parseDbInt(Object? value) {
       if (value == null) return 0;
@@ -515,5 +540,299 @@ class PenjualanTiketService {
     );
   }
 
+  double? _safeToDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      final cleaned = value.replaceAll(',', '').trim();
+      return double.tryParse(cleaned);
+    }
+    return null;
+  }
 
+  /// Sinkronisasi data penjualan tiket batal dari backend
+  syncPenjualanTiketBatal({
+    required String periodeAwal,
+    required String periodeAkhir,
+    required String noPol,
+    required int idBus,
+    required String rit,
+    required String bearerToken,
+  }) async {
+    try {
+      final db = await database;
+
+      final url = Uri.parse(
+          'https://apimila.milaberkah.com/api/tampilpenjualantiketbatal'
+              '?periode_awal=$periodeAwal'
+              '&periode_akhir=$periodeAkhir'
+              '&no_pol=${Uri.encodeComponent(noPol)}'
+              '&id_bus=$idBus'
+              '&rit=$rit'
+      );
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $bearerToken',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch data: ${response.statusCode}');
+      }
+
+      final List<dynamic> data = json.decode(response.body);
+      print('✅ Mendapatkan ${data.length} data dari backend');
+
+      int insertedCount = 0;
+      int updatedCount = 0;
+
+      for (var item in data) {
+        final bool isBatal = item['is_batal'] == '1' || item['is_batal'] == 1;
+        final String tanggalTransaksi = item['tgl_transaksi'];
+
+        final existing = await db.query(
+          'penjualan_tiket',
+          where: 'tanggal_transaksi = ?',
+          whereArgs: [tanggalTransaksi],
+        );
+
+        if (existing.isNotEmpty) {
+          await db.update(
+            'penjualan_tiket',
+            {'is_batal': isBatal ? 1 : 0},
+            where: 'tanggal_transaksi = ?',
+            whereArgs: [tanggalTransaksi],
+          );
+          updatedCount++;
+        } else {
+          final newData = {
+            'tanggal_transaksi': tanggalTransaksi,
+            'kategori_tiket': item['kategori'],
+            'rit': int.tryParse(item['rit']?.toString() ?? '0'),
+            'no_pol': item['no_pol'],
+            'id_bus': item['id_bus'],
+            'kode_trayek': item['kode_trayek'],
+            'kota_berangkat': item['id_kota_berangkat'],
+            'kota_tujuan': item['id_kota_tujuan'],
+            'jumlah_tiket': item['jml_naik'],
+            'jumlah_tagihan': _safeToDouble(item['pendapatan']),
+            'harga_kantor': _safeToDouble(item['harga_kantor']),
+            'keterangan': item['keterangan'],
+            'is_batal': isBatal ? 1 : 0,
+            'id_user': item['id_personil'],
+            'status': 'Y',
+            'id_metode_bayar': 1,
+            'is_turun': 0,
+          };
+
+          await db.insert('penjualan_tiket', newData);
+          insertedCount++;
+        }
+      }
+
+      return {
+        'insertedCount': insertedCount,
+        'updatedCount': updatedCount,
+        'totalData': data.length,
+      };
+
+    } catch (e) {
+      print('❌ Error sync penjualan tiket batal: $e');
+      throw e;
+    }
+  }
+
+
+
+  /// Mendapatkan data penjualan yang dibatalkan (is_batal = 1)
+  Future<List<Map<String, dynamic>>> getPenjualanBatal() async {
+    final db = await database;
+    return await db.rawQuery('''
+    SELECT 
+      a.*,
+      a.kategori_tiket || ' - ' ||
+      (SELECT nama_kota FROM list_kota WHERE id_kota_tujuan = a.kota_berangkat LIMIT 1) || ' - ' ||
+      (SELECT nama_kota FROM list_kota WHERE id_kota_tujuan = a.kota_tujuan LIMIT 1) AS rute_kota
+    FROM penjualan_tiket a
+    WHERE a.is_batal = 1
+    ORDER BY a.id DESC
+  ''');
+  }
+
+  /// Mendapatkan data penjualan yang tidak dibatalkan (is_batal = 0 atau null)
+  Future<List<Map<String, dynamic>>> getPenjualanAktif() async {
+    final db = await database;
+    return await db.query(
+      'penjualan_tiket',
+      where: 'is_batal = 0 OR is_batal IS NULL',
+      orderBy: 'tanggal_transaksi DESC',
+    );
+  }
+
+  /// Mendapatkan data penjualan dengan informasi status batal
+  Future<List<Map<String, dynamic>>> getDataPenjualanWithBatalStatus() async {
+    final db = await database;
+    return await db.rawQuery('''
+    SELECT 
+      a.*,
+      a.kategori_tiket || ' - ' ||
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_tujuan = a.kota_berangkat
+        LIMIT 1
+      ) || ' - ' ||
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_tujuan = a.kota_tujuan
+        LIMIT 1
+      ) AS rute_kota,
+      CASE 
+        WHEN a.is_batal = 1 THEN 'DIBATALKAN'
+        ELSE 'AKTIF'
+      END AS status_batal_text
+    FROM penjualan_tiket a
+    ORDER BY a.id DESC
+  ''');
+  }
+
+  /// Mendapatkan data penjualan berdasarkan status batal
+  Future<List<Map<String, dynamic>>> getPenjualanByBatalStatus({
+    required bool isBatal,
+    String? searchQuery,
+  }) async {
+    final db = await database;
+    String query = '''
+    SELECT 
+      a.*,
+      a.kategori_tiket || ' - ' ||
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_tujuan = a.kota_berangkat
+        LIMIT 1
+      ) || ' - ' ||
+      (
+        SELECT nama_kota
+        FROM list_kota
+        WHERE id_kota_tujuan = a.kota_tujuan
+        LIMIT 1
+      ) AS rute_kota
+    FROM penjualan_tiket a
+    WHERE a.is_batal = ${isBatal ? 1 : 0} OR (a.is_batal IS NULL AND ${isBatal ? 1 : 0} = 0)
+    ORDER BY a.id DESC
+  ''';
+
+    return await db.rawQuery(query);
+  }
+
+  /// Sync data penjualan batal dari backend
+  Future<void> syncBatalData({
+    required String token,
+    required String noPol,
+    required int idBus,
+    required String rit,
+  }) async {
+    try {
+      final db = await database;
+      final now = DateTime.now();
+      final startDate = DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 30)));
+      final endDate = DateFormat('yyyy-MM-dd').format(now);
+
+      final url = Uri.parse(
+          'https://apimila.milaberkah.com/api/tampilpenjualantiketbatal'
+              '?periode_awal=$startDate'
+              '&periode_akhir=$endDate'
+              '&no_pol=${Uri.encodeComponent(noPol)}'
+              '&id_bus=$idBus'
+              '&rit=$rit'
+      );
+
+      print('📡 [SYNC BATAL] URL: $url');
+
+      final response = await http.get(
+        url,
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      print('📡 [SYNC BATAL] Status: ${response.statusCode}');
+
+      if (response.statusCode != 200) {
+        throw Exception('Gagal mengambil data: ${response.statusCode}');
+      }
+
+      final List<dynamic> data = json.decode(response.body);
+      print('✅ Mendapatkan ${data.length} data batal dari backend');
+
+      if (data.isEmpty) {
+        print('ℹ️ Tidak ada data batal');
+        return;
+      }
+
+      // 🔥 JANGAN HAPUS DATA LAMA, UPDATE SAJA
+      int updated = 0;
+      int inserted = 0;
+
+      for (var item in data) {
+        // Cek apakah data sudah ada berdasarkan tanggal_transaksi
+        final existing = await db.query(
+          'penjualan_tiket',
+          where: 'tanggal_transaksi = ?',
+          whereArgs: [item['tgl_transaksi']],
+        );
+
+        final newData = {
+          'tanggal_transaksi': item['tgl_transaksi'],
+          'kategori_tiket': item['kategori'] ?? 'reguler',
+          'rit': int.tryParse(item['rit']?.toString() ?? '0'),
+          'no_pol': item['no_pol'],
+          'id_bus': item['id_bus'],
+          'id_user': item['id_personil'],
+          'id_group': item['id_group'] ?? 0,
+          'kode_trayek': item['kode_trayek'],
+          'kota_berangkat': item['id_kota_berangkat'],
+          'kota_tujuan': item['id_kota_tujuan'],
+          'jumlah_tiket': item['jml_naik'] ?? 0,
+          'jumlah_tagihan': double.tryParse(item['pendapatan']?.toString() ?? '0'),
+          'harga_kantor': double.tryParse(item['harga_kantor']?.toString() ?? '0'),
+          'keterangan': item['keterangan'] ?? '',
+          'is_batal': 1,
+          'status': 'Y',
+          'id_metode_bayar': 1,
+          'is_turun': 0,
+        };
+
+        if (existing.isNotEmpty) {
+          // Update data yang sudah ada
+          await db.update(
+            'penjualan_tiket',
+            newData,
+            where: 'tanggal_transaksi = ?',
+            whereArgs: [item['tgl_transaksi']],
+          );
+          updated++;
+          print('🔄 Update data batal: ${item['tgl_transaksi']}');
+        } else {
+          // Insert data baru
+          await db.insert('penjualan_tiket', newData);
+          inserted++;
+          print('➕ Insert data batal: ${item['tgl_transaksi']}');
+        }
+      }
+
+      print('✅ Berhasil update $updated data dan insert $inserted data batal');
+
+    } catch (e) {
+      print('❌ Error sync batal: $e');
+      rethrow;
+    }
+  }
 }

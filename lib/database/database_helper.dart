@@ -29,7 +29,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2, // Update the version number
+      version: 3, // Update the version number
       onCreate: (db, version) async {
         await _createTables(db, version); // Call the updated _createTables function
       },
@@ -178,6 +178,7 @@ class DatabaseHelper {
         tanggal_transaksi DATETIME,
         status TEXT,
         is_turun INTEGER DEFAULT 0,
+        is_batal INTEGER DEFAULT 0,
         kode_trayek TEXT,
         keterangan TEXT,
         id_invoice TEXT,

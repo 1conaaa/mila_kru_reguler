@@ -19,16 +19,19 @@ class PenjualanTiket {
   final double? jumlahKembalian;
   final String? tanggalTransaksi;
   final String? status;
+  final int? isTurun;
+  final int? isBatal; // <--- DITAMBAHKAN
   final String? kodeTrayek;
   final String? keterangan;
   final String? idInvoice;
   final int? idMetodeBayar;
   final double? nominalTagihan;
   final int? statusBayar;
-  final int? isTurun; // <--- DITAMBAHKAN
   final String? trxId;
   final String? merchantId;
   final String? redirectUrl;
+  final String? fupload;
+  final String? fileName;
 
   PenjualanTiket({
     this.id,
@@ -51,16 +54,19 @@ class PenjualanTiket {
     this.jumlahKembalian,
     this.tanggalTransaksi,
     this.status,
+    this.isTurun,
+    this.isBatal, // <--- DITAMBAHKAN
     this.kodeTrayek,
     this.keterangan,
     this.idInvoice,
     this.idMetodeBayar,
     this.nominalTagihan,
     this.statusBayar,
-    this.isTurun, // <--- DITAMBAHKAN
     this.trxId,
     this.merchantId,
     this.redirectUrl,
+    this.fupload,
+    this.fileName,
   });
 
   factory PenjualanTiket.fromMap(Map<String, dynamic> map) {
@@ -85,16 +91,19 @@ class PenjualanTiket {
       jumlahKembalian: map['jumlah_kembalian']?.toDouble(),
       tanggalTransaksi: map['tanggal_transaksi'],
       status: map['status'],
+      isTurun: map['is_turun'],
+      isBatal: map['is_batal'], // <--- DITAMBAHKAN
       kodeTrayek: map['kode_trayek'],
       keterangan: map['keterangan'],
       idInvoice: map['id_invoice'],
       idMetodeBayar: map['id_metode_bayar'],
       nominalTagihan: map['nominal_tagihan']?.toDouble(),
       statusBayar: map['status_bayar'],
-      isTurun: map['is_turun'], // <--- DITAMBAHKAN
       trxId: map['trx_id'],
       merchantId: map['merchant_id'],
       redirectUrl: map['redirect_url'],
+      fupload: map['fupload'],
+      fileName: map['file_name'],
     );
   }
 
@@ -120,17 +129,92 @@ class PenjualanTiket {
       'jumlah_kembalian': jumlahKembalian,
       'tanggal_transaksi': tanggalTransaksi,
       'status': status,
+      'is_turun': isTurun,
+      'is_batal': isBatal, // <--- DITAMBAHKAN
       'kode_trayek': kodeTrayek,
       'keterangan': keterangan,
       'id_invoice': idInvoice,
       'id_metode_bayar': idMetodeBayar,
       'nominal_tagihan': nominalTagihan,
       'status_bayar': statusBayar,
-      'is_turun': isTurun, // <--- DITAMBAHKAN
       'trx_id': trxId,
       'merchant_id': merchantId,
       'redirect_url': redirectUrl,
-
+      'fupload': fupload,
+      'file_name': fileName,
     };
+  }
+
+  // Method copyWith untuk memudahkan update data
+  PenjualanTiket copyWith({
+    int? id,
+    String? noPol,
+    int? idBus,
+    int? idUser,
+    int? idGroup,
+    int? idGarasi,
+    int? idCompany,
+    int? jumlahTiket,
+    String? kategoriTiket,
+    int? rit,
+    String? kotaBerangkat,
+    String? kotaTujuan,
+    String? namaPembeli,
+    String? noTelepon,
+    double? hargaKantor,
+    double? jumlahTagihan,
+    double? nominalBayar,
+    double? jumlahKembalian,
+    String? tanggalTransaksi,
+    String? status,
+    int? isTurun,
+    int? isBatal,
+    String? kodeTrayek,
+    String? keterangan,
+    String? idInvoice,
+    int? idMetodeBayar,
+    double? nominalTagihan,
+    int? statusBayar,
+    String? trxId,
+    String? merchantId,
+    String? redirectUrl,
+    String? fupload,
+    String? fileName,
+  }) {
+    return PenjualanTiket(
+      id: id ?? this.id,
+      noPol: noPol ?? this.noPol,
+      idBus: idBus ?? this.idBus,
+      idUser: idUser ?? this.idUser,
+      idGroup: idGroup ?? this.idGroup,
+      idGarasi: idGarasi ?? this.idGarasi,
+      idCompany: idCompany ?? this.idCompany,
+      jumlahTiket: jumlahTiket ?? this.jumlahTiket,
+      kategoriTiket: kategoriTiket ?? this.kategoriTiket,
+      rit: rit ?? this.rit,
+      kotaBerangkat: kotaBerangkat ?? this.kotaBerangkat,
+      kotaTujuan: kotaTujuan ?? this.kotaTujuan,
+      namaPembeli: namaPembeli ?? this.namaPembeli,
+      noTelepon: noTelepon ?? this.noTelepon,
+      hargaKantor: hargaKantor ?? this.hargaKantor,
+      jumlahTagihan: jumlahTagihan ?? this.jumlahTagihan,
+      nominalBayar: nominalBayar ?? this.nominalBayar,
+      jumlahKembalian: jumlahKembalian ?? this.jumlahKembalian,
+      tanggalTransaksi: tanggalTransaksi ?? this.tanggalTransaksi,
+      status: status ?? this.status,
+      isTurun: isTurun ?? this.isTurun,
+      isBatal: isBatal ?? this.isBatal,
+      kodeTrayek: kodeTrayek ?? this.kodeTrayek,
+      keterangan: keterangan ?? this.keterangan,
+      idInvoice: idInvoice ?? this.idInvoice,
+      idMetodeBayar: idMetodeBayar ?? this.idMetodeBayar,
+      nominalTagihan: nominalTagihan ?? this.nominalTagihan,
+      statusBayar: statusBayar ?? this.statusBayar,
+      trxId: trxId ?? this.trxId,
+      merchantId: merchantId ?? this.merchantId,
+      redirectUrl: redirectUrl ?? this.redirectUrl,
+      fupload: fupload ?? this.fupload,
+      fileName: fileName ?? this.fileName,
+    );
   }
 }

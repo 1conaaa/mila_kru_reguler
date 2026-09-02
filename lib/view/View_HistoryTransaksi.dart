@@ -6,7 +6,7 @@ import 'package:mila_kru_reguler/services/penjualan_tiket_service.dart';
 import 'package:mila_kru_reguler/services/rit_user_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-
+import 'dart:convert';
 
 class HistroyTransaksi extends StatefulWidget {
   @override
@@ -18,11 +18,12 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   List<Map<String, dynamic>> listPenjualan = [];
   NumberFormat formatter = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp',decimalDigits: 0,);
   bool _isPushingData = false;
+  bool _isLoadingSync = false;
   double _pushDataProgress = 0.0;
-  String searchQuery = ''; // Field untuk menyimpan nilai pencarian
+  String searchQuery = '';
 
-  List<String> kotaTujuanList = []; // List untuk kota tujuan unik
-  String selectedKotaTujuan = 'SEMUA'; // atau sesuaikan dengan nilai awal yang sesuai dengan aplikasi Anda
+  List<String> kotaTujuanList = [];
+  String selectedKotaTujuan = 'SEMUA';
 
   Map<String, bool> isCheckedPerRute = {};
 
@@ -39,32 +40,71 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     await databaseHelper.closeDatabase();
   }
 
-  // Method untuk mencari dan memfilter data penjualan berdasarkan rute kota
-  void _searchRuteKota(String searchQuery) async {
-    try {
-      List<Map<String, dynamic>> result = await PenjualanTiketService.instance.getDataRuteKota(searchQuery);
-      setState(() {
-        listPenjualan = result;
-      });
-    } catch (e) {
-      print('Error saat memanggil getDataRuteKota: $e');
+  // ============================================
+  // SYNC DATA BATAL
+  // ============================================
+  Future<void> _syncBatal() async {
+    if (listPenjualan.isEmpty) {
+      await _getListTransaksi();
+      if (listPenjualan.isEmpty) {
+        _showToast("Tidak ada data bus. Silakan tambahkan data penjualan terlebih dahulu.");
+        return;
+      }
     }
-  }
-  void _markLocalDataTurunByTujuan(String kotaTujuan) {
-    setState(() {
-      listPenjualan = listPenjualan.map((item) {
-        final rute = item['rute_kota']?.toString() ?? '';
 
-        if (item['is_turun'] == 0 && rute.endsWith(' - $kotaTujuan')) {
-          return {
-            ...item,
-            'is_turun': 1,
-          };
+    setState(() => _isLoadingSync = true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null || token.isEmpty) {
+        _showToast("Token tidak ditemukan. Silakan login ulang.");
+        setState(() => _isLoadingSync = false);
+        return;
+      }
+
+      Map<String, dynamic>? busData;
+      for (var item in listPenjualan) {
+        if (item['no_pol'] != null && item['id_bus'] != null) {
+          busData = item;
+          break;
         }
+      }
 
-        return item;
-      }).toList();
-    });
+      if (busData == null) {
+        _showToast("Data bus tidak lengkap.");
+        setState(() => _isLoadingSync = false);
+        return;
+      }
+
+      final noPol = busData['no_pol']?.toString() ?? '';
+      final idBus = busData['id_bus'] as int? ?? 0;
+      final rit = busData['rit']?.toString() ?? '1';
+
+      await PenjualanTiketService.instance.syncBatalData(
+        token: token,
+        noPol: noPol,
+        idBus: idBus,
+        rit: rit,
+      );
+
+      await _getListTransaksi();
+
+      final dataBatal = await PenjualanTiketService.instance.getPenjualanBatal();
+
+      if (dataBatal.isNotEmpty) {
+        _showToast("✅ ${dataBatal.length} data pembatalan ditemukan (warna merah)");
+      } else {
+        _showToast("ℹ️ Tidak ada data pembatalan");
+      }
+
+    } catch (e) {
+      print('❌ Error sync: $e');
+      _showToast("Gagal sync data: ${e.toString()}");
+    } finally {
+      setState(() => _isLoadingSync = false);
+    }
   }
 
   void _pushDataPenjualan() async {
@@ -91,13 +131,11 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
 
         String apiUrl = "https://apimila.milaberkah.com/api/penjualantiket";
 
-        // Buat MultipartRequest baru untuk setiap iterasi (tidak reuse)
         var uri = Uri.parse(apiUrl);
         var request = http.MultipartRequest("POST", uri);
 
         request.headers['Authorization'] = 'Bearer $token';
-      
-        // Isi semua field sebagai request.fields sehingga request berdiri sendiri
+
         request.fields['id'] = penjualanId.toString();
         request.fields['tgl_transaksi'] = penjualan['tanggal_transaksi']?.toString() ?? '';
         request.fields['kategori'] = penjualan['kategori_tiket']?.toString() ?? '';
@@ -118,18 +156,15 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
         request.fields['keterangan'] = penjualan['keterangan']?.toString() ?? '';
         request.fields['is_turun'] = penjualan['is_turun']?.toString() ?? '0';
 
-        // Tangani foto: bisa berupa null / empty / single path / multiple paths (pisah koma atau |)
         String? fotoPathRaw = penjualan['fupload']?.toString();
         String? fileNameRaw = penjualan['file_name']?.toString();
 
         if (fotoPathRaw != null && fotoPathRaw.trim().isNotEmpty) {
-          // support multiple paths mis. "path1.jpg,path2.jpg" atau "path1.jpg|path2.jpg"
           List<String> paths = fotoPathRaw.split(RegExp(r'[,\|]'))
               .map((s) => s.trim())
               .where((s) => s.isNotEmpty)
               .toList();
 
-          // Jika file_name berisi banyak nama, juga pecah menjadi list
           List<String> names = [];
           if (fileNameRaw != null && fileNameRaw.trim().isNotEmpty) {
             names = fileNameRaw.split(RegExp(r'[,\|]')).map((s) => s.trim()).toList();
@@ -142,7 +177,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
               String filename = (i < names.length && names[i].isNotEmpty) ? names[i] : path.split('/').last;
               try {
                 request.files.add(await http.MultipartFile.fromPath(
-                  'file_name[]', // tetap gunakan array name jika backend menerima multiple
+                  'file_name[]',
                   path,
                   filename: filename,
                 ));
@@ -169,7 +204,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             print("[SUCCESS] Data berhasil dikirim (ID: $penjualanId)");
 
-            // update status lokal
             await PenjualanTiketService.instance.updatePenjualanStatus(penjualanId, 'Y');
 
             dataSent++;
@@ -178,7 +212,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
               _pushDataProgress = progress;
             });
           } else {
-            print("[FAILED] Gagal kirim data (ID: $penjualanId). Pastikan backend menerima request.fields dan file_name[] sesuai format.");
+            print("[FAILED] Gagal kirim data (ID: $penjualanId).");
           }
         } catch (e) {
           print("[ERROR] Exception saat mengirim ID $penjualanId: $e");
@@ -198,35 +232,8 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     print("=== PUSH DATA SELESAI ===");
   }
 
-  // Future<void> _getListTransaksi() async {
-  //   debugPrint("🔄 Ambil data transaksi");
-  //
-  //   List<Map<String, dynamic>> penjualanData =
-  //   await PenjualanTiketService.instance.getDataPenjualan();
-  //
-  //   final Set<String> kotaTujuanSet = {};
-  //
-  //   for (var e in penjualanData) {
-  //     final rute = e['rute_kota']?.toString();
-  //     if (rute != null && rute.contains(' - ')) {
-  //       final parts = rute.split(' - ');
-  //       final kotaTujuan = parts.last.trim(); // ⬅️ AMBIL TUJUAN
-  //       kotaTujuanSet.add(kotaTujuan);
-  //     }
-  //   }
-  //
-  //   setState(() {
-  //     listPenjualan = penjualanData;
-  //     kotaTujuanList = ['SEMUA', ...kotaTujuanSet.toList()];
-  //   });
-  //
-  //   debugPrint("📍 Kota tujuan unik: $kotaTujuanList");
-  // }
-
   Future<int> getActiveRit() async {
-    final int ritAktif =
-    await RitUserService.instance.getActiveRit();
-
+    final int ritAktif = await RitUserService.instance.getActiveRit();
     print('[RIT] RIT aktif dari service = $ritAktif');
     return ritAktif;
   }
@@ -234,7 +241,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   Future<void> _getListTransaksi() async {
     debugPrint("🔄 Ambil data transaksi");
 
-    // ambil rit aktif
     final int rit = await getActiveRit();
 
     List<Map<String, dynamic>> penjualanData =
@@ -273,12 +279,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
       return urutA.compareTo(urutB);
     });
 
-    // kotaTujuanSorted.sort((a, b) {
-    //   final urutA = urutanKota[a] ?? 999;
-    //   final urutB = urutanKota[b] ?? 999;
-    //   return urutB.compareTo(urutA);
-    // });
-
     setState(() {
       listPenjualan = penjualanData;
       kotaTujuanList = ['SEMUA', ...kotaTujuanSorted];
@@ -287,11 +287,19 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     debugPrint("📍 Kota tujuan unik: $kotaTujuanList");
   }
 
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // ================================
-    // FILTER BERDASARKAN KOTA TUJUAN
-    // ================================
+    final screenWidth = MediaQuery.of(context).size.width;
+
     final List<Map<String, dynamic>> filteredPenjualan = selectedKotaTujuan == 'SEMUA' ? listPenjualan : listPenjualan.where((e) {
       final rute = e['rute_kota']?.toString() ?? '';
       if (!rute.contains(' - ')) return false;
@@ -299,29 +307,10 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
       return kotaTujuan == selectedKotaTujuan;
     }).toList();
 
-    debugPrint("🔍 Filter TUJUAN: $selectedKotaTujuan | data: ${filteredPenjualan.length}",);
-
-    // ==========================================
-    // 2️⃣ FLAG STATUS (INI YANG KAMU TANYAKAN)
-    // ==========================================
     final bool allTujuanSudahTurun = selectedKotaTujuan != 'SEMUA' && filteredPenjualan.isNotEmpty && filteredPenjualan.every((e) => (e['is_turun'] ?? 0) == 1,);
-
-    // ================================
-    // TOTAL PENUMPANG PER KOTA TUJUAN
-    // ================================
 
     final num totalPerKotaTujuan = selectedKotaTujuan == 'SEMUA' ? 0 : filteredPenjualan.fold(0,(total, item) => total + (item['jumlah_tiket'] ?? 0),);
 
-    debugPrint("📍 Total tujuan $selectedKotaTujuan : $totalPerKotaTujuan",);
-
-    debugPrint("🔄 build() dipanggil");
-
-    // ================================
-    // PREPARE DATA
-    // ================================
-    debugPrint("📦 Total filteredPenjualan: ${filteredPenjualan.length}");
-
-    /// GROUP DATA BERDASARKAN RUTE KOTA
     final Map<String, List<Map<String, dynamic>>> groupedByRuteKota = {};
 
     for (final item in filteredPenjualan) {
@@ -330,37 +319,33 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
       groupedByRuteKota[ruteKota]!.add(item);
     }
 
-    debugPrint("🗂️ Jumlah grup rute: ${groupedByRuteKota.length}");
-
-    /// TOTAL SEMUA PENUMPANG
     final num totalSemuaPenumpang = listPenjualan.fold(
       0,
           (total, item) => total + (item['jumlah_tiket'] ?? 0),
     );
-    debugPrint("👥 Total semua penumpang: $totalSemuaPenumpang");
 
-    /// SISA PENUMPANG (BELUM TURUN)
     final num sisaPenumpang = listPenjualan
         .where((e) => (e['is_turun'] ?? 0) == 0)
         .fold(0, (tot, item) => tot + (item['jumlah_tiket'] ?? 0));
 
-    debugPrint("⏳ Sisa penumpang (belum turun): $sisaPenumpang");
-
-    // ================================
-    // UI
-    // ================================
     return Scaffold(
       appBar: AppBar(
         title: const Text('Data Penjualan Tiket'),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.cloud_upload, color: Colors.green, size: 30),
+            icon: Icon(
+              Icons.sync,
+              color: _isLoadingSync ? Colors.grey : Colors.orange,
+              size: 28,
+            ),
+            tooltip: 'Sync Data Batal',
+            onPressed: _isLoadingSync ? null : _syncBatal,
+          ),
+          IconButton(
+            icon: const Icon(Icons.cloud_upload, color: Colors.green, size: 28),
             tooltip: 'Kirim Data',
-            onPressed: () {
-              debugPrint("☁️ Tombol Kirim Data ditekan");
-              _pushDataPenjualan();
-            },
+            onPressed: _isPushingData ? null : _pushDataPenjualan,
           ),
         ],
       ),
@@ -369,30 +354,26 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
         child: Stack(
           children: [
             AbsorbPointer(
-              absorbing: _isPushingData,
+              absorbing: _isPushingData || _isLoadingSync,
               child: SingleChildScrollView(
                 padding: EdgeInsets.only(
                   bottom: MediaQuery.of(context).padding.bottom + 20,
                 ),
                 child: Column(
                   children: [
-                    // ================================
                     // DROPDOWN FILTER KOTA TUJUAN
-                    // ================================
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       child: Row(
                         children: [
                           const Icon(Icons.location_on, size: 18, color: Colors.blueGrey),
                           const SizedBox(width: 8),
-
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              initialValue: selectedKotaTujuan,
+                              value: selectedKotaTujuan,
                               isDense: true,
                               decoration: InputDecoration(
-                                contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -408,7 +389,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                 );
                               }).toList(),
                               onChanged: (value) {
-                                debugPrint("📌 Dropdown kota dipilih: $value");
                                 setState(() {
                                   selectedKotaTujuan = value ?? 'SEMUA';
                                 });
@@ -419,9 +399,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                       ),
                     ),
 
-                    // ================================
-                    // TOTAL PER KOTA TUJUAN (FILTER)
-                    // ================================
+                    // TOTAL PER KOTA TUJUAN
                     if (selectedKotaTujuan != 'SEMUA')
                       AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
@@ -452,7 +430,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                               size: 25,
                             ),
                             const SizedBox(width: 10),
-
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,21 +447,16 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
-                                      color:
-                                      allTujuanSudahTurun ? Colors.red : Colors.green,
+                                      color: allTujuanSudahTurun ? Colors.red : Colors.green,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
                             Container(
-                              padding:
-                              const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                               decoration: BoxDecoration(
-                                color: allTujuanSudahTurun
-                                    ? Colors.redAccent
-                                    : Colors.green,
+                                color: allTujuanSudahTurun ? Colors.redAccent : Colors.green,
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Text(
@@ -508,9 +480,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                           opacity: allTujuanSudahTurun ? 0.5 : 1,
                           child: ElevatedButton.icon(
                             icon: Icon(
-                              allTujuanSudahTurun
-                                  ? Icons.lock
-                                  : Icons.check_circle_outline,
+                              allTujuanSudahTurun ? Icons.lock : Icons.check_circle_outline,
                             ),
                             label: Text(
                               allTujuanSudahTurun
@@ -518,8 +488,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                   : "Konfirmasi Semua Penumpang Tujuan $selectedKotaTujuan",
                             ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                              allTujuanSudahTurun ? Colors.grey : Colors.green,
+                              backgroundColor: allTujuanSudahTurun ? Colors.grey : Colors.green,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 10),
                               shape: RoundedRectangleBorder(
@@ -530,8 +499,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                             onPressed: allTujuanSudahTurun
                                 ? null
                                 : () async {
-                              final bool? confirm =
-                              await showDialog<bool>(
+                              final bool? confirm = await showDialog<bool>(
                                 context: context,
                                 builder: (_) => AlertDialog(
                                   title: const Text("Konfirmasi"),
@@ -542,13 +510,11 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
+                                      onPressed: () => Navigator.pop(context, false),
                                       child: const Text("Batal"),
                                     ),
                                     ElevatedButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
+                                      onPressed: () => Navigator.pop(context, true),
                                       child: const Text("Iya"),
                                     ),
                                   ],
@@ -562,14 +528,11 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                   1,
                                 );
 
-                                // 🔥 UPDATE STATE LOKAL (REALTIME)
                                 setState(() {
                                   listPenjualan = listPenjualan.map((e) {
                                     if ((e['is_turun'] ?? 0) == 0 &&
                                         e['rute_kota'] != null &&
-                                        e['rute_kota']
-                                            .toString()
-                                            .endsWith(selectedKotaTujuan)) {
+                                        e['rute_kota'].toString().endsWith(selectedKotaTujuan)) {
                                       return {
                                         ...e,
                                         'is_turun': 1,
@@ -585,15 +548,11 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                       ),
 
                     // ================================
-                    // LIST DATA PER RUTE
+                    // LIST DATA PER RUTE - DENGAN SCROLL
                     // ================================
                     ...groupedByRuteKota.entries.map((entry) {
                       final String ruteKota = entry.key;
                       final List<Map<String, dynamic>> penjualanPerRute = entry.value;
-
-                      debugPrint(
-                        "➡️ Render rute: $ruteKota | item: ${penjualanPerRute.length}",
-                      );
 
                       final num subtotalJumlahTiket = penjualanPerRute.fold(0,(total, pj) => total + (pj['jumlah_tiket'] ?? 0),);
 
@@ -601,140 +560,264 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                             (item) => (item['is_turun'] ?? 0) == 1,
                       );
 
-                      debugPrint("   └─ subtotal: $subtotalJumlahTiket | allSudahTurun: $allSudahTurun",);
+                      final bool hasBatalInRute = penjualanPerRute.any(
+                            (item) => (item['is_batal']?.toString() ?? '0') == '1',
+                      );
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-
-                          /// TABLE
-                          SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              columns: const [
-                                DataColumn(label: Text('Jml')),
-                                DataColumn(label: Text('Rute')),
-                                DataColumn(label: Text('Nominal')),
-                                DataColumn(label: Text('Status')),
-                              ],
-                              rows: penjualanPerRute.map((item) {
-                                return DataRow(
-                                  cells: [
-                                    DataCell(Text(item['jumlah_tiket'].toString())),
-                                    DataCell(Text(item['rute_kota'].toString())),
-                                    DataCell(
-                                      Text(formatter.format(item['jumlah_tagihan'])),
+                          // Header Rute
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: hasBatalInRute ? Colors.red.shade50 : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: hasBatalInRute ? Colors.red.shade300 : Colors.grey.shade300,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    ruteKota,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: hasBatalInRute ? Colors.red : null,
                                     ),
-                                    DataCell(Text(item['status'].toString())),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // ============================================
+                          // TABLE DENGAN LEBAR KOLOM YANG DIATUR
+                          // ============================================
+                          Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minWidth: screenWidth - 24,
+                                ),
+                                child: DataTable(
+                                  columnSpacing: 16, // jarak antar kolom
+                                  headingRowColor: MaterialStateProperty.all(
+                                    hasBatalInRute ? Colors.red.shade100 : Colors.grey.shade200,
+                                  ),
+                                  columns: const [
+                                    // Kolom Jml - lebar 50
+                                    DataColumn(
+                                      label: SizedBox(
+                                        width: 50,
+                                        child: Text('Jml', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                    // Kolom Rute - lebar 200
+                                    DataColumn(
+                                      label: SizedBox(
+                                        width: 200,
+                                        child: Text('Rute', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                    // Kolom Nominal - lebar 150
+                                    DataColumn(
+                                      label: SizedBox(
+                                        width: 150,
+                                        child: Text('Nominal', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
+                                    // Kolom Status - lebar 80
+                                    DataColumn(
+                                      label: SizedBox(
+                                        width: 80,
+                                        child: Text('Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                                      ),
+                                    ),
                                   ],
-                                );
-                              }).toList(),
+                                  rows: penjualanPerRute.map((item) {
+                                    final bool isBatal = (item['is_batal']?.toString() ?? '0') == '1';
+                                    final bool isTurun = (item['is_turun'] ?? 0) == 1;
+                                    final String statusKirim = item['status']?.toString() ?? 'N';
+
+                                    return DataRow(
+                                      color: MaterialStateProperty.all(
+                                        isBatal ? Colors.red.shade50 : (isTurun ? Colors.green.shade50 : null),
+                                      ),
+                                      cells: [
+                                        // Jml
+                                        DataCell(
+                                          Container(
+                                            width: 50,
+                                            child: Text(
+                                              item['jumlah_tiket'].toString(),
+                                              style: TextStyle(
+                                                fontWeight: isBatal ? FontWeight.bold : FontWeight.normal,
+                                                color: isBatal ? Colors.red : null,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        ),
+                                        // Rute
+                                        DataCell(
+                                          Container(
+                                            width: 200,
+                                            child: Text(
+                                              item['rute_kota']?.toString() ?? '-',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: isBatal ? FontWeight.bold : FontWeight.normal,
+                                                color: isBatal ? Colors.red : null,
+                                                decoration: isBatal ? TextDecoration.lineThrough : null,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                        // Nominal
+                                        DataCell(
+                                          Container(
+                                            width: 150,
+                                            child: Text(
+                                              formatter.format(item['jumlah_tagihan'] ?? 0),
+                                              style: TextStyle(
+                                                fontWeight: isBatal ? FontWeight.bold : FontWeight.normal,
+                                                color: isBatal ? Colors.red : null,
+                                                decoration: isBatal ? TextDecoration.lineThrough : null,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                        // Status
+                                        DataCell(
+                                          Container(
+                                            width: 80,
+                                            child: Center(
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: isBatal
+                                                      ? Colors.red.shade100
+                                                      : (statusKirim == 'Y' ? Colors.green.shade100 : Colors.orange.shade100),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  isBatal ? "BATAL" : statusKirim,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isBatal
+                                                        ? Colors.red
+                                                        : (statusKirim == 'Y' ? Colors.green : Colors.orange),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
                             ),
                           ),
 
                           const Divider(),
 
-                          /// ACTION + SUBTOTAL
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              GestureDetector(
-                                onTap: allSudahTurun
-                                    ? null
-                                    : () async {
-                                  debugPrint("🟢 Klik cek turun rute: $ruteKota");
-
-                                  final bool? confirm =
-                                  await showDialog<bool>(
-                                    context: context,
-                                    builder: (_) => AlertDialog(
-                                      title: const Text("Konfirmasi"),
-                                      content: const Text(
-                                        "Apakah kamu yakin semua penumpang di rute ini sudah turun?",
+                          // ACTION + SUBTOTAL
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                GestureDetector(
+                                  onTap: allSudahTurun
+                                      ? null
+                                      : () async {
+                                    final bool? confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (_) => AlertDialog(
+                                        title: const Text("Konfirmasi"),
+                                        content: const Text(
+                                          "Apakah kamu yakin semua penumpang di rute ini sudah turun?",
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: const Text("Batal"),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.pop(context, true),
+                                            child: const Text("Iya"),
+                                          ),
+                                        ],
                                       ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () {
-                                            debugPrint("❌ Konfirmasi dibatalkan");
-                                            Navigator.pop(context, false);
-                                          },
-                                          child: const Text("Batal"),
-                                        ),
-                                        ElevatedButton(
-                                          onPressed: () {
-                                            debugPrint("✅ Konfirmasi disetujui");
-                                            Navigator.pop(context, true);
-                                          },
-                                          child: const Text("Iya"),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-
-                                  if (confirm == true) {
-                                    debugPrint(
-                                      "📝 Update is_turun=1 untuk rute: $ruteKota",
                                     );
 
-                                    await PenjualanTiketService.instance
-                                        .updateIsTurunByRute(ruteKota, 1);
+                                    if (confirm == true) {
+                                      await PenjualanTiketService.instance
+                                          .updateIsTurunByRute(ruteKota, 1);
 
-                                    setState(() {
-                                      listPenjualan = listPenjualan.map((e) {
-                                        if (e['rute_kota'] == ruteKota && (e['is_turun'] ?? 0) == 0) {
-                                          return {
-                                            ...e,
-                                            'is_turun': 1,
-                                          };
-                                        }
-                                        return e;
-                                      }).toList();
-                                    });
-
-                                  }
-                                },
-                                child: Opacity(
-                                  opacity: allSudahTurun ? 0.4 : 1,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: allSudahTurun
-                                          ? Colors.red.withOpacity(0.2)
-                                          : Colors.green.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
+                                      setState(() {
+                                        listPenjualan = listPenjualan.map((e) {
+                                          if (e['rute_kota'] == ruteKota && (e['is_turun'] ?? 0) == 0) {
+                                            return {
+                                              ...e,
+                                              'is_turun': 1,
+                                            };
+                                          }
+                                          return e;
+                                        }).toList();
+                                      });
+                                    }
+                                  },
+                                  child: Opacity(
+                                    opacity: allSudahTurun ? 0.4 : 1,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
                                         color: allSudahTurun
-                                            ? Colors.red
-                                            : Colors.green,
+                                            ? Colors.red.withOpacity(0.2)
+                                            : Colors.green.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: allSudahTurun ? Colors.red : Colors.green,
+                                        ),
                                       ),
-                                    ),
-                                    child: Icon(
-                                      allSudahTurun
-                                          ? Icons.close
-                                          : Icons.check,
-                                      size: 16,
-                                      color: allSudahTurun
-                                          ? Colors.red
-                                          : Colors.green,
+                                      child: Icon(
+                                        allSudahTurun ? Icons.close : Icons.check,
+                                        size: 16,
+                                        color: allSudahTurun ? Colors.red : Colors.green,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-
-                              const SizedBox(width: 10),
-                              Text("Jml. Penumpang: $subtotalJumlahTiket"),
-                              const SizedBox(width: 16),
-                            ],
+                                const SizedBox(width: 10),
+                                Text("Jml. Penumpang: $subtotalJumlahTiket"),
+                                const SizedBox(width: 16),
+                              ],
+                            ),
                           ),
+                          const SizedBox(height: 8),
                         ],
                       );
                     }).toList(),
 
                     const SizedBox(height: 20),
 
-                    // ================================
                     // TOTAL & SISA
-                    // ================================
                     _buildTotalBox(
                       title: "TOTAL SEMUA PENUMPANG",
                       value: totalSemuaPenumpang,
@@ -753,13 +836,41 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
               ),
             ),
 
-            /// OVERLAY LOADING
+            // OVERLAY LOADING
             if (_isPushingData)
               Container(
                 color: Colors.grey.withOpacity(0.5),
                 child: Center(
-                  child: CircularProgressIndicator(
-                    value: _pushDataProgress,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        value: _pushDataProgress,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Mengirim data... ${(_pushDataProgress * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            if (_isLoadingSync)
+              Container(
+                color: Colors.grey.withOpacity(0.5),
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(color: Colors.orange),
+                      SizedBox(height: 12),
+                      Text(
+                        'Sync data pembatalan...',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -769,9 +880,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     );
   }
 
-  /// ================================
-  /// WIDGET BANTU
-  /// ================================
   Widget _buildTotalBox({
     required String title,
     required num value,
