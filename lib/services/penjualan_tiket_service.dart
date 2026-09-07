@@ -648,18 +648,21 @@ class PenjualanTiketService {
 
 
 
-  /// Mendapatkan data penjualan yang dibatalkan (is_batal = 1)
+  /// Mendapatkan data penjualan yang dibatalkan (is_batal = 1) HARI INI
   Future<List<Map<String, dynamic>>> getPenjualanBatal() async {
     final db = await database;
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
     return await db.rawQuery('''
-    SELECT 
-      a.*,
-      a.kategori_tiket || ' - ' ||
-      (SELECT nama_kota FROM list_kota WHERE id_kota_tujuan = a.kota_berangkat LIMIT 1) || ' - ' ||
-      (SELECT nama_kota FROM list_kota WHERE id_kota_tujuan = a.kota_tujuan LIMIT 1) AS rute_kota
-    FROM penjualan_tiket a
-    WHERE a.is_batal = 1
-    ORDER BY a.id DESC
+  SELECT 
+    a.*,
+    a.kategori_tiket || ' - ' ||
+    (SELECT nama_kota FROM list_kota WHERE id_kota_tujuan = a.kota_berangkat LIMIT 1) || ' - ' ||
+    (SELECT nama_kota FROM list_kota WHERE id_kota_tujuan = a.kota_tujuan LIMIT 1) AS rute_kota
+  FROM penjualan_tiket a
+  WHERE a.is_batal = 1
+    AND a.tanggal_transaksi = '$today'
+  ORDER BY a.id DESC
   ''');
   }
 
@@ -731,7 +734,7 @@ class PenjualanTiketService {
     return await db.rawQuery(query);
   }
 
-  /// Sync data penjualan batal dari backend
+  /// Sync data penjualan batal dari backend (HANYA HARI INI)
   Future<void> syncBatalData({
     required String token,
     required String noPol,
@@ -741,8 +744,18 @@ class PenjualanTiketService {
     try {
       final db = await database;
       final now = DateTime.now();
-      final startDate = DateFormat('yyyy-MM-dd').format(now.subtract(const Duration(days: 30)));
-      final endDate = DateFormat('yyyy-MM-dd').format(now);
+      // ✅ HANYA HARI INI
+      final today = DateFormat('yyyy-MM-dd').format(now);
+      final startDate = today;
+      final endDate = today;
+
+      // ✅ HAPUS DATA BATAL LAMA (sebelum hari ini)
+      final deleteCount = await db.delete(
+        'penjualan_tiket',
+        where: 'is_batal = 1 AND tanggal_transaksi < ?',
+        whereArgs: [today],
+      );
+      print('🗑️ Menghapus $deleteCount data batal lama (sebelum $today)');
 
       final url = Uri.parse(
           'https://apimila.milaberkah.com/api/tampilpenjualantiketbatal'
@@ -770,14 +783,13 @@ class PenjualanTiketService {
       }
 
       final List<dynamic> data = json.decode(response.body);
-      print('✅ Mendapatkan ${data.length} data batal dari backend');
+      print('✅ Mendapatkan ${data.length} data batal dari backend (HARI INI)');
 
       if (data.isEmpty) {
-        print('ℹ️ Tidak ada data batal');
+        print('ℹ️ Tidak ada data batal hari ini');
         return;
       }
 
-      // 🔥 JANGAN HAPUS DATA LAMA, UPDATE SAJA
       int updated = 0;
       int inserted = 0;
 
@@ -804,14 +816,13 @@ class PenjualanTiketService {
           'jumlah_tagihan': double.tryParse(item['pendapatan']?.toString() ?? '0'),
           'harga_kantor': double.tryParse(item['harga_kantor']?.toString() ?? '0'),
           'keterangan': item['keterangan'] ?? '',
-          'is_batal': 1,
+          'is_batal': 1,  // ✅ PASTIKAN 1 (BATAL)
           'status': 'Y',
           'id_metode_bayar': 1,
           'is_turun': 0,
         };
 
         if (existing.isNotEmpty) {
-          // Update data yang sudah ada
           await db.update(
             'penjualan_tiket',
             newData,
@@ -821,14 +832,13 @@ class PenjualanTiketService {
           updated++;
           print('🔄 Update data batal: ${item['tgl_transaksi']}');
         } else {
-          // Insert data baru
           await db.insert('penjualan_tiket', newData);
           inserted++;
           print('➕ Insert data batal: ${item['tgl_transaksi']}');
         }
       }
 
-      print('✅ Berhasil update $updated data dan insert $inserted data batal');
+      print('✅ Berhasil update $updated data dan insert $inserted data batal (HARI INI)');
 
     } catch (e) {
       print('❌ Error sync batal: $e');

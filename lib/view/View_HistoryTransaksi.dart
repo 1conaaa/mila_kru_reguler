@@ -41,8 +41,8 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   }
 
   // ============================================
-  // SYNC DATA BATAL
-  // ============================================
+// SYNC DATA BATAL
+// ============================================
   Future<void> _syncBatal() async {
     if (listPenjualan.isEmpty) {
       await _getListTransaksi();
@@ -91,7 +91,10 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
 
       await _getListTransaksi();
 
-      final dataBatal = await PenjualanTiketService.instance.getPenjualanBatal();
+      // ✅ HITUNG DARI LIST PENJUALAN (SEMUA DATA BATAL)
+      final dataBatal = listPenjualan
+          .where((item) => (item['is_batal']?.toString() ?? '0') == '1')
+          .toList();
 
       if (dataBatal.isNotEmpty) {
         _showToast("✅ ${dataBatal.length} data pembatalan ditemukan (warna merah)");
@@ -243,6 +246,7 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
 
     final int rit = await getActiveRit();
 
+    // ✅ AMBIL SEMUA DATA (termasuk batal) untuk ditampilkan dengan status
     List<Map<String, dynamic>> penjualanData =
     await PenjualanTiketService.instance.getDataPenjualan();
 
@@ -261,7 +265,13 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
 
     final Set<String> kotaTujuanSet = {};
 
+    // ✅ FILTER: HANYA data TIDAK BATAL untuk filter kota tujuan
     for (var e in penjualanData) {
+      final isBatal = (e['is_batal']?.toString() ?? '0') == '1';
+
+      // ✅ LEWATKAN data batal untuk filter
+      if (isBatal) continue;
+
       final rute = e['rute_kota']?.toString();
 
       if (rute != null && rute.contains(' - ')) {
@@ -280,11 +290,13 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
     });
 
     setState(() {
+      // ✅ TETAP tampilkan semua data (termasuk batal) di list
       listPenjualan = penjualanData;
       kotaTujuanList = ['SEMUA', ...kotaTujuanSorted];
     });
 
-    debugPrint("📍 Kota tujuan unik: $kotaTujuanList");
+    debugPrint("📍 Kota tujuan unik (tanpa batal): $kotaTujuanList");
+    debugPrint("📊 Total data penjualan: ${penjualanData.length}");
   }
 
   void _showToast(String message) {
@@ -300,32 +312,47 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
 
-    final List<Map<String, dynamic>> filteredPenjualan = selectedKotaTujuan == 'SEMUA' ? listPenjualan : listPenjualan.where((e) {
+    // ✅ PERBAIKAN 1: TAMPILKAN SEMUA DATA (termasuk batal) untuk filter kota
+    final List<Map<String, dynamic>> filteredPenjualan = selectedKotaTujuan == 'SEMUA'
+        ? listPenjualan // ✅ TAMPILKAN SEMUA (termasuk batal)
+        : listPenjualan.where((e) {
       final rute = e['rute_kota']?.toString() ?? '';
       if (!rute.contains(' - ')) return false;
       final kotaTujuan = rute.split(' - ').last.trim();
       return kotaTujuan == selectedKotaTujuan;
     }).toList();
 
-    final bool allTujuanSudahTurun = selectedKotaTujuan != 'SEMUA' && filteredPenjualan.isNotEmpty && filteredPenjualan.every((e) => (e['is_turun'] ?? 0) == 1,);
+    // ✅ PERBAIKAN 2: allTujuanSudahTurun - HANYA data tidak batal
+    final bool allTujuanSudahTurun = selectedKotaTujuan != 'SEMUA' &&
+        filteredPenjualan.isNotEmpty &&
+        filteredPenjualan
+            .where((e) => (e['is_batal']?.toString() ?? '0') != '1')
+            .every((e) => (e['is_turun'] ?? 0) == 1);
 
-    final num totalPerKotaTujuan = selectedKotaTujuan == 'SEMUA' ? 0 : filteredPenjualan.fold(0,(total, item) => total + (item['jumlah_tiket'] ?? 0),);
+    // ✅ PERBAIKAN 3: totalPerKotaTujuan - HANYA data tidak batal
+    final num totalPerKotaTujuan = selectedKotaTujuan == 'SEMUA'
+        ? 0
+        : filteredPenjualan
+        .where((e) => (e['is_batal']?.toString() ?? '0') != '1')
+        .fold(0, (total, item) => total + (item['jumlah_tiket'] ?? 0));
 
+    // ✅ PERBAIKAN 4: GROUPING - TAMPILKAN SEMUA (termasuk batal)
     final Map<String, List<Map<String, dynamic>>> groupedByRuteKota = {};
 
-    for (final item in filteredPenjualan) {
+    for (final item in filteredPenjualan) { // ✅ Termasuk batal
       final ruteKota = item['rute_kota']?.trim() ?? '-';
       groupedByRuteKota.putIfAbsent(ruteKota, () => []);
       groupedByRuteKota[ruteKota]!.add(item);
     }
 
-    final num totalSemuaPenumpang = listPenjualan.fold(
-      0,
-          (total, item) => total + (item['jumlah_tiket'] ?? 0),
-    );
+    // ✅ PERBAIKAN 5: totalSemuaPenumpang - HANYA data tidak batal
+    final num totalSemuaPenumpang = listPenjualan
+        .where((item) => (item['is_batal']?.toString() ?? '0') != '1')
+        .fold(0, (total, item) => total + (item['jumlah_tiket'] ?? 0));
 
+    // ✅ PERBAIKAN 6: sisaPenumpang - HANYA data tidak batal
     final num sisaPenumpang = listPenjualan
-        .where((e) => (e['is_turun'] ?? 0) == 0)
+        .where((e) => (e['is_turun'] ?? 0) == 0 && (e['is_batal']?.toString() ?? '0') != '1')
         .fold(0, (tot, item) => tot + (item['jumlah_tiket'] ?? 0));
 
     return Scaffold(
@@ -532,7 +559,8 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                   listPenjualan = listPenjualan.map((e) {
                                     if ((e['is_turun'] ?? 0) == 0 &&
                                         e['rute_kota'] != null &&
-                                        e['rute_kota'].toString().endsWith(selectedKotaTujuan)) {
+                                        e['rute_kota'].toString().endsWith(selectedKotaTujuan) &&
+                                        (e['is_batal']?.toString() ?? '0') != '1') { // ✅ Skip batal
                                       return {
                                         ...e,
                                         'is_turun': 1,
@@ -554,11 +582,15 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                       final String ruteKota = entry.key;
                       final List<Map<String, dynamic>> penjualanPerRute = entry.value;
 
-                      final num subtotalJumlahTiket = penjualanPerRute.fold(0,(total, pj) => total + (pj['jumlah_tiket'] ?? 0),);
+                      // ✅ PERBAIKAN 7: subtotalJumlahTiket - HANYA data tidak batal
+                      final num subtotalJumlahTiket = penjualanPerRute
+                          .where((pj) => (pj['is_batal']?.toString() ?? '0') != '1')
+                          .fold(0, (total, pj) => total + (pj['jumlah_tiket'] ?? 0));
 
-                      final bool allSudahTurun = penjualanPerRute.every(
-                            (item) => (item['is_turun'] ?? 0) == 1,
-                      );
+                      // ✅ PERBAIKAN 8: allSudahTurun - HANYA data tidak batal
+                      final bool allSudahTurun = penjualanPerRute
+                          .where((item) => (item['is_batal']?.toString() ?? '0') != '1')
+                          .every((item) => (item['is_turun'] ?? 0) == 1);
 
                       final bool hasBatalInRute = penjualanPerRute.any(
                             (item) => (item['is_batal']?.toString() ?? '0') == '1',
@@ -610,33 +642,29 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                   minWidth: screenWidth - 24,
                                 ),
                                 child: DataTable(
-                                  columnSpacing: 16, // jarak antar kolom
+                                  columnSpacing: 16,
                                   headingRowColor: MaterialStateProperty.all(
                                     hasBatalInRute ? Colors.red.shade100 : Colors.grey.shade200,
                                   ),
                                   columns: const [
-                                    // Kolom Jml - lebar 50
                                     DataColumn(
                                       label: SizedBox(
                                         width: 50,
                                         child: Text('Jml', style: TextStyle(fontWeight: FontWeight.bold)),
                                       ),
                                     ),
-                                    // Kolom Rute - lebar 200
                                     DataColumn(
                                       label: SizedBox(
                                         width: 200,
                                         child: Text('Rute', style: TextStyle(fontWeight: FontWeight.bold)),
                                       ),
                                     ),
-                                    // Kolom Nominal - lebar 150
                                     DataColumn(
                                       label: SizedBox(
                                         width: 150,
                                         child: Text('Nominal', style: TextStyle(fontWeight: FontWeight.bold)),
                                       ),
                                     ),
-                                    // Kolom Status - lebar 80
                                     DataColumn(
                                       label: SizedBox(
                                         width: 80,
@@ -654,7 +682,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                         isBatal ? Colors.red.shade50 : (isTurun ? Colors.green.shade50 : null),
                                       ),
                                       cells: [
-                                        // Jml
                                         DataCell(
                                           Container(
                                             width: 50,
@@ -668,7 +695,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                             ),
                                           ),
                                         ),
-                                        // Rute
                                         DataCell(
                                           Container(
                                             width: 200,
@@ -684,7 +710,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                             ),
                                           ),
                                         ),
-                                        // Nominal
                                         DataCell(
                                           Container(
                                             width: 150,
@@ -699,7 +724,6 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
                                             ),
                                           ),
                                         ),
-                                        // Status
                                         DataCell(
                                           Container(
                                             width: 80,
@@ -772,7 +796,9 @@ class _HistroyTransaksiState extends State<HistroyTransaksi> {
 
                                       setState(() {
                                         listPenjualan = listPenjualan.map((e) {
-                                          if (e['rute_kota'] == ruteKota && (e['is_turun'] ?? 0) == 0) {
+                                          if (e['rute_kota'] == ruteKota &&
+                                              (e['is_turun'] ?? 0) == 0 &&
+                                              (e['is_batal']?.toString() ?? '0') != '1') { // ✅ Skip batal
                                             return {
                                               ...e,
                                               'is_turun': 1,
