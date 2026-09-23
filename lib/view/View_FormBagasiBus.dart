@@ -487,7 +487,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
 
   Future<List<int>> getTicketBagasi() async {
     final prefs = await SharedPreferences.getInstance();
-    String noWhatsapp = prefs.getString('noKontak') ?? '0822-3490-9090';
+    String noWhatsapp = prefs.getString('noKontak') ?? '0822-2668-2428';
 
     List<Map<String, dynamic>> lastTransaksi = await DatabaseHelper.instance.getDataTransaksiBagasiTerakhir();
 

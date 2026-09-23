@@ -1132,7 +1132,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
       // ✅ TAMBAHKAN CALL CENTER
       bytes += generator.text(
-        "Call Center: 0822-2668-2428",
+        "Call Center: 0851-5179-9838",
         styles: PosStyles(
           align: PosAlign.center,
           height: PosTextSize.size1,
@@ -3262,7 +3262,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         isNotlpPembeliVisible = true;
         isKeteranganVisible = true;
         isMetodePembayaranVisible = false;
-        isHargaTarikanEditable = false;
+        isHargaTarikanEditable = true;
       } else if (kelasBus == 'Non Ekonomi') {
         isHargaKantorVisible = false;
         isTombolVisible = true;

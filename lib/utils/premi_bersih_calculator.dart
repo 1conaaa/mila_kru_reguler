@@ -204,6 +204,7 @@ class PremiBersihCalculator {
 
     final double persenPremiKru = (double.tryParse(userData.persenPremikru?.replaceAll('%', '') ?? '0') ?? 0) / 100;
     final double pendKeseluruhan = nominalTiketReguler + nominalTiketOnline + pendapatanBagasi;
+    final double pendSusuk = nominalTiketReguler + nominalTiketOnline;
     final double pendapatanKotor = (nominalTiketReguler) - operan;
 
     print('=== [DEBUG] PARSED PERCENTAGES ===');
@@ -235,7 +236,7 @@ class PremiBersihCalculator {
               case '3471351002':
                 PersentaseSusukan? matchedPersen;
                 for (final item in persentaseSusukanList) {
-                  if (nominalTiketReguler >= item.nominalDari && nominalTiketReguler <= item.nominalSampai) {
+                  if (pendSusuk >= item.nominalDari && pendSusuk <= item.nominalSampai) {
                     matchedPersen = item;
                     break;
                   }
