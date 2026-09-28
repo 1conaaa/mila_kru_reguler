@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 class ApiHelperOperasiHarianBus {
   static get operasibus => null;
 
-  static Future<void> addListOperasiHarianBusAPI(String token, int idBus, String noPol, String kodeTrayek) async {
+  static Future<void> addListOperasiHarianBusAPI(String token, int idBus, String noPol, String kodeTrayek , {required int rit }) async {
     DateTime now = DateTime.now();
     String formattedDate = DateFormat('yyyy-MM-dd').format(now);
     String tanggalWaktuSekarang = now.toString();
@@ -18,6 +18,7 @@ class ApiHelperOperasiHarianBus {
       body: {
         'id_bus': idBus.toString(),
         'no_pol': noPol,
+        'rit': rit.toString(), // ✅ KIRIM RIT
         'kode_trayek': kodeTrayek,
         'tgl_sekarang': tanggalWaktuSekarang,
         'kategori': 'Operasi',

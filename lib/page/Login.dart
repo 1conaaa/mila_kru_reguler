@@ -248,6 +248,7 @@ class _LoginState extends State<Login> {
           builder: (_) => InitialDataLoadingPage(
             token: api.token,
             user: user,
+            rit: _selectedRit!, // ✅
           ),
         ),
       );
@@ -368,6 +369,7 @@ class _LoginState extends State<Login> {
           idBus,
           noPol,
           kodeTrayek,
+          rit: _selectedRit ?? 1, // ✅ kirim RIT yang dipilih
         );
       } catch (e) {
         print('[WARN] OperasiHarianBus gagal: $e');

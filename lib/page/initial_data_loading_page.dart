@@ -29,11 +29,13 @@ class LoadingStep {
 class InitialDataLoadingPage extends StatefulWidget {
   final String token;
   final User user;
+  final int rit; // ✅ tambahkan field
 
   const InitialDataLoadingPage({
     Key? key,
     required this.token,
     required this.user,
+    required this.rit,
   }) : super(key: key);
 
   @override
@@ -102,7 +104,7 @@ class _InitialDataLoadingPageState
         title: "Memuat Operasi Harian Bus",
         action: () => ApiHelperOperasiHarianBus
             .addListOperasiHarianBusAPI(
-            token, idBus, noPol, kodeTrayek),
+            token, idBus, noPol, kodeTrayek, rit: widget.rit),
       ),
       LoadingStep(
         title: "Memuat Jenis Paket",
