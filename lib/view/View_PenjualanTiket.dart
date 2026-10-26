@@ -256,6 +256,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
   // TAMBAHKAN METHOD INI
   void _onPrinterConnectionChanged() {
+    if (!mounted) return;
     setState(() {
       _isPrinterConnected = printerService.isConnected && printerService.selectedDevice != null;
     });
@@ -415,22 +416,28 @@ class _PenjualanFormState extends State<PenjualanForm> {
   }
 
   Future<void> _checkPrinterConnection() async {
+    if (!mounted) return;
     setState(() {
       _isCheckingPrinter = true;
     });
 
     try {
-      final isConnected = await printerService.checkConnection();
+      // ✅ APP-BLE-01: pakai performHealthCheck (isConnected + write-test)
+      // -> mendeteksi printer thermal yang DIMATIKAN tapi masih dianggap
+      //    "connected" oleh state Bluetooth Android.
+      final bool healthy = await printerService.performHealthCheck();
       final selectedDevice = printerService.selectedDevice;
+      if (!mounted) return;
 
       setState(() {
-        _isPrinterConnected = isConnected && selectedDevice != null;
+        _isPrinterConnected = healthy && selectedDevice != null;
         _isCheckingPrinter = false;
       });
 
-      print('Status koneksi printer: $_isPrinterConnected');
+      print('Status koneksi printer (health check): $_isPrinterConnected');
     } catch (e) {
       print('Error cek koneksi printer: $e');
+      if (!mounted) return;
       setState(() {
         _isPrinterConnected = false;
         _isCheckingPrinter = false;
@@ -606,13 +613,17 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
   }
 
-  Future<void> printTicket() async {
+  /// ✅ APP-BLE-01: `printTicket()` kini mengembalikan `true` HANYA bila data
+  /// struk benar-benar terkirim ke printer. Bila `false`, pemanggil di tombol
+  /// Simpan akan me-rollback transaksi yang baru saja diinsert.
+  Future<bool> printTicket() async {
     print("🖨️ ===== MULAI PROSES CETAK TIKET =====");
 
     // ==========================================
     // 1. CEK KONEKSI PRINTER
     // ==========================================
     await _checkPrinterConnection();
+    if (!mounted) return false;
 
     print("📊 Status koneksi:");
     print("   - printerService.isConnected: ${printerService.isConnected}");
@@ -678,9 +689,11 @@ class _PenjualanFormState extends State<PenjualanForm> {
       if (shouldConnect == true) {
         print("📌 User memilih hubungkan printer...");
         await pilihPrinter(context);
+        if (!mounted) return false;
 
         // Cek ulang setelah connect
         await _checkPrinterConnection();
+        if (!mounted) return false;
 
         // Jika masih gagal
         if (!_isPrinterConnected || printerService.selectedDevice == null) {
@@ -692,7 +705,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
             backgroundColor: Colors.red,
             textColor: Colors.white,
           );
-          return;
+          return false;
         }
 
         print("✅ Printer berhasil terhubung, melanjutkan cetak...");
@@ -703,7 +716,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
           msg: "Cetak dibatalkan",
           gravity: ToastGravity.BOTTOM,
         );
-        return;
+        return false;
       }
     }
 
@@ -720,7 +733,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
         backgroundColor: Colors.red,
         textColor: Colors.white,
       );
-      return;
+      return false;
     }
 
     // ==========================================
@@ -738,11 +751,29 @@ class _PenjualanFormState extends State<PenjualanForm> {
           backgroundColor: Colors.red,
           textColor: Colors.white,
         );
-        return;
+        return false;
       }
 
       print("📤 Mengirim data ke printer (${bytes.length} bytes)...");
-      await printerService.printBytes(bytes);
+      // ✅ APP-BLE-01: printBytes() kini mengembalikan status sukses/gagal
+      final bool printOk = await printerService.printBytes(bytes);
+      if (!printOk) {
+        print("❌ Printer tidak merespons saat mencetak");
+        // Service sudah menandai status disconnected + notify UI
+        if (mounted) {
+          setState(() {
+            _isPrinterConnected = false;
+          });
+        }
+        Fluttertoast.showToast(
+          msg: "⚠️ Printer tidak merespons (kemungkinan mati). Struk tidak tercetak.",
+          gravity: ToastGravity.BOTTOM,
+          toastLength: Toast.LENGTH_LONG,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+        return false;
+      }
 
       print("✅ Tiket berhasil dicetak!");
       Fluttertoast.showToast(
@@ -751,6 +782,8 @@ class _PenjualanFormState extends State<PenjualanForm> {
         backgroundColor: Colors.green,
         textColor: Colors.white,
       );
+      print("✅ ===== CETAK SUKSES =====");
+      return true;
 
     } catch (e) {
       print("❌ Error saat mencetak: ${e.toString()}");
@@ -782,9 +815,10 @@ class _PenjualanFormState extends State<PenjualanForm> {
           textColor: Colors.white,
         );
       }
+      return false;
+    } finally {
+      print("🖨️ ===== SELESAI PROSES CETAK =====");
     }
-
-    print("🖨️ ===== SELESAI PROSES CETAK =====");
   }
 
   // Future<List<int>> getTicket() async {
@@ -1938,7 +1972,9 @@ class _PenjualanFormState extends State<PenjualanForm> {
     }
   }
 
-  Future<void> _kirimValue(
+  /// ✅ APP-BLE-01: mengembalikan `insertedId` bila insert sukses, `null`
+  /// bila diblok/gagal agar pemanggil dapat rollback bila cetak gagal.
+  Future<int?> _kirimValue(
       double hargaKantorParam,
       double jumlahTagihanParam,
       int jumlahTiket,
@@ -1954,7 +1990,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
     // 🔒 BLOK DOUBLE SUBMIT
     if (_isSubmitting) {
       print('⛔ _kirimValue diblok karena masih proses simpan');
-      return;
+      return null;
     }
     _isSubmitting = true;
 
@@ -2054,19 +2090,40 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
       print('✅ Data berhasil disimpan. ID: $insertedId');
       await databaseHelper.closeDatabase();
+      return insertedId;
 
     } catch (e) {
       print('❌ Error dalam _kirimValue: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Gagal menyimpan data: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal menyimpan data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return null;
     } finally {
       // 🔓 PASTI DIBUKA KEMBALI
       _isSubmitting = false;
       print('🔓 _isSubmitting dilepas');
+    }
+  }
+
+  /// ✅ APP-BLE-01: hapus transaksi yang baru diinsert bila struk GAGAL dicetak
+  /// (printer mati/tidak merespons) — tidak menyisakan baris "bocor" lokal.
+  Future<void> _hapusTransaksiGagalCetak(int insertedId) async {
+    try {
+      Database database = await databaseHelper.database;
+      final int deletedRows = await database.delete(
+        'penjualan_tiket',
+        where: 'id = ?',
+        whereArgs: [insertedId],
+      );
+      await databaseHelper.closeDatabase();
+      print('🗑️ Rollback transaksi gagal cetak, id=$insertedId (hapus $deletedRows baris)');
+    } catch (e) {
+      print('❌ Gagal rollback transaksi id=$insertedId: $e');
     }
   }
 
@@ -3095,6 +3152,7 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                   if (selectedMetodePembayaran == '1') {
                                     // Cek koneksi printer terlebih dahulu
                                     await _checkPrinterConnection();
+                                    if (!mounted) return;
 
                                     if (!_isPrinterConnected) {
                                       // Tampilkan dialog peringatan
@@ -3121,8 +3179,10 @@ class _PenjualanFormState extends State<PenjualanForm> {
 
                                       if (shouldContinue == true) {
                                         await pilihPrinter(context);
+                                        if (!mounted) return;
                                         // Cek ulang setelah connect
                                         await _checkPrinterConnection();
+                                        if (!mounted) return;
                                         if (!_isPrinterConnected) {
                                           ScaffoldMessenger.of(context).showSnackBar(
                                             const SnackBar(
@@ -3157,7 +3217,10 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                       isTurun,
                                     );
                                   } else {
-                                    await _kirimValue(
+                                    // ✅ APP-BLE-01: simpan dulu (bawa id hasil insert),
+                                    // lalu WAJIB cetak sukses. Bila printer tidak
+                                    // merespons → rollback baris transaksi.
+                                    final int? insertedId = await _kirimValue(
                                       hargaKantor,
                                       jumlahTagihan,
                                       jumlahTiket,
@@ -3170,9 +3233,33 @@ class _PenjualanFormState extends State<PenjualanForm> {
                                       keteranganTagihan,
                                     );
 
-                                    await printTicket();
+                                    if (insertedId == null) {
+                                      return; // Insert gagal/blok — tidak lanjut cetak
+                                    }
+                                    if (!mounted) return;
 
-                                    // ✅ RESET SETELAH PRINT
+                                    final bool cetakSukses = await printTicket();
+                                    if (!mounted) return;
+
+                                    if (!cetakSukses) {
+                                      // Rollback: transaksi TIDAK disimpan ketika
+                                      // struk tidak tercetak
+                                      await _hapusTransaksiGagalCetak(insertedId);
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            "❌ Transaksi dibatalkan: struk tidak tercetak "
+                                            "(printer mati/tidak merespons). Data tidak disimpan.",
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          duration: Duration(seconds: 4),
+                                        ),
+                                      );
+                                      return; // JANGAN reset form — kru bisa cetak ulang
+                                    }
+
+                                    // ✅ RESET SETELAH PRINT SUKSES
                                     setState(() {
                                       jumlahTiketController.clear();
                                       jumlahTiket = 0;

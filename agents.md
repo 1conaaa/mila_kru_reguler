@@ -32,7 +32,16 @@
 
 ## Aturan Kerja
 1. Jangan ubah struktur tabel/endpoint backend tanpa mencatat di `prd.md` & `tasks.md`.
-2. Setiap fitur baru: update PRD & task list dulu, lalu implement bertahap; commit per fase.
+2. Setiap fitur baru: update PRD & task list dulu, lalu implement bertahap.
 3. Uji manual di device Android (printer thermal asli) untuk fitur printer; tidak ada test otomatis printer, fitur krusial diuji via checklist di `tasks.md`.
 4. Endpoint baru mengikuti pola REST yang ada (`/api/<namamodul>`, params snap: `periode_awal`, `no_pol`, `id_bus`, `rit`, `kode_trayek`).
 5. Konsisten bahasa UI: bahasa Indonesia.
+
+## Aturan Git (WAJIB)
+1. **Tidak melakukan `git commit` dan/atau `git push` untuk setiap perubahan** secara mandiri — sekecil apapun perubahannya.
+2. **Commit & push HANYA dilakukan jika diperintahkan secara eksplisit oleh user** (contoh: "commit", "push", "commit dulu", "push ke repo").
+3. Default kerja: edit file + update checklist di `tasks.md` saja; perubahan dibiarkan uncommitted hingga user meminta.
+4. Bila user meminta commit: `git add` hanya file yang terkait task saat ini (jangan `git add .` / `add -A` sembarangan), tulis pesan commit yang deskriptif.
+5. Bila user meminta push: pastikan commit sudah ada, lalu `git push` ke branch yang aktif (`main`).
+6. Jangan sekali pun menggabungkan perubahan user yang belum di-commit oleh user sendiri ke dalam commit tanpa konfirmasi.
+7. `git status` / `git diff` / `git log` (perintah read-only) boleh dipakai bebas kapan saja untuk memeriksa keadaan repo.

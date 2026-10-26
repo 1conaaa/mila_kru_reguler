@@ -219,23 +219,29 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   }
 
   Future<void> _checkPrinterConnection() async {
+    if (!mounted) return;
     setState(() {
       _isCheckingPrinter = true;
     });
 
     try {
+      // ✅ APP-BLE-01: pakai performHealthCheck (isConnected + write-test)
+      // -> mendeteksi printer thermal yang DIMATIKAN tapi masih dianggap
+      //    "connected" oleh state Bluetooth Android.
       final printer = context.read<BluetoothPrinterService>();
-      final isConnected = await printer.checkConnection();
+      final bool healthy = await printer.performHealthCheck();
       final selectedDevice = printer.selectedDevice;
+      if (!mounted) return;
 
       setState(() {
-        _isPrinterConnected = isConnected && selectedDevice != null;
+        _isPrinterConnected = healthy && selectedDevice != null;
         _isCheckingPrinter = false;
       });
 
-      print('✅ Status printer: $_isPrinterConnected');
+      print('✅ Status printer (health check): $_isPrinterConnected');
     } catch (e) {
       print('❌ Error cek printer: $e');
+      if (!mounted) return;
       setState(() {
         _isPrinterConnected = false;
         _isCheckingPrinter = false;
@@ -244,6 +250,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
   }
 
   Future<void> _refreshData() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
@@ -321,7 +328,9 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
     }
   }
 
-  Future<void> _submitForm(int idjenisPaket, int idkotaAwal, int idkotaAkhir) async {
+  /// ✅ APP-BLE-01: mengembalikan `id_order` bila insert sukses, `null` bila
+  /// gagal — agar pemanggil dapat rollback bila cetak gagal.
+  Future<String?> _submitForm(int idjenisPaket, int idkotaAwal, int idkotaAkhir) async {
     setState(() => _isLoading = true);
     _showLoading();
 
@@ -343,15 +352,17 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
         _base64Image = base64Encode(bytes);
       } else {
         Fluttertoast.showToast(msg: "Gagal mengkompres gambar");
-        return;
+        return null;
       }
     }
+
+    final String idOrder = '${idBus}${idUser}${formattedIdOrder}';
 
     try {
       await db.insert('t_order_bagasi', {
         'tgl_order': formattedDate,
         'id_jenis_paket': idjenisPaket,
-        'id_order': '${idBus}${idUser}${formattedIdOrder}',
+        'id_order': idOrder,
         'rit': ritAktif,
         'id_bus': idBus,
         'no_pol': noPol,
@@ -379,14 +390,33 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
       if (mounted) {
         _resetForm();
       }
+      return idOrder;
     } catch (error) {
       print("Error inserting data: $error");
       Fluttertoast.showToast(msg: "Gagal menyimpan data");
+      return null;
     } finally {
       _hideLoading();
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  /// ✅ APP-BLE-01: hapus bagasi yang baru diinsert bila tiket bagasi GAGAL
+  /// dicetak (printer mati/tidak merespons) — tidak menyisakan baris lokal.
+  Future<void> _hapusBagasiGagalCetak(String idOrder) async {
+    try {
+      final dbHelper = DatabaseHelper.instance;
+      Database db = await dbHelper.database;
+      final int deletedRows = await db.delete(
+        't_order_bagasi',
+        where: 'id_order = ?',
+        whereArgs: [idOrder],
+      );
+      print('🗑️ Rollback bagasi gagal cetak, id_order=$idOrder (hapus $deletedRows baris)');
+    } catch (e) {
+      print('❌ Gagal rollback bagasi id_order=$idOrder: $e');
     }
   }
 
@@ -1348,6 +1378,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           // 🔥 VALIDASI 4: CEK PRINTER (SEBELUM SIMPAN!)
           // ==================================================
           await _checkPrinterConnection();
+          if (!mounted) return;
 
           if (!_isPrinterConnected) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1372,6 +1403,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
           try {
             // ✅ CEK PRINTER LAGI (DOUBLE CHECK)
             await _checkPrinterConnection();
+            if (!mounted) return;
 
             if (!_isPrinterConnected) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1386,12 +1418,36 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
             }
 
             // 1️⃣ Simpan data ke database (SETELAH PRINTER OK)
-            await _submitForm(idjenisPaket, idkotaAwal, idkotaAkhir);
+            // ✅ APP-BLE-01: bawa id_order untuk rollback bila cetak gagal
+            final String? idOrder = await _submitForm(idjenisPaket, idkotaAwal, idkotaAkhir);
+            if (!mounted) return;
 
-            // 2️⃣ Cetak tiket bagasi
-            final printer = context.read<BluetoothPrinterService>();
+            if (idOrder == null) {
+              setState(() => _isSubmitting = false);
+              return;
+            }
+
+            // 2️⃣ Cetak tiket bagasi — WAJIB sukses
             final bytes = await getTicketBagasi();
-            await printer.printBytes(bytes);
+            if (!mounted) return;
+            final printer = context.read<BluetoothPrinterService>();
+            final bool printOk = await printer.printBytes(bytes);
+            if (!mounted) return;
+
+            if (!printOk) {
+              // ❌ Cetak gagal → rollback baris bagasi yang baru diinsert
+              await _hapusBagasiGagalCetak(idOrder);
+
+              Fluttertoast.showToast(
+                msg: "❌ Bagasi dibatalkan: tiket tidak tercetak "
+                    "(printer mati/tidak merespons). Data tidak disimpan.",
+                backgroundColor: Colors.red,
+                textColor: Colors.white,
+                toastLength: Toast.LENGTH_LONG,
+              );
+              _refreshData();
+              return;
+            }
 
             // 3️⃣ Notifikasi sukses
             Fluttertoast.showToast(
@@ -1411,7 +1467,7 @@ class _FormBagasiBusState extends State<FormBagasiBus> {
               textColor: Colors.white,
             );
           } finally {
-            setState(() => _isSubmitting = false);
+            if (mounted) setState(() => _isSubmitting = false);
           }
         },
         style: ElevatedButton.styleFrom(
